@@ -7,7 +7,7 @@ import logo from '../../assets/image.png';
 
 const InputField = ({ label, placeholder, required = false, type = 'text', icon = null, value, onChange, className = '' }) => (
   <div className={`mb-4 group ${className}`}>
-    <label className="block text-gray-800 text-sm font-semibold mb-2 transition-colors duration-200 group-focus-within:text-green-600">
+    <label className="block text-left text-gray-800 text-sm font-semibold mb-2 transition-colors duration-200 group-focus-within:text-green-600">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     <div className="relative">

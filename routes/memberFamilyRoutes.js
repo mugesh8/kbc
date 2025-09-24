@@ -5,6 +5,7 @@ const memberFamilyController = require('../controller/memberFamilyController');
 
 // Authentication routes
 router.post('/member-family/register', memberFamilyController.createMemberWithFamily);
+router.get('/member-family/all', memberFamilyController.getAllFamilies);
 router.get('/member-family/:id', memberFamilyController.getMemberWithFamily);
 // router.get('/business-profile/:id', businessController.getBusinessProfileById);
 // router.put('/business-profile/update/:id', uploadBusinessProfileMedia, businessController.updateBusinessProfile);

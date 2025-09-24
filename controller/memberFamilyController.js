@@ -89,7 +89,27 @@ const createMemberWithFamily = async (req, res) => {
   }
 };
 
+const getAllFamilies = async (req, res) => {
+  try {
+    const families = await MemberFamily.findAll({
+      attributes: [
+        'id',
+        'member_id',
+        'father_name', 'father_contact',
+        'mother_name', 'mother_contact',
+        'spouse_name', 'spouse_contact',
+        'number_of_children', 'children_names', 'address'
+      ]
+    });
+    return res.status(200).json({ success: true, data: families });
+  } catch (error) {
+    console.error('Fetch Families Error:', error.message);
+    return res.status(500).json({ success: false, msg: 'Failed to fetch families', error: error.message });
+  }
+}
+
 module.exports = {
   getMemberWithFamily,
   createMemberWithFamily,
+  getAllFamilies
 };

@@ -203,13 +203,13 @@ const BusinessListing = () => {
 
         if (isMounted.current) {
           // Fixed: Check for the correct data structure - data.data is a single object, not an array
-          if (data && data.success && data.data && typeof data.data === 'object') {
+          if (data.profile) {
             // Check if the ID matches
-            if (parseInt(data.data.id) === parseInt(id)) {
-              setBusinessProfile(data.data);
+            if (parseInt(data.profile.id) === parseInt(id)) {
+              setBusinessProfile(data.profile);
               console.log("Found business profile:", data.data);
               // Fetch full member details to mirror profile page data
-              const memberId = data.data.member_id || data.data.Member?.mid;
+              const memberId = data.profile.member_id || data.profile.Member?.mid;
               if (memberId) {
                 try {
                   setMemberDetailsLoading(true);
@@ -222,7 +222,7 @@ const BusinessListing = () => {
                   if (resp.ok) {
                     const json = await resp.json();
                     if (json.success && json.data) {
-                      setMemberDetails(json.data);
+                      setMemberDetails(json.profile);
                     }
                   }
                 } catch (e) {

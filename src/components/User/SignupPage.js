@@ -415,25 +415,6 @@ const PersonalInformation = React.memo(({ formData, validationErrors, createInpu
             value={formData.profile_image}
             onRemove={onRemoveProfileImage}
           />
-          <div className="mt-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="accepted_terms"
-                checked={!!formData.accepted_terms}
-                onChange={handleInputChange}
-                className={`mt-1 w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 ${validationErrors.accepted_terms ? 'ring-2 ring-red-500' : ''}`}
-              />
-              <span className="text-sm text-gray-700">
-                I agree to the
-                {' '}<Link to="/terms?embed=1" className="text-green-700 underline hover:text-green-800">Terms & Conditions</Link>
-                {' '}and consent to my information being used by KBC for the business directory.
-              </span>
-            </label>
-            {validationErrors.accepted_terms && (
-              <p className="mt-1 text-red-500 text-sm">{validationErrors.accepted_terms}</p>
-            )}
-          </div>
         </div>
       </div>
       <ActionButtons showBack={false} nextLabel="Continue" onNext={nextStep} />
@@ -549,7 +530,9 @@ const BusinessProfile = React.memo(({
   onRemoveBusinessProfile,
   categoriesOptions,
   handleCategoryInputChange,
-  handleSelectExistingCategory
+  handleSelectExistingCategory,
+  handleTagAdd,
+  handleTagRemove
 }) => (
   <StepContainer>
     <div className="max-w-4xl mx-auto">
@@ -594,24 +577,48 @@ const BusinessProfile = React.memo(({
                 required
                 error={validationErrors[`business_type_${index}`]}
               />
+              
+              {/* Common fields for all business types */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <InputField
+                  label="Company Name"
+                  placeholder="Enter company name"
+                  required
+                  value={profile.company_name}
+                  onChange={createBusinessInputChangeHandler(index, 'company_name')}
+                  error={validationErrors[`company_name_${index}`]}
+                />
+                <div className="mb-4 relative">
+                  <label className="block text-gray-800 text-sm font-semibold mb-2">Category</label>
+                  <input
+                    type="text"
+                    value={profile.category_input || ''}
+                    onChange={(e) => handleCategoryInputChange(index, e.target.value)}
+                    placeholder="Type to search or add category"
+                    className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
+                  />
+                  {(categoriesOptions || []).length > 0 && (profile.category_input || '').length > 0 && profile.show_category_suggestions && (
+                    <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-auto">
+                      {(categoriesOptions || [])
+                        .filter(c => c.category_name.toLowerCase().includes((profile.category_input||'').toLowerCase()))
+                        .slice(0, 8)
+                        .map(c => (
+                          <button
+                            type="button"
+                            key={c.cid}
+                            className="w-full text-left px-4 py-2 hover:bg-green-50"
+                            onClick={() => handleSelectExistingCategory(index, c.cid, c.category_name)}
+                          >
+                            {c.category_name}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {profile.business_type === "salary" && (
                 <>
-                  <InputField
-                    label="Company Name"
-                    placeholder="Enter company name"
-                    required
-                    value={profile.company_name}
-                    onChange={createBusinessInputChangeHandler(index, 'company_name')}
-                    error={validationErrors[`company_name_${index}`]}
-                  />
-                  <InputField
-                    label="Email"
-                    placeholder="Enter email"
-                    required
-                    value={profile.email}
-                    onChange={createBusinessInputChangeHandler(index, 'email')}
-                    error={validationErrors[`email_${index}`]}
-                  />
                   <InputField
                     label="Designation"
                     placeholder="Enter designation"
@@ -651,46 +658,20 @@ const BusinessProfile = React.memo(({
                     />
                     {validationErrors[`location_${index}`] && <p className="mt-1 text-red-500 text-sm">{validationErrors[`location_${index}`]}</p>}
                   </div>
+                  <InputField
+                    label="Email"
+                    placeholder="Enter email"
+                    required
+                    value={profile.email}
+                    onChange={createBusinessInputChangeHandler(index, 'email')}
+                    error={validationErrors[`email_${index}`]}
+                  />
                 </>
               )}
+
               {(profile.business_type === "self-employed" || profile.business_type === "business") && (
                 <>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <InputField
-                      label="Company Name"
-                      placeholder="Enter company name"
-                      required
-                      value={profile.company_name}
-                      onChange={createBusinessInputChangeHandler(index, 'company_name')}
-                      error={validationErrors[`company_name_${index}`]}
-                    />
-                    <div className="mb-4 relative">
-                      <label className="block text-gray-800 text-sm font-semibold mb-2">Category</label>
-                      <input
-                        type="text"
-                        value={profile.category_input || ''}
-                        onChange={(e) => handleCategoryInputChange(index, e.target.value)}
-                        placeholder="Type to search or add category"
-                        className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
-                      />
-                      {(categoriesOptions || []).length > 0 && (profile.category_input || '').length > 0 && profile.show_category_suggestions && (
-                        <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-auto">
-                          {(categoriesOptions || [])
-                            .filter(c => c.category_name.toLowerCase().includes((profile.category_input||'').toLowerCase()))
-                            .slice(0, 8)
-                            .map(c => (
-                              <button
-                                type="button"
-                                key={c.cid}
-                                className="w-full text-left px-4 py-2 hover:bg-green-50"
-                                onClick={() => handleSelectExistingCategory(index, c.cid, c.category_name)}
-                              >
-                                {c.category_name}
-                              </button>
-                            ))}
-                        </div>
-                      )}
-                    </div>
                     <SelectField
                       label="Business Registration Type"
                       placeholder="Select business registration type"
@@ -787,27 +768,38 @@ const BusinessProfile = React.memo(({
                       onChange={createBusinessInputChangeHandler(index, 'zip_code')}
                     />
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <FileUpload
-                      label="Business Profile Image"
-                      name={`business_profile_image_${index}`}
-                      acceptedFormats="image/*"
-                      onChange={(e) => handleBusinessFileUpload(index, 'business_profile_image', e.target.files[0])}
-                      value={profile.business_profile_image}
-                      onRemove={() => onRemoveBusinessProfileImage(index)}
-                    />
-                    <FileUpload
-                      label={`Media Gallery (${profile.media_gallery.length}/5)`}
-                      name={`media_gallery_${index}`}
-                      acceptedFormats="image/*,video/*"
-                      multiple
-                      onChange={(e) => handleBusinessFileUpload(index, 'media_gallery', e.target.files)}
-                      value={profile.media_gallery}
-                      onRemove={(mediaIndex) => onRemoveBusinessMedia(index, mediaIndex)}
-                    />
-                  </div>
                 </>
               )}
+
+              {/* Tags Input for all business types */}
+              <TagsInput
+                label="Tags"
+                placeholder="Add tags to describe your business"
+                tags={profile.tags || []}
+                onAdd={(tag) => handleTagAdd && handleTagAdd(index, tag)}
+                onRemove={(tagIndex) => handleTagRemove && handleTagRemove(index, tagIndex)}
+              />
+
+              {/* Common file uploads for all business types */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <FileUpload
+                  label="Business Profile Image"
+                  name={`business_profile_image_${index}`}
+                  acceptedFormats="image/*"
+                  onChange={(e) => handleBusinessFileUpload(index, 'business_profile_image', e.target.files[0])}
+                  value={profile.business_profile_image}
+                  onRemove={() => onRemoveBusinessProfileImage(index)}
+                />
+                <FileUpload
+                  label={`Media Gallery (${profile.media_gallery.length}/5)`}
+                  name={`media_gallery_${index}`}
+                  acceptedFormats="image/*,video/*"
+                  multiple
+                  onChange={(e) => handleBusinessFileUpload(index, 'media_gallery', e.target.files)}
+                  value={profile.media_gallery}
+                  onRemove={(mediaIndex) => onRemoveBusinessMedia(index, mediaIndex)}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -881,7 +873,7 @@ const NameAutocompleteField = React.memo(({ label, nameValue, contactValue, onNa
   );
 });
 
-const FamilyDetails = React.memo(({ formData, createInputChangeHandler, createNumericInputChangeHandler, nextStep, loading, error, memberSuggestions, onFillFamily }) => (
+const FamilyDetails = React.memo(({ formData, createInputChangeHandler, createNumericInputChangeHandler, handleInputChange, nextStep, loading, error, memberSuggestions, onFillFamily, validationErrors }) => (
   <StepContainer>
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
@@ -967,11 +959,33 @@ const FamilyDetails = React.memo(({ formData, createInputChangeHandler, createNu
             className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 resize-none bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
           />
         </div>
+        
+        {/* Terms and Conditions */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="accepted_terms"
+              checked={!!formData.accepted_terms}
+              onChange={handleInputChange}
+              className={`mt-1 w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 ${validationErrors.accepted_terms ? 'ring-2 ring-red-500' : ''}`}
+            />
+            <span className="text-sm text-gray-700">
+              I agree to the
+              {' '}<Link to="/terms?embed=1" className="text-green-700 underline hover:text-green-800">Terms & Conditions</Link>
+              {' '}and consent to my information being used by KBC for the business directory.
+            </span>
+          </label>
+          {validationErrors.accepted_terms && (
+            <p className="mt-2 text-red-500 text-sm ml-7">{validationErrors.accepted_terms}</p>
+          )}
+        </div>
       </div>
+      
       <button
         type="button"
         onClick={nextStep}
-        className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+        className="w-full mt-8 bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
         disabled={loading}
       >
         {loading ? 'Creating Account...' : 'Create Account'}
@@ -1156,7 +1170,6 @@ const SignupForm = () => {
       if (!formData.email) errors.email = "Email is required";
       if (!formData.password) errors.password = "Password is required";
       if (!formData.contact_no) errors.contact_no = "Contact number is required";
-      if (!formData.accepted_terms) errors.accepted_terms = "You must accept the Terms & Conditions";
     }
 
     if (step === 2) {
@@ -1191,6 +1204,10 @@ const SignupForm = () => {
           if (!profile.contact_no) errors[`contact_no_${index}`] = "Contact number is required";
         }
       });
+    }
+
+    if (step === 4) {
+      if (!formData.accepted_terms) errors.accepted_terms = "You must accept the Terms & Conditions";
     }
 
     setValidationErrors(errors);
@@ -1332,6 +1349,25 @@ const SignupForm = () => {
       updatedProfiles[index].category_id = String(cid);
       updatedProfiles[index].category_input = name;
       updatedProfiles[index].show_category_suggestions = false;
+      return { ...prev, businessProfiles: updatedProfiles };
+    });
+  }, []);
+
+  // Tag handlers
+  const handleTagAdd = useCallback((index, tag) => {
+    setFormData(prev => {
+      const updatedProfiles = [...prev.businessProfiles];
+      const currentTags = Array.isArray(updatedProfiles[index].tags) ? updatedProfiles[index].tags : [];
+      updatedProfiles[index].tags = [...currentTags, tag];
+      return { ...prev, businessProfiles: updatedProfiles };
+    });
+  }, []);
+
+  const handleTagRemove = useCallback((index, tagIndex) => {
+    setFormData(prev => {
+      const updatedProfiles = [...prev.businessProfiles];
+      const currentTags = Array.isArray(updatedProfiles[index].tags) ? updatedProfiles[index].tags : [];
+      updatedProfiles[index].tags = currentTags.filter((_, idx) => idx !== tagIndex);
       return { ...prev, businessProfiles: updatedProfiles };
     });
   }, []);
@@ -1641,17 +1677,21 @@ const SignupForm = () => {
           categoriesOptions={categories}
           handleCategoryInputChange={handleCategoryInputChange}
           handleSelectExistingCategory={handleSelectExistingCategory}
+          handleTagAdd={handleTagAdd}
+          handleTagRemove={handleTagRemove}
         />;
       case 4:
         return <FamilyDetails 
           formData={formData}
           createInputChangeHandler={createInputChangeHandler}
           createNumericInputChangeHandler={createNumericInputChangeHandler}
+          handleInputChange={handleInputChange}
           nextStep={nextStep}
           loading={loading}
           error={error}
           memberSuggestions={memberSuggestions}
           onFillFamily={handleFillFamilyFromSuggestion}
+          validationErrors={validationErrors}
         />;
       case 5:
         return <CompleteStep 
@@ -1689,4 +1729,3 @@ const SignupForm = () => {
 };
 
 export default SignupForm;
-
