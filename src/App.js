@@ -6,7 +6,7 @@ import HomePage from './components/User/HomePage';
 import SignupPage from './components/User/SignupPage';
 import LoginPage from './components/User/LoginPage';
 import OTPPage from './components/User/OTPPage';
-import LanguagePage from './components/User/LanguagePage';
+// import LanguagePage from './components/User/LanguagePage'; // Commented out
 import DetailsPage from './components/User/DetailsPage';
 import NotificationsPage from './components/User/NotificationsPage';
 import UserProfilePage from './components/User/UserProfilePage';
@@ -35,7 +35,8 @@ function App() {
       <div className="App">
         <Routes>
           {/* Public routes */}
-          <Route path="/" element={<LanguagePage />} />
+          <Route path="/" element={<LoginPage />} /> {/* Changed from LanguagePage to LoginPage */}
+          {/* <Route path="/language" element={<LanguagePage />} /> */} {/* Commented out language route */}
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/otp" element={<OTPPage />} />
