@@ -6,9 +6,12 @@ import baseurl from '../Baseurl/baseurl';
 const Header = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [memberData, setMemberData] = useState(null); // 👈 store logged-in user
+  const [memberData, setMemberData] = useState(null);
   const location = useLocation();
-  const dropdownRef = useRef(null);
+  
+  // Separate refs for desktop and mobile dropdowns
+  const desktopDropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
 
   const navItems = [
     { name: 'Home', href: '/home' },
@@ -19,7 +22,7 @@ const Header = () => {
   ];
 
   useEffect(() => {
-    // 👇 Load logged-in user from localStorage on mount
+    // Load logged-in user from localStorage on mount
     const storedData = localStorage.getItem('memberData');
     if (storedData) {
       setMemberData(JSON.parse(storedData));
@@ -38,16 +41,36 @@ const Header = () => {
   const toggleMobileMenu = () => setShowMobileMenu(!showMobileMenu);
   const toggleProfileDropdown = () => setShowProfileDropdown(!showProfileDropdown);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside - improved version
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // Check both desktop and mobile dropdown refs
+      const isOutsideDesktop = desktopDropdownRef.current && !desktopDropdownRef.current.contains(event.target);
+      const isOutsideMobile = mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target);
+      
+      if (isOutsideDesktop && isOutsideMobile) {
         setShowProfileDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    
+    if (showProfileDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProfileDropdown]);
+
+  // Handle profile link click
+  const handleProfileClick = () => {
+    setShowProfileDropdown(false);
+  };
+
+  // Handle logout with proper cleanup
+  const handleLogoutClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowProfileDropdown(false);
+    handleLogout();
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
@@ -59,7 +82,7 @@ const Header = () => {
               <img
                 src="/image.png"
                 alt="profile"
-                className="rounded-full  object-cover"
+                className="rounded-full object-cover"
               />
             </div>
             <span className="text-xl font-semibold text-gray-900">KBC Directory</span>
@@ -73,8 +96,9 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`relative text-sm font-medium transition-colors duration-200 ${isActive ? 'text-green-600' : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                  className={`relative text-sm font-medium transition-colors duration-200 ${
+                    isActive ? 'text-green-600' : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
                   {item.name}
                   {isActive && (
@@ -88,12 +112,14 @@ const Header = () => {
           {/* Desktop Icons Section */}
           <div className="hidden md:flex items-center space-x-4">
             <button className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors">
-              <Link to='/notifications'> <Bell className="w-5 h-5" /></Link>
+              <Link to='/notifications'>
+                <Bell className="w-5 h-5" />
+              </Link>
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
             </button>
 
-            {/* Profile Dropdown */}
-            <div className="relative" ref={dropdownRef}>
+            {/* Desktop Profile Dropdown */}
+            <div className="relative" ref={desktopDropdownRef}>
               <button
                 onClick={toggleProfileDropdown}
                 aria-label="Open profile menu"
@@ -124,18 +150,26 @@ const Header = () => {
                   </div>
                   {memberData ? (
                     <>
-                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <Link 
+                        to="/profile" 
+                        onClick={handleProfileClick}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
                         Profile
                       </Link>
                       <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        onClick={handleLogoutClick}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                       >
                         Logout
                       </button>
                     </>
                   ) : (
-                    <Link to="/login" className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50">
+                    <Link 
+                      to="/login" 
+                      onClick={handleProfileClick}
+                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                    >
                       Login
                     </Link>
                   )}
@@ -144,79 +178,99 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Icons Section - Profile and Notifications */}
           <div className="md:hidden flex items-center space-x-4">
             <Link to='/notifications' className="relative p-2 text-gray-600">
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
             </Link>
-            <button
-              onClick={toggleProfileDropdown}
-              aria-label="Open profile menu"
-              className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center"
-            >
-              <User className="w-4 h-4 text-gray-600" />
-            </button>
-            <button
-              onClick={toggleMobileMenu}
-              aria-label="Toggle navigation menu"
-              className="p-2 text-gray-600 hover:text-gray-900"
-            >
-              {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            
+            {/* Mobile Profile Dropdown */}
+            <div className="relative" ref={mobileDropdownRef}>
+              <button
+                onClick={toggleProfileDropdown}
+                aria-label="Open profile menu"
+                className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center hover:bg-gray-400 transition-colors overflow-hidden"
+              >
+                {memberData?.profile_image ? (
+                  <img
+                    src={`${baseurl}/${memberData.profile_image}`}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-4 h-4 text-gray-600" />
+                )}
+              </button>
+
+              {showProfileDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">
+                      {memberData?.first_name
+                        ? `${memberData.first_name}`
+                        : 'Guest User'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {memberData?.email || memberData?.contact_no || 'Not logged in'}
+                    </p>
+                  </div>
+                  
+                  {/* Navigation Links in Mobile Dropdown */}
+                  <div className="border-b border-gray-100">
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={() => setShowProfileDropdown(false)}
+                        className={`block px-4 py-2 text-sm transition-colors ${
+                          location.pathname === item.href
+                            ? 'text-green-700 bg-green-50'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* Auth Section */}
+                  {memberData ? (
+                    <>
+                      <Link 
+                        to="/profile" 
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Profile
+                      </Link>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowProfileDropdown(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <Link 
+                      to="/login" 
+                      onClick={() => setShowProfileDropdown(false)}
+                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                    >
+                      Login
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile Nav */}
-      {showMobileMenu && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <nav className="max-w-7xl mx-auto px-4 py-3 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => setShowMobileMenu(false)}
-                className={`block px-2 py-2 rounded-md text-sm font-medium transition-colors ${location.pathname === item.href
-                  ? 'text-green-700 bg-green-50'
-                  : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-
-            {/* Auth row */}
-            <div className="pt-2 border-t border-gray-100 mt-2">
-              {memberData ? (
-                <>
-                  <Link
-                    to="/profile"
-                    onClick={() => setShowMobileMenu(false)}
-                    className="block px-2 py-2 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Profile
-                  </Link>
-                  <button
-                    onClick={() => { setShowMobileMenu(false); handleLogout(); }}
-                    className="w-full text-left px-2 py-2 rounded-md text-sm text-red-600 hover:bg-red-50"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <Link
-                  to="/login"
-                  onClick={() => setShowMobileMenu(false)}
-                  className="block px-2 py-2 rounded-md text-sm text-green-600 hover:bg-green-50"
-                >
-                  Login
-                </Link>
-              )}
-            </div>
-          </nav>
-        </div>
-      )}
     </header>
   );
 };

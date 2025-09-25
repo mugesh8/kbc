@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Phone, Lock } from 'lucide-react';
 import baseurl from '../Baseurl/baseurl';
 import logo from '../../assets/image.png';
 
-const InputField = ({ label, placeholder, required = false, type = 'text', icon = null, value, onChange, className = '' }) => (
+const InputField = ({ label, placeholder, required = false, type = 'text', icon = null, value, onChange, onKeyPress, className = '' }) => (
   <div className={`mb-4 group ${className}`}>
     <label className="block text-left text-gray-800 text-sm font-semibold mb-2 transition-colors duration-200 group-focus-within:text-green-600">
       {label} {required && <span className="text-red-500">*</span>}
@@ -16,6 +16,7 @@ const InputField = ({ label, placeholder, required = false, type = 'text', icon 
         placeholder={placeholder}
         value={value || ''}
         onChange={onChange}
+        onKeyPress={onKeyPress}
         className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
       />
       {icon && (
@@ -38,6 +39,28 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [approvalDialog, setApprovalDialog] = useState({ open: false, message: '' });
+
+  // Check if user is already logged in when component mounts
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem('token');
+      const memberData = localStorage.getItem('memberData');
+      
+      if (token && memberData) {
+        // User is already logged in, redirect to home
+        navigate('/home');
+      }
+    };
+
+    checkAuthStatus();
+  }, [navigate]);
+
+  // Handle Enter key press
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -160,6 +183,7 @@ const LoginPage = () => {
                 type="tel"
                 value={contactNumber}
                 onChange={handleContactNumberChange}
+                onKeyPress={handleKeyPress}
                 icon={<Phone className="w-5 h-5" />}
               />
 
@@ -170,6 +194,7 @@ const LoginPage = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
                 icon={
                   <button
                     type="button"

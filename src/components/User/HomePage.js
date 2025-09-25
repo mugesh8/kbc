@@ -346,10 +346,15 @@ const HomePage = () => {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // Calculate real categories from business data
+  // Calculate real categories from business data EXCLUDING current user's businesses
   const realCategories = React.useMemo(() => {
+    // Filter out current user's businesses before counting categories
+    const filteredBusinesses = currentUserId 
+      ? businesses.filter(business => business?.member_id !== currentUserId)
+      : businesses;
+
     const categoryCounts = {};
-    businesses.forEach(business => {
+    filteredBusinesses.forEach(business => {
       const category = business?.business_type || 'Other';
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
@@ -361,7 +366,7 @@ const HomePage = () => {
         color: getCategoryColor(name)
       }))
       .sort((a, b) => parseInt(b.count) - parseInt(a.count)); // Sort by count descending
-  }, [businesses]);
+  }, [businesses, currentUserId]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0">
@@ -588,7 +593,7 @@ const HomePage = () => {
         ) : error ? (
           <div className="text-center text-red-600 mb-8">{error}</div>
         ) : (() => {
-          // Filter businesses first
+          // Filter businesses first - EXCLUDE CURRENT USER'S BUSINESSES
           const filteredBusinesses = businesses.filter((b) => {
             // Hide user's own business profile
             if (currentUserId && b?.member_id === currentUserId) {
@@ -907,7 +912,6 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* Uncomment when you have the Footer component */}
       <Footer />
       <MobileFooter />
     </div>

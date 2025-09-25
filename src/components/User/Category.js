@@ -91,11 +91,11 @@ const BusinessCategories = () => {
         }
         
         if (categoriesData.success) {
-          // Get business profiles
-          const profiles = Array.isArray(businessesData?.profiles)
-            ? businessesData.profiles
-            : Array.isArray(businessesData?.data)
+          // Get business profiles - FIXED: Use the correct property from API response
+          const profiles = Array.isArray(businessesData?.data)
             ? businessesData.data
+            : Array.isArray(businessesData?.profiles)
+            ? businessesData.profiles
             : [];
           
           console.log('Categories data:', categoriesData.data);
@@ -105,8 +105,14 @@ const BusinessCategories = () => {
           setBusinesses(profiles);
           
           // Count businesses per category using both business_type and category_id
+          // EXCLUDE CURRENT USER'S BUSINESSES FROM THE COUNT
           const businessCounts = {};
           profiles.forEach(business => {
+            // Skip current user's own businesses (same logic as HomePage)
+            if (currentUserId && business?.member_id === currentUserId) {
+              return;
+            }
+            
             // Try to match by category_id first, then fallback to business_type
             const categoryId = business?.category_id;
             const businessType = business?.business_type;
@@ -123,7 +129,7 @@ const BusinessCategories = () => {
             }
           });
           
-          console.log('Business counts:', businessCounts);
+          console.log('Business counts (excluding current user):', businessCounts);
           
           // Transform API data to match UI structure
           const transformedCategories = categoriesData.data.map((category, index) => {
@@ -135,6 +141,10 @@ const BusinessCategories = () => {
               description: `Explore ${category.category_name.toLowerCase()} businesses and services`,
               ...colorSchemes[index % colorSchemes.length]
             };
+          }).filter(category => {
+            // Only show categories that have businesses (excluding current user's)
+            const count = parseInt(category.count);
+            return count > 0;
           });
           
           setCategories(transformedCategories);
@@ -150,7 +160,7 @@ const BusinessCategories = () => {
     };
 
     fetchCategories();
-  }, []);
+  }, [currentUserId]); // Add currentUserId as dependency
 
   // Handle category explore button click
   const handleExploreCategory = (category) => {
@@ -183,9 +193,9 @@ const BusinessCategories = () => {
   const categoryEndIndex = categoryStartIndex + categoryItemsPerPage;
   const currentCategoryItems = filteredCategories.slice(categoryStartIndex, categoryEndIndex);
 
-  // Filter businesses by selected category
+  // Filter businesses by selected category - EXCLUDE CURRENT USER'S BUSINESSES
   const filteredBusinesses = businesses.filter((business) => {
-    // Hide user's own business profile
+    // Hide user's own business profile (SAME LOGIC AS HOMEPAGE)
     if (currentUserId && business?.member_id === currentUserId) {
       return false;
     }
@@ -211,6 +221,27 @@ const BusinessCategories = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentItems = filteredBusinesses.slice(startIndex, endIndex);
+
+  // Function to get banner image from media gallery
+  const getBannerImage = (business) => {
+    if (!business?.media_gallery) return null;
+    
+    try {
+      // media_gallery is a comma-separated string of image paths
+      const mediaArray = business.media_gallery.split(',');
+      const firstImage = mediaArray[0]?.trim();
+      
+      if (firstImage) {
+        return firstImage.startsWith('http') 
+          ? firstImage 
+          : `${baseurl}/${firstImage}`;
+      }
+    } catch (error) {
+      console.error('Error parsing media gallery:', error);
+    }
+    
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -300,14 +331,24 @@ const BusinessCategories = () => {
             {/* Business Grid - Same design as HomePage */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
               {currentItems.map((business) => {
-                const imageUrl = business?.business_profile_image
-                  ? business.business_profile_image.startsWith('https')
+                // Get profile image
+                const profileImageUrl = business?.business_profile_image
+                  ? business.business_profile_image.startsWith('http')
                     ? business.business_profile_image
                     : `${baseurl}/${business.business_profile_image}`
+                  : business?.Member?.profile_image
+                  ? business.Member.profile_image.startsWith('http')
+                    ? business.Member.profile_image
+                    : `${baseurl}/${business.Member.profile_image}`
                   : '';
 
+                // Get banner image from media gallery - FIXED: Use actual API data
+                const bannerImageUrl = getBannerImage(business);
+                
                 const title = business?.company_name || 'Business';
-                const subtitle = business?.business_type || (business?.Member?.first_name || business?.member?.first_name || '');
+                const subtitle = business?.business_type === 'salary' 
+                  ? business?.designation || 'Professional'
+                  : business?.business_type || (business?.Member?.first_name || 'Business');
                 
                 // Get real ratings data (matching HomePage approach)
                 const { averageRating, reviewCount } = getBusinessRatings(business.id);
@@ -317,62 +358,79 @@ const BusinessCategories = () => {
                 return (
                   <div key={business.id} className="bg-white rounded-3xl shadow-md hover:shadow-lg transition duration-300 overflow-hidden">
                     <Link to={`/details/${business.id}`}>
-                    <div className="relative">
-                      {/* Green header section */}
-                      <div
-                        className="h-24 sm:h-32 w-full bg-green-600 flex items-center justify-center bg-cover bg-no-repeat bg-center"
-                        style={{
-                          backgroundImage: business?.media_gallery
-                            ? `url(${baseurl}/${business.media_gallery})`
-                            : "url('/fallback.png')",
-                        }}
-                      ></div>
+                      <div className="relative">
+                        {/* Green header section with actual banner image */}
+                        <div
+                          className="h-24 sm:h-32 w-full bg-green-600 flex items-center justify-center bg-cover bg-no-repeat bg-center"
+                          style={{
+                            backgroundImage: bannerImageUrl 
+                              ? `url(${bannerImageUrl})`
+                              : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          }}
+                        ></div>
 
-                      {/* Avatar positioned on the left side between green and white sections */}
-                      <div className="absolute left-4 sm:left-6 top-16 sm:top-20 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white flex items-center justify-center shadow-md border-2 border-white z-10">
-                        {imageUrl ? (
-                          <img src={imageUrl} alt={title} className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded-full" />
-                        ) : (
-                          <div className="w-6 h-6 sm:w-10 sm:h-10 bg-green-100 rounded-full" />
-                        )}
-                      </div>
-
-                      {/* Content section with left alignment */}
-                      <div className="px-3 sm:px-4 pt-10 sm:pt-12 pb-3 text-left">
-                        <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 mb-2 text-left">{title}</h3>
-                        <p className="text-gray-600 text-sm sm:text-base mb-3 text-left">{subtitle}</p>
-                        <div className="flex items-center gap-2 sm:gap-3 mb-3 justify-start">
-                          <div className="flex items-center text-yellow-500">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                                  star <= Math.floor(ratingValue)
-                                    ? 'fill-yellow-400 text-yellow-400'
-                                    : star === Math.ceil(ratingValue) && ratingValue % 1 !== 0
-                                    ? 'fill-yellow-200 text-yellow-400'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <div className="flex items-baseline gap-1 sm:gap-2">
-                            <span className="text-gray-900 text-sm sm:text-lg font-semibold">
-                              {ratingValue > 0 ? ratingValue.toFixed(1) : 'No rating'}
-                            </span>
-                            <span className="text-gray-500 text-xs sm:text-sm">
-                              ({reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'})
-                            </span>
-                          </div>
+                        {/* Avatar positioned on the left side between green and white sections */}
+                        <div className="absolute left-4 sm:left-6 top-16 sm:top-20 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white flex items-center justify-center shadow-md border-2 border-white z-10">
+                          {profileImageUrl ? (
+                            <img 
+                              src={profileImageUrl} 
+                              alt={title} 
+                              className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded-full" 
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                              <span className="text-green-600 font-bold text-sm sm:text-lg">
+                                {title.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-gray-700 mb-3 sm:mb-4 text-left text-xs sm:text-sm">Best time to contact : <span className="font-medium">{business?.best_contact_time || 'Morning'}</span></div>
-                        <button className="inline-flex items-center px-4 sm:px-7 py-1.5 sm:py-2 rounded-full bg-green-600 text-white text-xs sm:text-sm font-medium hover:bg-green-700 transition"
-                          onClick={() => navigate(`/details/${business.id}`)}
-                        >
-                          View
-                        </button>
+
+                        {/* Content section with left alignment */}
+                        <div className="px-3 sm:px-4 pt-10 sm:pt-12 pb-3 text-left">
+                          <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 mb-2 text-left truncate">{title}</h3>
+                          <p className="text-gray-600 text-sm sm:text-base mb-3 text-left truncate">{subtitle}</p>
+                          
+                          {/* Rating section */}
+                          <div className="flex items-center gap-2 sm:gap-3 mb-3 justify-start">
+                            <div className="flex items-center text-yellow-500">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                                    star <= Math.floor(ratingValue)
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : star === Math.ceil(ratingValue) && ratingValue % 1 !== 0
+                                      ? 'fill-yellow-200 text-yellow-400'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex items-baseline gap-1 sm:gap-2">
+                              <span className="text-gray-900 text-sm sm:text-lg font-semibold">
+                                {ratingValue > 0 ? ratingValue.toFixed(1) : 'No rating'}
+                              </span>
+                              <span className="text-gray-500 text-xs sm:text-sm">
+                                ({reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'})
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Business info */}
+                          <div className="text-gray-700 mb-3 sm:mb-4 text-left text-xs sm:text-sm">
+                            Location: <span className="font-medium">{business?.city || business?.location || 'Not specified'}</span>
+                          </div>
+                          
+                          <button className="inline-flex items-center px-4 sm:px-7 py-1.5 sm:py-2 rounded-full bg-green-600 text-white text-xs sm:text-sm font-medium hover:bg-green-700 transition">
+                            View Details
+                          </button>
+                        </div>
                       </div>
-                    </div>
                     </Link>
                   </div>
                 );

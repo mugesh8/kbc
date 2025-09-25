@@ -54,9 +54,13 @@ app.post('/', (req, res) => {
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api', adminRoutes);
 
-//Business Route
-const businessRoutes = require('./routes/businessRoutes');
-app.use('/api', businessRoutes);
+// const businessRoutes = require('./routes/businessRoutes')
+// app.use('/api',businessRoutes);
+
+
+//Community Admin Route
+const CommunityAdminRoutes = require('./routes/CommunityAdminRoutes');
+app.use('/api', CommunityAdminRoutes);
 
 //Member Route
 const memberRoutes = require('./routes/memberRoutes');
@@ -72,10 +76,8 @@ app.use('/api', notificationRoutes);
 const categoriesRoutes = require('./routes/categoriesRoutes');
 app.use('/api', categoriesRoutes);
 
-// Member Family routes
 const memberFamilyRoutes = require('./routes/memberFamilyRoutes');
 app.use('/api', memberFamilyRoutes);
-
 
 // Listen on the port from the .env file
 const PORT = process.env.PORT || 8000;

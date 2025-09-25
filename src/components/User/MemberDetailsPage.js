@@ -173,19 +173,19 @@ const MemberDetailsPage = () => {
 
         {!loading && !error && member && (
           <>
-            {/* Enhanced Hero Section - FIXED FOR MOBILE */}
+            {/* Enhanced Hero Section - ALL LEFT ALIGNED */}
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden mb-6 sm:mb-8">
-              {/* Mobile Layout */}
+              {/* Mobile Layout - Left Aligned */}
               <div className="block sm:hidden">
                 {/* Green Background */}
                 <div className="bg-gradient-to-r from-green-500 to-emerald-600 h-20 relative">
                   <div className="absolute inset-0 bg-black/10"></div>
                 </div>
                 
-                {/* Profile Content */}
+                {/* Profile Content - Left Aligned */}
                 <div className="relative px-4 pb-6 -mt-8">
-                  {/* Profile Image */}
-                  <div className="flex justify-center mb-4">
+                  {/* Profile Image - Left Aligned */}
+                  <div className="flex justify-start mb-4">
                     <div className="relative">
                       <div className="w-24 h-24 bg-white rounded-2xl p-1 shadow-2xl">
                         <div className="w-full h-full rounded-xl overflow-hidden bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
@@ -210,14 +210,14 @@ const MemberDetailsPage = () => {
                     </div>
                   </div>
                   
-                  {/* Member Info */}
-                  <div className="text-center">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-3 break-words">
+                  {/* Member Info - Left Aligned */}
+                  <div className="text-left">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-3">
                       {member.first_name} {member.last_name}
                     </h1>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 items-start">
                       {member.email && (
-                        <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200 break-all">
+                        <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium border border-green-200">
                           {member.email}
                         </span>
                       )}
@@ -236,7 +236,7 @@ const MemberDetailsPage = () => {
                 </div>
               </div>
 
-              {/* Desktop/Tablet Layout */}
+              {/* Desktop/Tablet Layout - Left Aligned */}
               <div className="hidden sm:block">
                 <div className="bg-gradient-to-r from-green-500 to-emerald-600 h-32 relative">
                   <div className="absolute inset-0 bg-black/10"></div>
@@ -266,14 +266,14 @@ const MemberDetailsPage = () => {
                         </div>
                       </div>
                       
-                      {/* Member Info */}
+                      {/* Member Info - Left Aligned */}
                       <div className="flex-1 text-left text-white min-w-0">
-                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 drop-shadow-lg truncate">
+                        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 drop-shadow-lg">
                           {member.first_name} {member.last_name}
                         </h1>
                         <div className="flex flex-wrap items-center gap-3 mb-3">
                           {member.email && (
-                            <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white font-medium text-sm border border-white/30 truncate max-w-[250px]">
+                            <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white font-medium text-sm border border-white/30">
                               {member.email}
                             </span>
                           )}
@@ -295,11 +295,11 @@ const MemberDetailsPage = () => {
               </div>
             </div>
 
-            {/* Rest of the component remains the same */}
+            {/* Content Grid - Left Aligned */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               {/* Left Column - Main Content */}
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                {/* Personal Information */}
+                {/* Personal Information - Left Aligned */}
                 <CollapsibleCard
                   title="Personal Information"
                   isExpanded={expandedSections.personalInfo}
@@ -309,89 +309,93 @@ const MemberDetailsPage = () => {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div className="space-y-3 sm:space-y-4">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
                           <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block text-sm sm:text-base">Full Name</span>
-                          <p className="text-gray-600 text-sm sm:text-base truncate">{member.first_name} {member.last_name}</p>
+                          <p className="text-gray-600 text-sm sm:text-base">{member.first_name} {member.last_name}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Calendar className="w-4 h-4 text-green-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Date of Birth</span>
                           <p className="text-gray-600">{member.dob || 'Not available'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                           <Users className="w-4 h-4 text-purple-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Gender</span>
                           <p className="text-gray-600">{member.gender || 'Not available'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-pink-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-pink-100 rounded-lg flex-shrink-0">
                           <Heart className="w-4 h-4 text-pink-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Marital Status</span>
                           <p className="text-gray-600">{member.marital_status || 'Not available'}</p>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                           <Shield className="w-4 h-4 text-red-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Blood Group</span>
                           <p className="text-gray-600">{member.blood_group || 'Not available'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-yellow-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
                           <Award className="w-4 h-4 text-yellow-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Access Level</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            member.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
-                            member.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {member.access_level || 'Basic'}
-                          </span>
+                          <div className="mt-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              member.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
+                              member.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {member.access_level || 'Basic'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-indigo-100 rounded-lg flex-shrink-0">
                           <Shield className="w-4 h-4 text-indigo-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Status</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            member.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                            member.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            member.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {member.status || 'Unknown'}
-                          </span>
+                          <div className="mt-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              member.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                              member.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              member.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {member.status || 'Unknown'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </CollapsibleCard>
 
-                {/* Contact Information */}
+                {/* Contact Information - Left Aligned */}
                 <CollapsibleCard
                   title="Contact Information"
                   isExpanded={expandedSections.contactInfo}
@@ -400,11 +404,11 @@ const MemberDetailsPage = () => {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Phone className="w-4 h-4 text-green-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Primary Contact</span>
                           {member.contact_no ? (
                             <a href={`tel:${member.contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
@@ -415,11 +419,11 @@ const MemberDetailsPage = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
                           <Phone className="w-4 h-4 text-blue-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Mobile Number</span>
                           {member.mobile_no ? (
                             <a href={`tel:${member.mobile_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
@@ -430,22 +434,22 @@ const MemberDetailsPage = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                           <Mail className="w-4 h-4 text-purple-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Email Address</span>
-                          <p className="text-gray-600">{member.email || 'Not available'}</p>
+                          <p className="text-gray-600 break-words">{member.email || 'Not available'}</p>
                         </div>
                       </div>
                     </div>
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                           <Phone className="w-4 h-4 text-orange-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Alternative Contact</span>
                           {member.alternate_contact_no ? (
                             <a href={`tel:${member.alternate_contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
@@ -456,11 +460,11 @@ const MemberDetailsPage = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-teal-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-teal-100 rounded-lg flex-shrink-0">
                           <Briefcase className="w-4 h-4 text-teal-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Work Phone</span>
                           {member.work_phone ? (
                             <a href={`tel:${member.work_phone}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
@@ -471,11 +475,11 @@ const MemberDetailsPage = () => {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-100 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-cyan-100 rounded-lg flex-shrink-0">
                           <Clock className="w-4 h-4 text-cyan-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block">Best Time to Contact</span>
                           <p className="text-gray-600">{member.best_time_to_contact || 'Not available'}</p>
                         </div>
@@ -484,7 +488,7 @@ const MemberDetailsPage = () => {
                   </div>
                 </CollapsibleCard>
 
-                {/* Businesses */}
+                {/* Businesses - Left Aligned */}
                 <CollapsibleCard
                   title={`Businesses (${businesses.length})`}
                   isExpanded={expandedSections.businesses}
@@ -495,40 +499,47 @@ const MemberDetailsPage = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {businesses.map((b) => (
                         <div key={b.id} className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-3 sm:p-4 hover:shadow-lg transition-all duration-300">
-                          <div className="flex items-start justify-between gap-2 sm:gap-3">
+                          <div className="flex flex-col gap-2 sm:gap-3">
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-gray-900 mb-1 text-sm sm:text-base truncate">{b.company_name}</h4>
-                              <p className="text-xs sm:text-sm text-gray-600 mb-2 truncate">{b.business_type || b.designation || ''}</p>
+                              <h4 className="font-bold text-gray-900 mb-1 text-sm sm:text-base">{b.company_name}</h4>
+                              <p className="text-xs sm:text-sm text-gray-600 mb-2">{b.business_type || b.designation || ''}</p>
                               {b.business_type && (
                                 <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                                   {b.business_type}
                                 </span>
                               )}
                             </div>
-                            <Link 
-                              to={`/details/${b.id}`} 
-                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg whitespace-nowrap"
-                            >
-                              View
-                            </Link>
+                            <div className="flex justify-start">
+                              <Link 
+                                to={`/details/${b.id}`} 
+                                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs sm:text-sm font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                              >
+                                View Details
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 sm:py-8">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                        <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    <div className="text-left py-6 sm:py-8">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                          <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm sm:text-base">No businesses listed</p>
+                          <p className="text-gray-400 text-xs sm:text-sm mt-1">This member hasn't added any business information yet.</p>
+                        </div>
                       </div>
-                      <p className="text-gray-500 text-sm sm:text-base">No businesses listed</p>
                     </div>
                   )}
                 </CollapsibleCard>
               </div>
 
-              {/* Right Column - Sidebar */}
+              {/* Right Column - Sidebar - Left Aligned */}
               <div className="space-y-4 sm:space-y-6">
-                {/* Family Information */}
+                {/* Family Information - Left Aligned */}
                 <CollapsibleCard
                   title="Family Information"
                   isExpanded={expandedSections.familyInfo}
@@ -538,20 +549,20 @@ const MemberDetailsPage = () => {
                   {family ? (
                     <div className="space-y-4">
                       <div className="space-y-3">
-                        <h4 className="font-semibold text-green-800 border-b pb-2">Parents</h4>
+                        <h4 className="font-semibold text-green-800 text-left border-b pb-2">Parents</h4>
                         {family.father_name && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <User className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Father: </span>
                               <span className="text-gray-600">{family.father_name}</span>
                             </div>
                           </div>
                         )}
                         {family.father_contact && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Father Contact: </span>
                               <a href={`tel:${family.father_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
                                 {family.father_contact}
@@ -560,18 +571,18 @@ const MemberDetailsPage = () => {
                           </div>
                         )}
                         {family.mother_name && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <User className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Mother: </span>
                               <span className="text-gray-600">{family.mother_name}</span>
                             </div>
                           </div>
                         )}
                         {family.mother_contact && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Mother Contact: </span>
                               <a href={`tel:${family.mother_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
                                 {family.mother_contact}
@@ -582,20 +593,20 @@ const MemberDetailsPage = () => {
                       </div>
 
                       <div className="space-y-3 pt-4 border-t border-gray-200">
-                        <h4 className="font-semibold text-green-800 border-b pb-2">Spouse & Children</h4>
+                        <h4 className="font-semibold text-green-800 text-left border-b pb-2">Spouse & Children</h4>
                         {family.spouse_name && (
-                          <div className="flex items-center gap-2">
-                            <Heart className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Heart className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Spouse: </span>
                               <span className="text-gray-600">{family.spouse_name}</span>
                             </div>
                           </div>
                         )}
                         {family.spouse_contact && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Spouse Contact: </span>
                               <a href={`tel:${family.spouse_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
                                 {family.spouse_contact}
@@ -604,18 +615,18 @@ const MemberDetailsPage = () => {
                           </div>
                         )}
                         {typeof family.number_of_children === 'number' && (
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Users className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Children: </span>
                               <span className="text-gray-600">{family.number_of_children}</span>
                             </div>
                           </div>
                         )}
                         {family.children_names && (
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <Users className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Children Names: </span>
                               <span className="text-gray-600">{formatChildrenNames(family.children_names)}</span>
                             </div>
@@ -625,9 +636,9 @@ const MemberDetailsPage = () => {
 
                       {family.address && (
                         <div className="pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-green-600" />
-                            <div>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
                               <span className="font-medium text-gray-800">Family Address: </span>
                               <span className="text-gray-600">{family.address}</span>
                             </div>
@@ -636,16 +647,21 @@ const MemberDetailsPage = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-6 sm:py-8">
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                        <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    <div className="text-left py-6 sm:py-8">
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center">
+                          <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm sm:text-base">No family information available</p>
+                          <p className="text-gray-400 text-xs sm:text-sm mt-1">Family details haven't been added yet.</p>
+                        </div>
                       </div>
-                      <p className="text-gray-500 text-sm sm:text-base">No family information available</p>
                     </div>
                   )}
                 </CollapsibleCard>
 
-                {/* Cultural Information */}
+                {/* Cultural Information - Left Aligned */}
                 <CollapsibleCard
                   title="Cultural Information"
                   isExpanded={expandedSections.culturalInfo}
@@ -653,32 +669,32 @@ const MemberDetailsPage = () => {
                   icon={Building2}
                 >
                   <div className="space-y-3 sm:space-y-4">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
                         <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-orange-600" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-semibold text-gray-800 block text-sm sm:text-base">Kootam</span>
-                        <p className="text-gray-600 text-sm sm:text-base truncate">{member.kootam || 'Not available'}</p>
+                        <p className="text-gray-600 text-sm sm:text-base">{member.kootam || 'Not available'}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
                         <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-semibold text-gray-800 block text-sm sm:text-base">Kovil</span>
-                        <p className="text-gray-600 text-sm sm:text-base truncate">{member.kovil || 'Not available'}</p>
+                        <p className="text-gray-600 text-sm sm:text-base">{member.kovil || 'Not available'}</p>
                       </div>
                     </div>
                     {member.aadhar_no && (
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <span className="font-semibold text-gray-800 block text-sm sm:text-base">Aadhaar Number</span>
-                          <p className="text-gray-600 text-sm sm:text-base truncate">{member.aadhar_no}</p>
+                          <p className="text-gray-600 text-sm sm:text-base">{member.aadhar_no}</p>
                         </div>
                       </div>
                     )}

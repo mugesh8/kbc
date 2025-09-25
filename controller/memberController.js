@@ -695,133 +695,170 @@ const updateBusinessProfile = async (req, res) => {
             });
         }
 
-        // --- PARSING: accept object/array/field ---
-        let payloadSource = req.body?.business_profile ?? req.body?.business_profiles ?? req.body;
-
-        if (typeof payloadSource === 'string') {
+        // Parse business data from request
+        let businessData = req.body.business_profile || req.body;
+        
+        if (typeof businessData === 'string') {
             try {
-                payloadSource = JSON.parse(payloadSource);
+                businessData = JSON.parse(businessData);
             } catch (e) {
-                // If not JSON, keep as is (multipart simple fields case)
+                // If not JSON, use empty object
+                businessData = {};
             }
         }
 
-        // If the body is an array, use the first item
-        let updatedData = Array.isArray(payloadSource) ? (payloadSource[0] || {}) : (payloadSource || {});
+        // Handle profile image
+        let business_profile_image = profile.business_profile_image;
+        if (req.files?.business_profile_image?.[0]) {
+            business_profile_image = req.files.business_profile_image[0].path.replace(/\\/g, "/");
+            
+            // Delete old profile image if it exists and is being replaced
+            if (profile.business_profile_image && profile.business_profile_image !== business_profile_image) {
+                try {
+                    if (fs.existsSync(profile.business_profile_image)) {
+                        fs.unlinkSync(profile.business_profile_image);
+                    }
+                } catch (deleteError) {
+                    console.error('Error deleting old profile image:', deleteError);
+                }
+            }
+        }
 
-        // In multipart cases, fields may live directly on req.body
-        // Prefer explicit keys from updatedData; if missing, fall back to direct body keys
-        const pick = (k, fallback = undefined) =>
-            updatedData[k] ?? req.body[k] ?? fallback;
+        // Handle media gallery - SIMPLIFIED LOGIC
+        let finalMediaGallery = profile.media_gallery || '';
+        let gallery_type = profile.media_gallery_type || 'image';
 
-        // Get the index from the request to find the correct files
-        const profileIndex = req.body.profile_index || 0;
+        // Process removed media
+        if (req.body.removed_media) {
+            try {
+                const removedMedia = typeof req.body.removed_media === 'string' 
+                    ? JSON.parse(req.body.removed_media) 
+                    : req.body.removed_media;
+                
+                if (Array.isArray(removedMedia) && removedMedia.length > 0) {
+                    const currentGallery = finalMediaGallery ? finalMediaGallery.split(',') : [];
+                    
+                    // Filter out removed media and delete the files
+                    finalMediaGallery = currentGallery
+                        .filter(item => {
+                            const shouldKeep = !removedMedia.includes(item);
+                            if (!shouldKeep) {
+                                // Delete the removed file
+                                try {
+                                    if (fs.existsSync(item)) {
+                                        fs.unlinkSync(item);
+                                    }
+                                } catch (deleteError) {
+                                    console.error('Error deleting media file:', deleteError);
+                                }
+                            }
+                            return shouldKeep;
+                        })
+                        .join(',');
+                }
+            } catch (e) {
+                console.error('Error parsing removed_media:', e);
+            }
+        }
 
-        // Handle profile image update (keep old if none uploaded)
-        // Look for files with the correct index pattern
-        const business_profile_image =
-            req.files?.[`business_profile_image_${profileIndex}`]?.[0]?.path.replace(/\\/g, "/") ||
-            req.files?.["business_profile_image"]?.[0]?.path.replace(/\\/g, "/") ||
-            profile.business_profile_image;
-
-        // Handle media gallery update (keep old if none uploaded)
-        // Look for files with the correct index pattern
-        const gallery_files =
-            req.files?.[`media_gallery_${profileIndex}`] ||
-            req.files?.["media_gallery"] ||
-            [];
-
-        const gallery_paths = gallery_files.map((file) => file.path.replace(/\\/g, "/"));
-        const gallery_type =
-            gallery_paths.length > 0
-                ? /\.(mp4|mov|avi|mkv)$/i.test(gallery_paths[0]) ? "video" : "image"
-                : profile.media_gallery_type;
+        // Process new media gallery files
+        if (req.files?.media_gallery && req.files.media_gallery.length > 0) {
+            const newGalleryPaths = req.files.media_gallery.map(file => file.path.replace(/\\/g, "/"));
+            
+            // Determine media type based on first file
+            if (newGalleryPaths.length > 0) {
+                gallery_type = /\.(mp4|mov|avi|mkv|webm|ogg)$/i.test(newGalleryPaths[0]) ? "video" : "image";
+            }
+            
+            // Add new files to existing gallery
+            const currentGallery = finalMediaGallery ? finalMediaGallery.split(',') : [];
+            finalMediaGallery = [...currentGallery, ...newGalleryPaths].join(',');
+        }
 
         // Normalize business_type for conditional fields
-        const newBusinessType = (pick('business_type', profile.business_type) || '').toString().toLowerCase();
+        const newBusinessType = (businessData.business_type || profile.business_type || '').toString().toLowerCase();
 
         // Build update payload
         const updatePayload = {
-            member_id: pick('member_id', profile.member_id),
-            company_name: pick('company_name', profile.company_name),
-            business_type: pick('business_type', profile.business_type),
-            salary: pick('salary', profile.salary),
-            category_id: pick('category_id', profile.category_id) ? Number(pick('category_id', profile.category_id)) : null,
+            member_id: businessData.member_id || profile.member_id,
+            company_name: businessData.company_name || profile.company_name,
+            business_type: businessData.business_type || profile.business_type,
+            salary: businessData.salary || profile.salary,
+            category_id: businessData.category_id ? Number(businessData.category_id) : profile.category_id,
 
             // Self-employed fields
             business_registration_type: newBusinessType === 'self-employed'
-                ? pick('business_registration_type', profile.business_registration_type)
+                ? (businessData.business_registration_type || profile.business_registration_type)
                 : (newBusinessType !== profile.business_type ? null : profile.business_registration_type),
             about: newBusinessType === 'self-employed'
-                ? pick('about', profile.about)
+                ? (businessData.about || businessData.description || profile.about)
                 : (newBusinessType !== profile.business_type ? null : profile.about),
             company_address: newBusinessType === 'self-employed'
-                ? pick('company_address', profile.company_address)
+                ? (businessData.company_address || businessData.businessAddress || profile.company_address)
                 : (newBusinessType !== profile.business_type ? null : profile.company_address),
             city: newBusinessType === 'self-employed'
-                ? pick('city', profile.city)
+                ? (businessData.city || profile.city)
                 : (newBusinessType !== profile.business_type ? null : profile.city),
             state: newBusinessType === 'self-employed'
-                ? pick('state', profile.state)
+                ? (businessData.state || profile.state)
                 : (newBusinessType !== profile.business_type ? null : profile.state),
             zip_code: newBusinessType === 'self-employed'
-                ? pick('zip_code', profile.zip_code)
+                ? (businessData.zip_code || profile.zip_code)
                 : (newBusinessType !== profile.business_type ? null : profile.zip_code),
             business_starting_year: newBusinessType === 'self-employed'
-                ? pick('business_starting_year', profile.business_starting_year)
+                ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
                 : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
             business_work_contract: newBusinessType === 'self-employed'
-                ? pick('business_work_contract', profile.business_work_contract)
+                ? (businessData.business_work_contract || profile.business_work_contract)
                 : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),
 
             // Salary-specific fields
             designation: newBusinessType === 'salary'
-                ? pick('designation', profile.designation)
+                ? (businessData.designation || profile.designation)
                 : (newBusinessType !== profile.business_type ? null : profile.designation),
             location: newBusinessType === 'salary'
-                ? pick('location', profile.location)
+                ? (businessData.location || profile.location)
                 : (newBusinessType !== profile.business_type ? null : profile.location),
             experience: newBusinessType === 'salary'
-                ? pick('experience', profile.experience)
+                ? (businessData.experience || profile.experience)
                 : (newBusinessType !== profile.business_type ? null : profile.experience),
 
-            // Common optionals
-            staff_size: pick('staff_size', profile.staff_size),
-            email: (() => {
-                const val = pick('email', profile.email);
-                return Array.isArray(val) ? val[0] : val;
-            })(),
-            source: pick('source', profile.source),
-            tags: pick('tags', profile.tags),
-            website: pick('website', profile.website),
-            google_link: pick('google_link', profile.google_link),
-            facebook_link: pick('facebook_link', profile.facebook_link),
-            instagram_link: pick('instagram_link', profile.instagram_link),
-            linkedin_link: pick('linkedin_link', profile.linkedin_link),
-            exclusive_member_benefit: pick('exclusive_member_benefit', profile.exclusive_member_benefit),
+            // Common fields
+            staff_size: businessData.staff_size || profile.staff_size,
+            email: businessData.email || businessData.businessEmail || profile.email,
+            source: businessData.source || profile.source,
+            tags: businessData.tags || profile.tags,
+            website: businessData.website || profile.website,
+            google_link: businessData.google_link || profile.google_link,
+            facebook_link: businessData.facebook_link || profile.facebook_link,
+            instagram_link: businessData.instagram_link || profile.instagram_link,
+            linkedin_link: businessData.linkedin_link || profile.linkedin_link,
+            exclusive_member_benefit: businessData.exclusive_member_benefit || profile.exclusive_member_benefit,
 
-            // Media - FIXED: Use the correctly retrieved file paths
+            // Media
             business_profile_image,
-            media_gallery: gallery_paths.length > 0 ? gallery_paths.join(',') : profile.media_gallery,
+            media_gallery: finalMediaGallery,
             media_gallery_type: gallery_type,
-            status: pick('status', profile.status),
+            status: businessData.status || profile.status,
         };
 
-        await profile.update(updatePayload, { transaction: t });
+        // Remove null/undefined values to avoid overwriting with null
+        Object.keys(updatePayload).forEach(key => {
+            if (updatePayload[key] === null || updatePayload[key] === undefined) {
+                delete updatePayload[key];
+            }
+        });
 
+        await profile.update(updatePayload, { transaction: t });
         await t.commit();
 
-        // return fresh values
-        const updatedProfile = await BusinessProfile.findByPk(id); // Get fresh data from DB
+        // Return updated profile
+        const updatedProfile = await BusinessProfile.findByPk(id);
 
         res.status(200).json({
             success: true,
             msg: "Business profile updated successfully",
-            profile: updatedProfile,
-            uploaded_media: {
-                business_profile_image,
-                media_gallery_files: gallery_paths,
-            },
+            data: updatedProfile,
         });
     } catch (error) {
         await t.rollback();
@@ -829,8 +866,12 @@ const updateBusinessProfile = async (req, res) => {
         // Cleanup uploaded files if error occurs
         if (req.files) {
             Object.values(req.files).flat().forEach((file) => {
-                if (fs.existsSync(file.path)) {
-                    fs.unlinkSync(file.path);
+                try {
+                    if (fs.existsSync(file.path)) {
+                        fs.unlinkSync(file.path);
+                    }
+                } catch (cleanupError) {
+                    console.error('Error cleaning up file:', cleanupError);
                 }
             });
         }

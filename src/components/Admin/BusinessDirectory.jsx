@@ -22,51 +22,61 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip
+  Chip,
+  Card,
+  CardContent,
+  Grid,
+  Paper
 } from '@mui/material';
-import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import AddIcon from '@mui/icons-material/Add';
-import BusinessIcon from '@mui/icons-material/Business';
-import Footer from '../User/Footer';
+import {
+  ArrowBack,
+  Add,
+  Business,
+  Delete,
+  CameraAlt,
+  Videocam,
+  Visibility,
+  Close
+} from '@mui/icons-material';
 import baseurl from '../Baseurl/baseurl';
-import { ArrowBack } from '@mui/icons-material';
 
 const BusinessDirectoryForm = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
-  const fileInputRef = useRef(null);
-  const profileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [businessProfileId, setBusinessProfileId] = useState(null);
-  const [registrationType, setRegistrationType] = useState('');
-  const [customRegistrationType, setCustomRegistrationType] = useState('');
-  const [showCustomRegistration, setShowCustomRegistration] = useState(false);
   const [errors, setErrors] = useState({});
-  const [businessDialogOpen, setBusinessDialogOpen] = useState(false);
-  const [businesses, setBusinesses] = useState([]);
-  const [currentBusinessIndex, setCurrentBusinessIndex] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
+  const [memberId, setMemberId] = useState(null);
+  
+  // Media handling states
+  const profileImageInputRef = useRef(null);
+  const mediaGalleryInputRef = useRef(null);
+  const [removedMediaGallery, setRemovedMediaGallery] = useState([]);
+  const [mediaPreview, setMediaPreview] = useState({ isOpen: false, media: null, type: 'image' });
 
   const [formData, setFormData] = useState({
     business_type: 'self-employed',
+    businessName: '',
     category_id: '',
-    company_name: '',
-    business_registration_type: '',
-    about: '',
-    company_address: '',
+    registrationNumber: '',
+    registrationNumberOther: '',
+    startingYear: '',
+    experience: '',
+    businessAddress: '',
+    businessEmail: '',
+    staffSize: '',
+    description: '',
+    profileImage: null,
+    profileImageFile: null,
+    profileImageType: 'image',
+    mediaGallery: [],
+    mediaGalleryFiles: [],
     city: '',
     state: '',
     zip_code: '',
-    business_starting_year: '',
-    staff_size: '',
     business_work_contract: '',
-    email: '',
     source: '',
     tags: '',
     website: '',
@@ -77,687 +87,543 @@ const BusinessDirectoryForm = () => {
     designation: '',
     salary: '',
     location: '',
-    experience: '',
-    profileImage: null,
-    mediaGallery: [],
-    status: 'Approved', // Added status field with default value
+    status: 'Approved'
   });
 
   // Business registration type options
-  const registrationTypeOptions = [
-    "proprietor",
-    "Partnership",
-    "Others"
-  ];
+  const registrationTypeOptions = ["proprietor", "partnership", "Others"];
 
-  // Email validation function
-  const validateEmail = (email) => {
-    if (!email) return true; // Empty email is valid (optional field)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  // Validate form fields
-  const validateField = (name, value) => {
-    let error = '';
-    switch (name) {
-      case 'email':
-        if (value && !validateEmail(value)) {
-          error = 'Please enter a valid email address';
-        }
-        break;
-      case 'business_starting_year':
-        if (value && (value < 1900 || value > new Date().getFullYear())) {
-          error = 'Please enter a valid year';
-        }
-        break;
-      case 'zip_code':
-        if (value && !/^\d{5,6}(-\d{4})?$/.test(value)) {
-          error = 'Please enter a valid zip code';
-        }
-        break;
-      default:
-        break;
-    }
-    return error;
-  };
-
+  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${baseurl}/api/category/all`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch categories: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
         const data = await res.json();
-        if (data.success) {
-          setCategories(data.data);
-        }
+        if (data.success) setCategories(data.data);
       } catch (error) {
         console.error('Failed to fetch categories:', error);
-        setSnackbar({
-          open: true,
-          message: 'Failed to load categories',
-          severity: 'error'
-        });
+        showSnackbar('Failed to load categories', 'error');
       }
     };
     fetchCategories();
   }, []);
 
-  const [memberId, setMemberId] = useState(null);
+  // Fetch business data
   useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
+    const fetchBusinessData = async () => {
+      if (!id) {
+        // New business - get memberId from localStorage
+        const memberData = JSON.parse(localStorage.getItem('memberData'));
+        const storedMemberId = memberData?.mid || localStorage.getItem('memberId');
+        if (storedMemberId) setMemberId(storedMemberId);
+        return;
+      }
+
       try {
-        // If no id is provided, initialize with an empty business
-        if (!id) {
-          const defaultBusiness = createEmptyBusiness();
-          if (isMounted) {
-            setBusinesses([defaultBusiness]);
-            setFormData(defaultBusiness);
+        setLoading(true);
+        const response = await fetch(`${baseurl}/api/business-profile/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
-          return;
-        }
-
-        const res = await fetch(`${baseurl}/api/business-profile/${id}`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-
-        if (!data.success || !data.data) {
-          throw new Error(data.msg || 'Failed to fetch business profile');
-        }
-
-        const business = data.data; // single business object
-        if (isMounted) {
-          setMemberId(business.member_id || null);
-          const formatted = formatBusinessData(business);
-          setBusinesses([formatted]);
-          setFormData(formatted);
-          setBusinessProfileId(business.id);
-          handleRegistrationType(
-            business.business_registration_type,
-            registrationTypeOptions,
-            setRegistrationType,
-            setCustomRegistrationType,
-            setShowCustomRegistration
-          );
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch business data');
+        
+        const data = await response.json();
+        console.log('API Response:', data);
+        
+        if (data.success || data.profile) {
+          const businessData = data.profile || data.data;
+          const business = transformBusinessData(businessData);
+          console.log('Transformed data:', business);
+          setFormData(business);
+          setMemberId(businessData.member_id);
         }
       } catch (error) {
         console.error('Failed to fetch business data:', error);
-        if (isMounted) {
-          setSnackbar({
-            open: true,
-            message: `Failed to load data: ${error.message}`,
-            severity: 'error'
-          });
-          const defaultBusiness = createEmptyBusiness();
-          setBusinesses([defaultBusiness]);
-          setFormData(defaultBusiness);
-        }
+        showSnackbar('Failed to load business data', 'error');
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
+    fetchBusinessData();
+  }, [id]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [id, t]);
-
-  function handleRegistrationType(
-    type,
-    options,
-    setRegType,
-    setCustomType,
-    setShowCustom
-  ) {
-    if (type) {
-      const typeStr = String(type);
-      const match = options.find(opt => opt.toLowerCase() === typeStr.toLowerCase());
-      if (match) {
-        setRegType(match);
-        setShowCustom(false);
-      } else {
-        setRegType('Others');
-        setCustomType(typeStr);
-        setShowCustom(true);
-      }
+  const transformBusinessData = (apiData) => {
+    console.log('Raw API data:', apiData);
+    
+    // Parse media gallery
+    let mediaGallery = [];
+    if (apiData.media_gallery) {
+      const mediaUrls = apiData.media_gallery.split(',').filter(url => url.trim());
+      mediaGallery = mediaUrls.map(url => {
+        const trimmedUrl = url.trim();
+        const isVideo = trimmedUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+        return {
+          url: trimmedUrl,
+          type: isVideo ? 'video' : 'image',
+          name: trimmedUrl.split('/').pop(),
+          isNew: false
+        };
+      });
     }
-  }
 
-  const createEmptyBusiness = () => {
-    return {
-      business_type: 'self-employed',
-      category_id: '',
-      company_name: '',
-      business_registration_type: '',
-      about: '',
-      company_address: '',
-      city: '',
-      state: '',
-      zip_code: '',
-      business_starting_year: '',
-      staff_size: '',
-      business_work_contract: '',
-      email: '',
-      source: '',
-      tags: '',
-      website: '',
-      google_link: '',
-      facebook_link: '',
-      instagram_link: '',
-      linkedin_link: '',
-      designation: '',
-      salary: '',
-      location: '',
-      experience: '',
-      profileImage: null,
-      mediaGallery: [],
-      status: 'Approved', // Added status field with default value
-      isNew: true
+    // Determine registration type
+    let registrationNumber = apiData.business_registration_type || '';
+    let registrationNumberOther = '';
+    if (registrationNumber && !registrationTypeOptions.includes(registrationNumber)) {
+      registrationNumberOther = registrationNumber;
+      registrationNumber = 'Others';
+    }
+
+    // Determine profile image type
+    const profileImageUrl = apiData.business_profile_image || null;
+    const isProfileVideo = profileImageUrl && profileImageUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i);
+
+    const transformedData = {
+      business_type: apiData.business_type || 'self-employed',
+      businessName: apiData.company_name || '',
+      category_id: apiData.category_id?.toString() || '',
+      registrationNumber: registrationNumber,
+      registrationNumberOther: registrationNumberOther,
+      startingYear: apiData.business_starting_year?.toString() || '',
+      experience: apiData.experience?.toString() || '',
+      businessAddress: apiData.company_address || '',
+      businessEmail: apiData.email || '',
+      staffSize: apiData.staff_size?.toString() || '',
+      description: apiData.about || '',
+      profileImage: profileImageUrl,
+      profileImageType: isProfileVideo ? 'video' : 'image',
+      profileImageFile: null,
+      mediaGallery: mediaGallery,
+      mediaGalleryFiles: [],
+      city: apiData.city || '',
+      state: apiData.state || '',
+      zip_code: apiData.zip_code || '',
+      business_work_contract: apiData.business_work_contract || '',
+      source: apiData.source || '',
+      tags: apiData.tags || '',
+      website: apiData.website || '',
+      google_link: apiData.google_link || '',
+      facebook_link: apiData.facebook_link || '',
+      instagram_link: apiData.instagram_link || '',
+      linkedin_link: apiData.linkedin_link || '',
+      designation: apiData.designation || '',
+      salary: apiData.salary?.toString() || '',
+      location: apiData.location || '',
+      status: apiData.status || 'Approved'
     };
+
+    console.log('Final transformed data:', transformedData);
+    return transformedData;
   };
 
-  const formatBusinessData = (business) => {
-    return {
-      business_type: business.business_type || 'self-employed',
-      category_id: business.category_id || '',
-      company_name: business.company_name || '',
-      business_registration_type: business.business_registration_type || '',
-      about: business.about || '',
-      company_address: business.company_address || '',
-      city: business.city || '',
-      state: business.state || '',
-      zip_code: business.zip_code || '',
-      business_starting_year: business.business_starting_year || '',
-      staff_size: business.staff_size || '',
-      business_work_contract: business.business_work_contract || '',
-      email: business.email || '',
-      source: business.source || '',
-      tags: business.tags || '',
-      website: business.website || '',
-      google_link: business.google_link || '',
-      facebook_link: business.facebook_link || '',
-      instagram_link: business.instagram_link || '',
-      linkedin_link: business.linkedin_link || '',
-      designation: business.designation || '',
-      salary: business.salary || '',
-      location: business.location || '',
-      experience: business.experience || '',
-      profileImage: business.business_profile_image || null,
-      mediaGallery: business.media_gallery ? business.media_gallery.split(',') : [],
-      status: business.status || 'Approved', // Added status field
-      id: business.id,
-      isNew: false
-    };
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({ open: true, message, severity });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
 
-    // Handle registration type change
-    if (name === 'business_registration_type') {
-      setRegistrationType(value);
-      if (value === 'Others') {
-        setShowCustomRegistration(true);
-        if (!customRegistrationType) {
-          setCustomRegistrationType('');
-        }
-      } else {
-        setShowCustomRegistration(false);
-        setCustomRegistrationType('');
-        setFormData(prev => ({
-          ...prev,
-          business_registration_type: value
-        }));
+  // Media handling functions
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      
+      if (!isImage && !isVideo) {
+        showSnackbar('Please select an image or video file for profile picture', 'error');
+        return;
       }
-    }
-    // Handle custom registration type input
-    else if (name === 'custom_registration_type') {
-      setCustomRegistrationType(value);
+
+      const previewUrl = URL.createObjectURL(file);
       setFormData(prev => ({
         ...prev,
-        business_registration_type: value
-      }));
-    }
-    // Handle status change
-    else if (name === 'status') {
-      setFormData(prev => ({
-        ...prev,
-        status: value
-      }));
-    }
-    // Handle all other inputs
-    else {
-      const error = validateField(name, value);
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-      setErrors((prev) => ({
-        ...prev,
-        [name]: error
+        profileImage: previewUrl,
+        profileImageFile: file,
+        profileImageType: isImage ? 'image' : 'video'
       }));
     }
   };
 
-  const handleFileChange = (e) => {
-    const { name, files } = e.target;
-    if (name === 'profileImage') {
-      setFormData(prev => ({ ...prev, profileImage: files[0] }));
-    } else if (name === 'mediaGallery') {
-      setFormData(prev => ({ ...prev, mediaGallery: Array.from(files) }));
+  const handleMediaGalleryChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newFiles = files.map(file => {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const previewUrl = URL.createObjectURL(file);
+        
+        return {
+          file: file,
+          url: previewUrl,
+          type: isImage ? 'image' : (isVideo ? 'video' : 'file'),
+          name: file.name,
+          isNew: true
+        };
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        mediaGallery: [...prev.mediaGallery, ...newFiles]
+      }));
     }
   };
 
-  const triggerFileSelect = (inputType) => {
-    if (inputType === 'profile') {
-      profileInputRef.current.click();
+  const handleRemoveMediaGalleryItem = (index) => {
+    const item = formData.mediaGallery[index];
+    if (item.isNew) {
+      URL.revokeObjectURL(item.url);
     } else {
-      fileInputRef.current.click();
+      setRemovedMediaGallery(prev => [...prev, item.url]);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      mediaGallery: prev.mediaGallery.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleRemoveProfileImage = () => {
+    const currentProfileImage = formData.profileImage;
+    if (currentProfileImage && !currentProfileImage.startsWith('blob:')) {
+      setRemovedMediaGallery(prev => [...prev, currentProfileImage]);
+    } else if (currentProfileImage) {
+      URL.revokeObjectURL(currentProfileImage);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      profileImage: null,
+      profileImageFile: null,
+      profileImageType: 'image'
+    }));
+  };
+
+  // Media preview functions
+  const openMediaPreview = (mediaUrl, mediaType) => {
+    setMediaPreview({
+      isOpen: true,
+      media: mediaUrl.startsWith('blob:') ? mediaUrl : `${baseurl}/${mediaUrl}`,
+      type: mediaType
+    });
+  };
+
+  const closeMediaPreview = () => {
+    setMediaPreview({ isOpen: false, media: null, type: 'image' });
+  };
+
+  // Get full media URL helper function
+  const getFullMediaUrl = (mediaUrl) => {
+    if (!mediaUrl) return '';
+    if (mediaUrl.startsWith('blob:') || mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+      return mediaUrl;
+    }
+    return `${baseurl}/${mediaUrl}`;
+  };
+
+  // Media Preview Component
+  const MediaPreviewComponent = ({ media, onRemove, editable = false, onClick }) => {
+    const fullUrl = getFullMediaUrl(media.url);
+    
+    if (media.type === 'video') {
+      return (
+        <Paper elevation={2} sx={{ position: 'relative', cursor: 'pointer', height: 120 }}>
+          <video
+            src={fullUrl}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onClick={onClick}
+            onError={(e) => {
+              console.error('Video load error:', e);
+              console.log('Video URL:', fullUrl);
+            }}
+          />
+          {editable && (
+            <>
+              <IconButton
+                size="small"
+                onClick={onRemove}
+                sx={{ 
+                  position: 'absolute', 
+                  top: 4, 
+                  right: 4, 
+                  bgcolor: 'error.main',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'error.dark' }
+                }}
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+              <Chip
+                icon={<Videocam />}
+                label="Video"
+                size="small"
+                sx={{ position: 'absolute', top: 4, left: 4, bgcolor: 'primary.main', color: 'white' }}
+              />
+            </>
+          )}
+        </Paper>
+      );
+    } else {
+      return (
+        <Paper elevation={2} sx={{ position: 'relative', cursor: 'pointer', height: 120 }}>
+          <img
+            src={fullUrl}
+            alt={media.name || 'Media'}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onClick={onClick}
+            onError={(e) => {
+              console.error('Image load error:', e);
+              console.log('Image URL:', fullUrl);
+            }}
+          />
+          {editable && (
+            <>
+              <IconButton
+                size="small"
+                onClick={onRemove}
+                sx={{ 
+                  position: 'absolute', 
+                  top: 4, 
+                  right: 4, 
+                  bgcolor: 'error.main',
+                  color: 'white',
+                  '&:hover': { bgcolor: 'error.dark' }
+                }}
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+              <Chip
+                icon={<CameraAlt />}
+                label="Image"
+                size="small"
+                sx={{ position: 'absolute', top: 4, left: 4, bgcolor: 'success.main', color: 'white' }}
+              />
+            </>
+          )}
+        </Paper>
+      );
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-
+  // Simplified validation - only check required fields
   const validateForm = () => {
     const newErrors = {};
-    // Validate email
-    if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+    
+    // Only validate business name as required
+    if (!formData.businessName.trim()) {
+      newErrors.businessName = 'Business name is required';
     }
-    // Validate business starting year
-    if (formData.business_starting_year &&
-      (formData.business_starting_year < 1900 || formData.business_starting_year > new Date().getFullYear())) {
-      newErrors.business_starting_year = 'Please enter a valid year';
+    
+    // Optional email validation only if provided
+    if (formData.businessEmail && formData.businessEmail.trim() && 
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.businessEmail)) {
+      newErrors.businessEmail = 'Please enter a valid email address';
     }
-    // Validate zip code
-    if (formData.zip_code && !/^\d{5,6}(-\d{4})?$/.test(formData.zip_code)) {
-      newErrors.zip_code = 'Please enter a valid zip code';
-    }
-    // Validate custom registration type if "Others" is selected
-    if (registrationType === 'Others' && !customRegistrationType.trim()) {
-      newErrors.custom_registration_type = 'Please specify the business registration type';
-    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      showSnackbar('Please fix the validation errors before submitting', 'error');
+      return;
+    }
+
     try {
-      if (!validateForm()) {
-        setSnackbar({
-          open: true,
-          message: 'Please fix the validation errors before submitting',
-          severity: 'error'
-        });
-        return;
-      }
       setLoading(true);
 
-      const isNewBusiness = !businessProfileId;
+      // Prepare business data for API - match the backend structure
+      const businessPayload = {
+        member_id: memberId,
+        company_name: formData.businessName,
+        business_type: formData.business_type,
+        business_registration_type: formData.registrationNumber === 'Others' 
+          ? formData.registrationNumberOther 
+          : formData.registrationNumber,
+        business_starting_year: formData.startingYear ? parseInt(formData.startingYear) : null,
+        experience: formData.experience || null,
+        company_address: formData.businessAddress || null,
+        email: formData.businessEmail || null,
+        staff_size: formData.staffSize || null,
+        about: formData.description || null,
+        category_id: formData.category_id ? parseInt(formData.category_id) : null,
+        city: formData.city || null,
+        state: formData.state || null,
+        zip_code: formData.zip_code || null,
+        business_work_contract: formData.business_work_contract || null,
+        source: formData.source || null,
+        tags: formData.tags || null,
+        website: formData.website || null,
+        google_link: formData.google_link || null,
+        facebook_link: formData.facebook_link || null,
+        instagram_link: formData.instagram_link || null,
+        linkedin_link: formData.linkedin_link || null,
+        designation: formData.designation || null,
+        salary: formData.salary || null,
+        location: formData.location || null,
+        status: formData.status
+      };
+
+      // Create FormData with correct field names
       const formDataToSend = new FormData();
 
-      if (isNewBusiness) {
-        // Create -> POST /api/business-profile/:member_id
-        if (!memberId) {
-          throw new Error('Member ID missing for creation');
-        }
-        const endpoint = `${baseurl}/api/business-profile/${memberId}`;
-        const method = 'POST';
-
-        // Build business_profiles array payload
-        const profilePayload = {
-          business_type: formData.business_type,
-          company_name: formData.company_name,
-          business_registration_type: registrationType === 'Others' ? customRegistrationType : registrationType,
-          category_id: formData.category_id,
-          about: formData.about,
-          company_address: formData.company_address,
-          city: formData.city,
-          state: formData.state,
-          zip_code: formData.zip_code,
-          business_starting_year: formData.business_starting_year,
-          staff_size: formData.staff_size,
-          business_work_contract: formData.business_work_contract,
-          email: formData.email,
-          source: formData.source,
-          tags: formData.tags,
-          website: formData.website,
-          google_link: formData.google_link,
-          facebook_link: formData.facebook_link,
-          instagram_link: formData.instagram_link,
-          linkedin_link: formData.linkedin_link,
-          designation: formData.designation,
-          salary: formData.salary,
-          location: formData.location,
-          experience: formData.experience,
-          status: formData.status, // Added status field
-        };
-        formDataToSend.append('business_profiles', JSON.stringify([profilePayload]));
-
-        // Files use indexed keys for create
-        if (formData.profileImage instanceof File) {
-          formDataToSend.append('business_profile_image_0', formData.profileImage);
-        }
-        const newFiles = (formData.mediaGallery || []).filter(f => f instanceof File);
-        newFiles.forEach(file => formDataToSend.append('media_gallery_0', file));
-
-        const response = await fetch(endpoint, { method, body: formDataToSend });
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Server error response:', response.status, errorText);
-          throw new Error(`Server error: ${response.status} - ${errorText}`);
-        }
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || data.msg || t('updateFailed'));
-        }
-        setSnackbar({ open: true, message: data.message || data.msg || t('updateSuccess'), severity: 'success' });
+      // For update, send as business_profile field
+      if (id) {
+        formDataToSend.append('business_profile', JSON.stringify(businessPayload));
       } else {
-        // Update -> PUT /api/business-profile/update/:id (per backend routes)
-        const endpoint = `${baseurl}/api/business-profile/update/${businessProfileId}`;
-        const method = 'PUT';
-
-        // Send flat fields (controller accepts business_profile or direct fields)
-        const profilePayload = {
-          business_type: formData.business_type,
-          company_name: formData.company_name,
-          business_registration_type: registrationType === 'Others' ? customRegistrationType : registrationType,
-          category_id: formData.category_id,
-          about: formData.about,
-          company_address: formData.company_address,
-          city: formData.city,
-          state: formData.state,
-          zip_code: formData.zip_code,
-          business_starting_year: formData.business_starting_year,
-          staff_size: formData.staff_size,
-          business_work_contract: formData.business_work_contract,
-          email: formData.email,
-          source: formData.source,
-          tags: formData.tags,
-          website: formData.website,
-          google_link: formData.google_link,
-          facebook_link: formData.facebook_link,
-          instagram_link: formData.instagram_link,
-          linkedin_link: formData.linkedin_link,
-          designation: formData.designation,
-          salary: formData.salary,
-          location: formData.location,
-          experience: formData.experience,
-          status: formData.status, // Added status field
-        };
-        formDataToSend.append('business_profile', JSON.stringify(profilePayload));
-        // Some multer configs only accept indexed keys; include profile_index and indexed field names
-        formDataToSend.append('profile_index', '0');
-        if (formData.profileImage instanceof File) {
-          formDataToSend.append('business_profile_image_0', formData.profileImage);
-        }
-        const newFiles = (formData.mediaGallery || []).filter(f => f instanceof File);
-        newFiles.forEach(file => formDataToSend.append('media_gallery_0', file));
-
-        const response = await fetch(endpoint, { method, body: formDataToSend });
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Server error response:', response.status, errorText);
-          throw new Error(`Server error: ${response.status} - ${errorText}`);
-        }
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || data.msg || t('updateFailed'));
-        }
-        setSnackbar({ open: true, message: data.message || data.msg || t('updateSuccess'), severity: 'success' });
+        // For new business, send as business_profiles array
+        formDataToSend.append('business_profiles', JSON.stringify([businessPayload]));
       }
-      // After success above, optionally navigate back if single
-      if (businesses.length === 1) {
-        setTimeout(() => navigate(-1), 2000);
+
+      // Add profile image with correct field name
+      if (formData.profileImageFile) {
+        formDataToSend.append('business_profile_image', formData.profileImageFile);
+      }
+
+      // Add media gallery files with correct field name
+      formData.mediaGallery.forEach(media => {
+        if (media.isNew && media.file) {
+          formDataToSend.append('media_gallery', media.file);
+        }
+      });
+
+      // Add removed media gallery items
+      if (removedMediaGallery.length > 0) {
+        formDataToSend.append('removed_media', JSON.stringify(removedMediaGallery));
+      }
+
+      let url, method;
+      if (id) {
+        // Update existing business
+        url = `${baseurl}/api/business-profile/update/${id}`;
+        method = 'PUT';
+      } else {
+        // Create new business
+        if (!memberId) {
+          showSnackbar('Member ID not found', 'error');
+          return;
+        }
+        url = `${baseurl}/api/business-profile/${memberId}`;
+        method = 'POST';
+      }
+
+      console.log('Submitting to:', url);
+      console.log('Method:', method);
+      console.log('Payload:', businessPayload);
+
+      // Log FormData contents for debugging
+      for (let [key, value] of formDataToSend.entries()) {
+        console.log(`FormData key: ${key}, value type: ${typeof value}`);
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // Don't set Content-Type - let browser set it with boundary
+        },
+        body: formDataToSend
+      });
+
+      const result = await response.json();
+      console.log('Response:', result);
+
+      if (!response.ok) {
+        throw new Error(result?.msg || result?.message || `Server returned ${response.status}`);
+      }
+
+      if (result.success) {
+        setRemovedMediaGallery([]);
+        showSnackbar(id ? 'Business updated successfully' : 'Business created successfully');
+        setTimeout(() => navigate('/admin/BusinessManagement'), 1500);
+      } else {
+        throw new Error(result.msg || result.message || 'Operation failed');
       }
     } catch (error) {
-      console.error('Update error details:', error);
-      setSnackbar({
-        open: true,
-        message: error.message || t('updateFailed'),
-        severity: 'error'
-      });
+      console.error('Business operation error:', error);
+      showSnackbar(error.message, 'error');
     } finally {
       setLoading(false);
     }
   };
-  const handleAddNewBusiness = () => {
-    const newBusiness = createEmptyBusiness();
-    const newBusinesses = [...businesses, newBusiness];
-    setBusinesses(newBusinesses);
-    setCurrentBusinessIndex(newBusinesses.length - 1);
-    setFormData(newBusiness);
-    setBusinessProfileId(null);
-    setRegistrationType('');
-    setCustomRegistrationType('');
-    setShowCustomRegistration(false);
-    setBusinessDialogOpen(false);
 
-    setSnackbar({
-      open: true,
-      message: 'New business added. Fill in the details and save.',
-      severity: 'info'
-    });
-  };
-
-  const handleSelectBusiness = (index) => {
-    const business = businesses[index];
-    setCurrentBusinessIndex(index);
-    setFormData(business);
-    setBusinessProfileId(business.id || null);
-
-    // Set registration type
-    if (business.business_registration_type) {
-      const isPredefinedType = registrationTypeOptions.includes(
-        business.business_registration_type
-      );
-      if (isPredefinedType) {
-        setRegistrationType(business.business_registration_type);
-        setShowCustomRegistration(false);
-      } else {
-        setRegistrationType('Others');
-        setCustomRegistrationType(business.business_registration_type);
-        setShowCustomRegistration(true);
-      }
-    } else {
-      setRegistrationType('');
-      setCustomRegistrationType('');
-      setShowCustomRegistration(false);
-    }
-
-    setBusinessDialogOpen(false);
-  };
-
-  const handleRemoveBusiness = (index) => {
-    if (adminRole === 'community') {
-      setSnackbar({ open: true, message: 'No permission to delete.', severity: 'warning' });
-      return;
-    }
-    if (businesses.length <= 1) {
-      setSnackbar({
-        open: true,
-        message: 'You must have at least one business.',
-        severity: 'warning'
-      });
-      return;
-    }
-
-    const businessToRemove = businesses[index];
-    const newBusinesses = businesses.filter((_, i) => i !== index);
-
-    setBusinesses(newBusinesses);
-
-    // If removing the current business, select the previous one
-    if (index === currentBusinessIndex) {
-      const newIndex = index === 0 ? 0 : index - 1;
-      setCurrentBusinessIndex(newIndex);
-      setFormData(newBusinesses[newIndex]);
-      setBusinessProfileId(newBusinesses[newIndex].id || null);
-    }
-
-    // If the business was saved, call API to delete it
-    if (businessToRemove.id) {
-      deleteBusinessFromServer(businessToRemove.id);
-    }
-  };
-
-  const deleteBusinessFromServer = async (id) => {
-    try {
-      const response = await fetch(`${baseurl}/api/business-profile/delete/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete business');
-      }
-
-      setSnackbar({
-        open: true,
-        message: 'Business deleted successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Error deleting business:', error);
-      setSnackbar({
-        open: true,
-        message: 'Error deleting business',
-        severity: 'error'
-      });
-    }
-  };
-
-  // Determine if form should be disabled based on status
-  const isFormDisabled = formData.status === 'Approved';
-
-  // Get status color for chip
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Approved': return '#4CAF50';
-      case 'Pending': return '#FF9800';
-      case 'Rejected': return '#f44336';
-      default: return '#757575';
+      case 'Approved': return 'success';
+      case 'Pending': return 'warning';
+      case 'Rejected': return 'error';
+      default: return 'default';
     }
   };
 
+  if (loading && !formData.businessName) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <Box pb={10}>
-      {/* Header with back button and title */}
+    <Box sx={{ p: 3, maxWidth: 1200, margin: '0 auto' }}>
+      {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
         <Button
           variant="outlined"
           startIcon={<ArrowBack />}
           onClick={() => navigate('/admin/BusinessManagement')}
-          disabled={isSubmitting}
+          disabled={loading}
         >
           Back
         </Button>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 600, color: '#2E7D32' }}>
-            Edit Business Details
+            {id ? 'Edit Business' : 'Add New Business'}
           </Typography>
         </Box>
       </Box>
 
-      {/* Business Selection Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" p={2} sx={{ borderBottom: '1px solid #e0e0e0' }}>
-        <Box display="flex" alignItems="center">
-          <BusinessIcon sx={{ mr: 1, color: 'green' }} />
-          <Typography variant="h6">
-            {businesses[currentBusinessIndex]?.company_name || 'New Business'}
-          </Typography>
-        </Box>
-
-        {/* Status Display */}
-        <Chip
-          label={formData.status}
-          sx={{
-            bgcolor: getStatusColor(formData.status),
-            color: 'white',
-            fontWeight: 600,
-            fontSize: '0.875rem'
-          }}
-        />
-      </Box>
-
-      <Box p={2}>
-        {/* Status Selection - Always enabled */}
-        <Box display="flex" justifyContent="flex-start" mb={3}>
-          <FormControl
-            size="small"
-            sx={{
-              width: "50%",
-              '& .MuiInputBase-root': {
-                height: '40px'
-              },
-              textAlign: 'left'
-            }}
-          >
-            <InputLabel>Status</InputLabel>
-            <Select
-              name="status"
-              value={formData.status}
-              label="Status"
-              onChange={handleInputChange}
-              sx={{
-                "& .MuiSelect-select": {
-                  textAlign: "left",
-                  height: '40px',
-                  display: 'flex',
-                  alignItems: 'center'
-                }
-              }}
-              disabled={isFormDisabled}
-            >
-              <MenuItem value="Pending">Pending</MenuItem>
-              <MenuItem value="Approved">Approved</MenuItem>
-              <MenuItem value="Rejected">Rejected</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-
-        {/* Profile Image Section */}
-        {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
-          <Box display="flex" flexDirection="column" alignItems="flex-start" mb={3}>
-            <Avatar
-              src={formData.profileImage instanceof File
-                ? URL.createObjectURL(formData.profileImage)
-                : formData.profileImage
-                  ? `${baseurl}/${formData.profileImage}`
-                  : ''}
-              alt="Business Profile"
-              sx={{ width: 100, height: 100, mb: 2 }}
-            />
-            <Button
-              variant="contained"
-              onClick={() => triggerFileSelect('profile')}
-              sx={{ bgcolor: 'green' }}
-            >
-              Upload Profile Photo
-            </Button>
-            <input
-              type="file"
-              ref={profileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              name="profileImage"
-              style={{ display: 'none' }}
+      <Card elevation={3}>
+        <CardContent sx={{ p: 4 }}>
+          {/* Status Selection */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={formData.status}
+                label="Status"
+                onChange={handleInputChange}
+              >
+                <MenuItem value="Pending">Pending</MenuItem>
+                <MenuItem value="Approved">Approved</MenuItem>
+                <MenuItem value="Rejected">Rejected</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Chip 
+              label={formData.status} 
+              color={getStatusColor(formData.status)}
+              variant="filled"
+              sx={{ fontSize: '0.9rem', padding: '8px 16px' }}
             />
           </Box>
-        )}
-        <Divider sx={{ mb: 3 }} />
 
-        {/* Business Type */}
-        <Box display="flex" flexDirection="column" alignItems="flex-start" mb={3}>
-          <FormControl component="fieldset">
-            <FormLabel
-              component="legend"
-              sx={{ mb: 1, fontWeight: 'bold', textAlign: 'left' }}
-            >
+          {/* Business Type */}
+          <Box mb={4}>
+            <FormLabel component="legend" sx={{ mb: 2, fontWeight: 'bold', fontSize: '1.1rem', display: 'block' }}>
               Business Type
             </FormLabel>
             <RadioGroup
@@ -765,778 +631,542 @@ const BusinessDirectoryForm = () => {
               name="business_type"
               value={formData.business_type}
               onChange={handleInputChange}
+              sx={{ gap: 3 }}
             >
-              <FormControlLabel
-                value="self-employed"
-                control={<Radio size="small" />}
-                label="Self Employed"
-              />
-              <FormControlLabel
-                value="business"
-                control={<Radio size="small" />}
-                label="Business"
-              />
-              <FormControlLabel
-                value="salary"
-                control={<Radio size="small" />}
-                label="Salary"
-              />
+              <FormControlLabel value="self-employed" control={<Radio />} label="Self Employed" />
+              <FormControlLabel value="business" control={<Radio />} label="Business" />
+              <FormControlLabel value="salary" control={<Radio />} label="Salary" />
             </RadioGroup>
-          </FormControl>
-        </Box>
-
-        {/* Business Name */}
-        <Typography variant="h6" fontWeight="bold" mb={2} sx={{ textAlign: 'center' }}>
-          Business Profile
-        </Typography>
-        <Box display="flex" justifyContent="flex-start" mb={3}>
-          <TextField
-            label="Business Name"
-            name="company_name"
-            value={formData.company_name}
-            onChange={handleInputChange}
-            size="small"
-            sx={{
-              width: "50%",
-              '& .MuiInputBase-root': {
-                height: '40px',
-              },
-              '& .MuiInputLabel-root': {
-                transform: 'translate(14px, 14px) scale(1)',
-                '&.Mui-focused, &.MuiFormLabel-filled': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                },
-              },
-            }}
-          />
-        </Box>
-        <Box display="flex" justifyContent="flex-start" mb={3}>
-          <TextField
-            label="Email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            error={!!errors.email}
-            helperText={errors.email}
-            size="small"
-            sx={{
-              width: "50%",
-              '& .MuiInputBase-root': {
-                height: '40px'
-              },
-              '& .MuiInputLabel-root': {
-                transform: 'translate(14px, 14px) scale(1)',
-                '&.Mui-focused, &.MuiFormLabel-filled': {
-                  transform: 'translate(14px, -9px) scale(0.75)',
-                }
-              }
-            }}
-          />
-        </Box>
-
-        {/* Category Selection */}
-        {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
-          <Box display="flex" justifyContent="flex-start" mb={3}>
-            <FormControl
-              size="small"
-              sx={{
-                width: "50%",
-                '& .MuiInputBase-root': {
-                  height: '40px'
-                },
-                textAlign: 'left'
-              }}
-            >
-              <InputLabel>Category</InputLabel>
-              <Select
-                name="category_id"
-                value={formData.category_id}
-                label="Category"
-                onChange={handleInputChange}
-                sx={{
-                  "& .MuiSelect-select": {
-                    textAlign: "left",
-                    height: '40px',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }
-                }}
-              >
-                {categories.map((category) => (
-                  <MenuItem
-                    key={category.cid}
-                    value={category.cid}
-                    sx={{ justifyContent: "flex-start" }}
-                  >
-                    {category.category_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </Box>
-        )}
 
-        {(formData.business_type === 'self-employed' || formData.business_type === 'business') ? (
-          <>
-            {/* Business Registration Type */}
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <FormControl
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  textAlign: 'left'
-                }}
-              >
-                <InputLabel>Business Registration Type</InputLabel>
-                <Select
-                  name="business_registration_type"
-                  value={registrationType}
-                  label="Business Registration Type"
-                  onChange={handleInputChange}
-                  sx={{
-                    "& .MuiSelect-select": {
-                      textAlign: "left",
-                      height: '40px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }
-                  }}
-                >
-                  {registrationTypeOptions.map((option) => (
-                    <MenuItem key={option} value={option} sx={{ justifyContent: "flex-start" }}>
-                      {option}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+          <Divider sx={{ mb: 4 }} />
 
-            {/* Custom Registration Type Input - Only shown when "Others" is selected */}
-            {showCustomRegistration && (
-              <Box display="flex" justifyContent="flex-start" mb={3}>
+          {/* Basic Information Section */}
+          <Box mb={4}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mb: 3 }}>
+              Basic Information
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
                 <TextField
-                  label="Specify Business Registration Type"
-                  name="custom_registration_type"
-                  value={customRegistrationType}
+                  fullWidth
+                  label="Business Name"
+                  name="businessName"
+                  value={formData.businessName}
                   onChange={handleInputChange}
-                  error={!!errors.custom_registration_type}
-                  helperText={errors.custom_registration_type}
-                  size="small"
-                  sx={{
-                    width: "50%",
-                    '& .MuiInputBase-root': {
-                      height: '40px'
-                    },
-                    '& .MuiInputLabel-root': {
-                      transform: 'translate(14px, 14px) scale(1)',
-                      '&.Mui-focused, &.MuiFormLabel-filled': {
-                        transform: 'translate(14px, -9px) scale(0.75)',
-                      }
-                    }
-                  }}
+                  error={!!errors.businessName}
+                  helperText={errors.businessName}
+                  size="medium"
+                  required
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Business Email"
+                  name="businessEmail"
+                  value={formData.businessEmail}
+                  onChange={handleInputChange}
+                  error={!!errors.businessEmail}
+                  helperText={errors.businessEmail}
+                  size="medium"
+                />
+              </Grid>
+
+              {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth size="medium">
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      name="category_id"
+                      value={formData.category_id}
+                      label="Category"
+                      onChange={handleInputChange}
+                    >
+                      {categories.map((category) => (
+                        <MenuItem key={category.cid} value={category.cid.toString()}>
+                          {category.category_name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              {formData.business_type === 'salary' ? (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Designation"
+                      name="designation"
+                      value={formData.designation}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Salary"
+                      name="salary"
+                      value={formData.salary}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Experience (years)"
+                      name="experience"
+                      value={formData.experience}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                </>
+              ) : (
+                <>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth size="medium">
+                      <InputLabel>Business Registration Type</InputLabel>
+                      <Select
+                        name="registrationNumber"
+                        value={formData.registrationNumber}
+                        label="Business Registration Type"
+                        onChange={handleInputChange}
+                      >
+                        {registrationTypeOptions.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  {formData.registrationNumber === 'Others' && (
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Specify Registration Type"
+                        name="registrationNumberOther"
+                        value={formData.registrationNumberOther}
+                        onChange={handleInputChange}
+                        size="medium"
+                      />
+                    </Grid>
+                  )}
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Business Starting Year"
+                      name="startingYear"
+                      value={formData.startingYear}
+                      onChange={handleInputChange}
+                      size="medium"
+                      type="number"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Staff Size"
+                      name="staffSize"
+                      value={formData.staffSize}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Experience (years)"
+                      name="experience"
+                      value={formData.experience}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                </>
+              )}
+            </Grid>
+          </Box>
+
+          {/* Description Section */}
+          <Box mb={4}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+              {formData.business_type === 'salary' ? 'Job Description' : 'About Business'}
+            </Typography>
+            <TextField
+              fullWidth
+              label={formData.business_type === 'salary' ? 'Job Description' : 'About Business'}
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              multiline
+              rows={4}
+              size="medium"
+            />
+          </Box>
+
+          {/* Address Information for Business/Self-employed */}
+          {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
+            <>
+              <Box mb={4}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mb: 3 }}>
+                  Address Information
+                </Typography>
+                
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Business Address"
+                      name="businessAddress"
+                      value={formData.businessAddress}
+                      onChange={handleInputChange}
+                      multiline
+                      rows={3}
+                      size="medium"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="City"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="State"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      fullWidth
+                      label="Pin Code"
+                      name="zip_code"
+                      value={formData.zip_code}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+
+              {/* Business Work Contract */}
+              <Box mb={4}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Business Work Contract
+                </Typography>
+                <TextField
+                  fullWidth
+                  label="Business Work Contract"
+                  name="business_work_contract"
+                  value={formData.business_work_contract}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={3}
+                  size="medium"
                 />
               </Box>
-            )}
 
-            {/* About Business */}
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="About Business"
-                name="about"
-                value={formData.about}
-                onChange={handleInputChange}
-                multiline
-                rows={3}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    minHeight: '40px',
-                    alignItems: 'flex-start'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-          </>
-        ) : (
-          <>
-            {/* Salary-specific basic fields */}
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Designation"
-                name="designation"
-                value={formData.designation}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
+              {/* Social Media Links */}
+              <Box mb={4}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mb: 3 }}>
+                  Social Media & Links
+                </Typography>
+                
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Tags (comma separated)"
+                      name="tags"
+                      value={formData.tags}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
 
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Salary"
-                name="salary"
-                value={formData.salary}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Website"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
 
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Google Link"
+                      name="google_link"
+                      value={formData.google_link}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
 
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Experience"
-                name="experience"
-                value={formData.experience}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: '50%',
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-          </>
-        )}
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Facebook Link"
+                      name="facebook_link"
+                      value={formData.facebook_link}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
 
-        {/* Address Information */}
-        {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
-          <>
-            <Typography variant="h6" fontWeight="bold" mb={2} sx={{ textAlign: 'center' }}>
-              Address
-            </Typography>
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Company Address"
-                name="company_address"
-                value={formData.company_address}
-                onChange={handleInputChange}
-                multiline
-                rows={2}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    minHeight: '40px',
-                    alignItems: 'flex-start'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Instagram Link"
+                      name="instagram_link"
+                      value={formData.instagram_link}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
 
-            <Box display="flex" flexDirection="row" gap={2} mb={3} sx={{ textAlign: 'left' }}>
-              <TextField
-                label="City"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  flex: 1,
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="State"
-                name="state"
-                value={formData.state}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  flex: 1,
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-              <TextField
-                label="Pin Code"
-                name="zip_code"
-                value={formData.zip_code}
-                onChange={handleInputChange}
-                error={!!errors.zip_code}
-                helperText={errors.zip_code}
-                size="small"
-                sx={{
-                  flex: 1,
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="LinkedIn Link"
+                      name="linkedin_link"
+                      value={formData.linkedin_link}
+                      onChange={handleInputChange}
+                      size="medium"
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            </>
+          )}
 
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Business Starting Year"
-                name="business_starting_year"
-                value={formData.business_starting_year}
-                onChange={handleInputChange}
-                error={!!errors.business_starting_year}
-                helperText={errors.business_starting_year}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Business Work Contract"
-                name="business_work_contract"
-                value={formData.business_work_contract}
-                onChange={handleInputChange}
-                multiline
-                rows={2}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    minHeight: '40px',
-                    alignItems: 'flex-start'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 2, textAlign: 'center', fontWeight: 'bold' }}>
-              Additional Information
-            </Typography>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Staff Size"
-                name="staff_size"
-                value={formData.staff_size}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Referred By"
-                name="source"
-                value={formData.source}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            {/* Social Media Links */}
-            <Typography variant="h6" gutterBottom sx={{ mt: 2, textAlign: 'center', fontWeight: 'bold' }}>
-              Social Media & Links
-            </Typography>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Tags (comma separated)"
-                name="tags"
-                value={formData.tags}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Website"
-                name="website"
-                value={formData.website}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Google Link"
-                name="google_link"
-                value={formData.google_link}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -99px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Facebook Link"
-                name="facebook_link"
-                value={formData.facebook_link}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="Instagram Link"
-                name="instagram_link"
-                value={formData.instagram_link}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            <Box display="flex" justifyContent="flex-start" mb={3}>
-              <TextField
-                label="LinkedIn Link"
-                name="linkedin_link"
-                value={formData.linkedin_link}
-                onChange={handleInputChange}
-                size="small"
-                sx={{
-                  width: "50%",
-                  '& .MuiInputBase-root': {
-                    height: '40px'
-                  },
-                  '& .MuiInputLabel-root': {
-                    transform: 'translate(14px, 14px) scale(1)',
-                    '&.Mui-focused, &.MuiFormLabel-filled': {
-                      transform: 'translate(14px, -9px) scale(0.75)',
-                    }
-                  }
-                }}
-              />
-            </Box>
-
-            {/* Media Section */}
-            <Typography variant="h6" gutterBottom sx={{ mt: 2, textAlign: 'left' }}>
+          {/* Media Section */}
+          <Box mb={4}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main', mb: 3 }}>
               Media
             </Typography>
 
-            {/* Media Gallery */}
-            <Box mt={3} sx={{ textAlign: 'left' }}>
-              <Typography variant="body2" mb={1} sx={{ textAlign: 'left' }}>
-                Upload images and videos:
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => triggerFileSelect('gallery')}
-                sx={{ bgcolor: 'green', mb: 2 }}
-              >
-                Upload Media
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*,video/*"
-                multiple
-                name="mediaGallery"
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-              />
-              <Box display="flex" flexWrap="wrap" gap={2} sx={{ justifyContent: 'flex-start' }}>
-                {formData.mediaGallery.map((media, index) => {
-                  const isVideo = media instanceof File
-                    ? media.type.startsWith('video/')
-                    : media.match(/\.(mp4|webm|ogg)$/i);
-                  const mediaUrl = media instanceof File
-                    ? URL.createObjectURL(media)
-                    : `${baseurl}/${media}`;
-                  return isVideo ? (
-                    <Box key={index} sx={{ textAlign: 'left' }}>
-                      <video
-                        src={mediaUrl}
-                        width="150"
-                        height="130"
-                        controls
-                        style={{ display: 'block' }}
-                      />
+            {/* Profile Image */}
+            {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
+              <Box mb={4}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Profile Image
+                </Typography>
+                <Box display="flex" alignItems="center" gap={3}>
+                  {formData.profileImage ? (
+                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                      {formData.profileImageType === 'video' ? (
+                        <video
+                          src={getFullMediaUrl(formData.profileImage)}
+                          style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', cursor: 'pointer' }}
+                          onClick={() => openMediaPreview(formData.profileImage, formData.profileImageType)}
+                        />
+                      ) : (
+                        <Avatar
+                          src={getFullMediaUrl(formData.profileImage)}
+                          sx={{ width: 120, height: 120, cursor: 'pointer' }}
+                          onClick={() => openMediaPreview(formData.profileImage, formData.profileImageType)}
+                        >
+                          <Business sx={{ fontSize: 50 }} />
+                        </Avatar>
+                      )}
                     </Box>
                   ) : (
-                    <Box key={index} sx={{ textAlign: 'left' }}>
-                      <img
-                        src={mediaUrl}
-                        alt={`media-${index}`}
-                        width="150"
-                        style={{
-                          objectFit: 'cover',
-                          display: 'block'
-                        }}
-                      />
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Box>
-          </>
-        )}
-
-        {/* Save Button */}
-        <Button
-          fullWidth
-          variant="contained"
-          sx={{ mt: 3, bgcolor: 'green' }}
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? <CircularProgress size={24} color="inherit" /> : t('Save Changes')}
-        </Button>
-
-        {/* Remove Business Button (only show if multiple businesses) */}
-        {businesses.length > 1 && (
-          <Button
-            fullWidth
-            variant="outlined"
-            color="error"
-            sx={{ mt: 2 }}
-            onClick={() => handleRemoveBusiness(currentBusinessIndex)}
-            disabled={loading}
-          >
-            Remove This Business
-          </Button>
-        )}
-      </Box>
-
-      {/* Business Selection Dialog */}
-      <Dialog open={businessDialogOpen} onClose={() => setBusinessDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Manage Businesses</DialogTitle>
-        <DialogContent>
-          <Box display="flex" flexDirection="column" gap={2}>
-            {businesses.map((business, index) => (
-              <Box
-                key={index}
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                p={2}
-                sx={{
-                  border: '1px solid #e0e0e0',
-                  borderRadius: 1,
-                  backgroundColor: currentBusinessIndex === index ? '#f5f5f5' : 'white'
-                }}
-              >
-                <Typography>
-                  {business.company_name || `Business ${index + 1}`}
-                </Typography>
-                <Box>
-                  <Button
-                    onClick={() => handleSelectBusiness(index)}
-                    sx={{ mr: 1 }}
-                  >
-                    Select
-                  </Button>
-                  {businesses.length > 1 && (
-                    <Button
-                      color="error"
-                      onClick={() => handleRemoveBusiness(index)}
-                    >
-                      Remove
-                    </Button>
+                    <Avatar sx={{ width: 120, height: 120, bgcolor: 'grey.300' }}>
+                      <Business sx={{ fontSize: 50, color: 'grey.600' }} />
+                    </Avatar>
                   )}
+                  
+                  <Box display="flex" gap={2} flexDirection="column">
+                    <Button
+                      variant="contained"
+                      onClick={() => profileImageInputRef.current?.click()}
+                      startIcon={<CameraAlt />}
+                      sx={{ width: 'fit-content' }}
+                    >
+                      Upload Profile Image/Video
+                    </Button>
+                    {formData.profileImage && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleRemoveProfileImage}
+                        startIcon={<Delete />}
+                        sx={{ width: 'fit-content' }}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </Box>
+                  
+                  <input
+                    type="file"
+                    ref={profileImageInputRef}
+                    onChange={handleProfileImageChange}
+                    accept="image/*,video/*"
+                    style={{ display: 'none' }}
+                  />
                 </Box>
               </Box>
-            ))}
+            )}
+
+            {/* Media Gallery */}
+            <Box>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                Media Gallery
+              </Typography>
+              
+              <Button
+                variant="outlined"
+                onClick={() => mediaGalleryInputRef.current?.click()}
+                startIcon={<Add />}
+                sx={{ mb: 3 }}
+              >
+                Add Media (Images & Videos)
+              </Button>
+              
+              <input
+                type="file"
+                ref={mediaGalleryInputRef}
+                onChange={handleMediaGalleryChange}
+                accept="image/*,video/*"
+                multiple
+                style={{ display: 'none' }}
+              />
+
+              <Grid container spacing={2}>
+                {formData.mediaGallery.map((media, index) => (
+                  <Grid item xs={6} sm={4} md={3} key={index}>
+                    <MediaPreviewComponent
+                      media={media}
+                      onRemove={() => handleRemoveMediaGalleryItem(index)}
+                      editable={true}
+                      onClick={() => openMediaPreview(media.url, media.type)}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+
+              {formData.mediaGallery.length === 0 && (
+                <Typography variant="body2" color="textSecondary" sx={{ mt: 2, textAlign: 'center', fontStyle: 'italic' }}>
+                  No media files added. Click "Add Media" to upload images or videos.
+                </Typography>
+              )}
+            </Box>
+          </Box>
+
+          {/* Submit Buttons */}
+          <Box mt={4} display="flex" gap={2} justifyContent="flex-end">
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/admin/BusinessManagement')}
+              disabled={loading}
+              size="large"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : null}
+              sx={{ bgcolor: 'success.main', minWidth: 150 }}
+              size="large"
+            >
+              {loading ? 'Saving...' : (id ? 'Update Business' : 'Create Business')}
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Media Preview Dialog */}
+      <Dialog 
+        open={mediaPreview.isOpen} 
+        onClose={closeMediaPreview}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Media Preview
+          <IconButton onClick={closeMediaPreview}>
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            {mediaPreview.type === 'video' ? (
+              <video
+                src={mediaPreview.media}
+                controls
+                autoPlay
+                style={{ width: '100%', maxHeight: '70vh' }}
+              />
+            ) : (
+              <img
+                src={mediaPreview.media}
+                alt="Preview"
+                style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+              />
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBusinessDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddNewBusiness} startIcon={<AddIcon />} sx={{ color: 'green' }}>
-            Add New Business
-          </Button>
+          <Button onClick={closeMediaPreview} size="large">Close</Button>
         </DialogActions>
       </Dialog>
 
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+        <Alert 
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
-
-      {/* <Footer /> */}
     </Box>
   );
 };

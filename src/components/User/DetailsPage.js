@@ -203,13 +203,13 @@ const BusinessListing = () => {
 
         if (isMounted.current) {
           // Fixed: Check for the correct data structure - data.data is a single object, not an array
-          if (data.profile) {
+          if (data.data) {
             // Check if the ID matches
-            if (parseInt(data.profile.id) === parseInt(id)) {
-              setBusinessProfile(data.profile);
+            if (parseInt(data.data.id) === parseInt(id)) {
+              setBusinessProfile(data.data);
               console.log("Found business profile:", data.data);
               // Fetch full member details to mirror profile page data
-              const memberId = data.profile.member_id || data.profile.Member?.mid;
+              const memberId = data.data.member_id || data.data.Member?.mid;
               if (memberId) {
                 try {
                   setMemberDetailsLoading(true);
@@ -255,7 +255,7 @@ const BusinessListing = () => {
     fetchBusinessProfile();
   }, [id]);
 
-  // Fetch ratings for the business
+  // Fetch all ratings and filter by business ID
   useEffect(() => {
     if (!id) return;
 
@@ -266,10 +266,10 @@ const BusinessListing = () => {
       try {
         setRatingsError('');
         setRatingsLoading(true);
-        console.log("Fetching ratings for business ID:", id);
+        console.log("Fetching all ratings to filter for business ID:", id);
 
-        const ratingsUrl = `${baseurl}/api/ratings/${id}`;
-        console.log("Fetching ratings from URL:", ratingsUrl);
+        const ratingsUrl = `${baseurl}/api/ratings/all`;
+        console.log("Fetching all ratings from URL:", ratingsUrl);
 
         const response = await fetch(ratingsUrl, {
           credentials: 'include',
@@ -283,12 +283,16 @@ const BusinessListing = () => {
         }
 
         const ratingsData = await response.json();
-        console.log("Ratings API response data:", ratingsData);
+        console.log("All ratings API response data:", ratingsData);
 
         if (isMounted.current) {
           if (ratingsData && ratingsData.data && Array.isArray(ratingsData.data)) {
-            setRatings(ratingsData.data);
-            console.log("Found ratings:", ratingsData.data);
+            // Filter ratings by business ID
+            const businessRatings = ratingsData.data.filter(rating => 
+              parseInt(rating.business_id) === parseInt(id)
+            );
+            console.log("Filtered ratings for business:", businessRatings);
+            setRatings(businessRatings);
           } else {
             console.error("Unexpected ratings API response structure:", ratingsData);
             setRatings([]);
@@ -401,25 +405,40 @@ const BusinessListing = () => {
   // Review Popup Component
   const ReviewPopup = ({ review, onClose }) => {
     if (!review) return null;
-    const ratedBy = review.ratedBy || {};
-    const initials = `${ratedBy.first_name?.charAt(0) || ''}${ratedBy.last_name?.charAt(0) || ''}` || 'NA';
-    const avatarUrl = ratedBy.profile_image
-      ? (ratedBy.profile_image.startsWith('https') ? ratedBy.profile_image : `${baseurl}/${ratedBy.profile_image}`)
-      : '';
+    
+    // Extract reviewer information - adjust based on your API response structure
+    const reviewerName = review.ratedBy 
+      ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim() 
+      : review.member_name || 'Anonymous';
+    
+    const reviewerInitials = reviewerName !== 'Anonymous' 
+      ? reviewerName.split(' ').map(n => n.charAt(0)).join('').toUpperCase()
+      : 'AN';
+    
+    const avatarUrl = review.ratedBy?.profile_image 
+      ? (review.ratedBy.profile_image.startsWith('https') 
+          ? review.ratedBy.profile_image 
+          : `${baseurl}/${review.ratedBy.profile_image}`)
+      : review.member_profile_image 
+        ? (review.member_profile_image.startsWith('https')
+            ? review.member_profile_image
+            : `${baseurl}/${review.member_profile_image}`)
+        : '';
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
         <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-full bg-green-500/90 text-white flex items-center justify-center font-bold text-lg flex-shrink-0 overflow-hidden">
               {avatarUrl ? (
-                <img src={avatarUrl} alt={ratedBy.first_name || 'Reviewer'} className="w-14 h-14 object-cover rounded-full" />
+                <img src={avatarUrl} alt={reviewerName} className="w-14 h-14 object-cover rounded-full" />
               ) : (
-                initials
+                reviewerInitials
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-gray-800 truncate">{`${ratedBy.first_name || ''} ${ratedBy.last_name || ''}`.trim() || 'Anonymous'}</div>
+                <div className="font-semibold text-gray-800 truncate">{reviewerName}</div>
                 <div className="text-sm text-gray-500">{formatRelativeTime(review.createdAt)}</div>
               </div>
               <div className="mt-1">
@@ -428,7 +447,7 @@ const BusinessListing = () => {
             </div>
           </div>
           <div className="mt-4 text-gray-800 whitespace-pre-wrap break-words">
-            {review.message}
+            {review.message || review.review_text || 'No review message provided.'}
           </div>
           <div className="mt-6 text-right">
             <button onClick={onClose} className="px-5 py-2 rounded-full bg-green-600 text-white text-sm font-semibold hover:bg-green-700">Close</button>
@@ -1672,33 +1691,49 @@ const BusinessListing = () => {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
                     {(showAllReviews ? ratings : ratings.slice(0, 3)).map((review, index) => {
-                      const ratedBy = review.ratedBy || {};
-                      const initials = `${ratedBy.first_name?.charAt(0) || ''}${ratedBy.last_name?.charAt(0) || ''}` || 'NA';
+                      const reviewerName = review.ratedBy 
+                        ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim() 
+                        : review.member_name || 'Anonymous';
+                      
+                      const reviewerInitials = reviewerName !== 'Anonymous' 
+                        ? reviewerName.split(' ').map(n => n.charAt(0)).join('').toUpperCase()
+                        : 'AN';
+                      
+                      const avatarUrl = review.ratedBy?.profile_image 
+                        ? (review.ratedBy.profile_image.startsWith('https') 
+                            ? review.ratedBy.profile_image 
+                            : `${baseurl}/${review.ratedBy.profile_image}`)
+                        : review.member_profile_image 
+                          ? (review.member_profile_image.startsWith('https')
+                              ? review.member_profile_image
+                              : `${baseurl}/${review.member_profile_image}`)
+                          : '';
+
                       return (
-                        <div key={review.rid} className="p-4 sm:p-6 bg-white rounded-2xl border border-gray-100 shadow-sm h-48 sm:h-56 flex flex-col text-left">
+                        <div key={review.rid || index} className="p-4 sm:p-6 bg-white rounded-2xl border border-gray-100 shadow-sm h-48 sm:h-56 flex flex-col text-left">
                           <div className="flex items-start gap-3 sm:gap-4">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500/90 text-white flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0">
-                              {ratedBy.profile_image ? (
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500/90 text-white flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0 overflow-hidden">
+                              {avatarUrl ? (
                                 <img
-                                  src={ratedBy.profile_image.startsWith('https') ? ratedBy.profile_image : `${baseurl}/${ratedBy.profile_image}`}
-                                  alt={ratedBy.first_name || 'Reviewer'}
+                                  src={avatarUrl}
+                                  alt={reviewerName}
                                   className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-full"
                                 />
                               ) : (
-                                initials
+                                reviewerInitials
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <div className="font-semibold text-gray-800 truncate text-sm sm:text-base">{`${ratedBy.first_name || ''} ${ratedBy.last_name || ''}`.trim() || 'Anonymous'}</div>
+                                <div className="font-semibold text-gray-800 truncate text-sm sm:text-base">{reviewerName}</div>
                                 <div className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">{formatRelativeTime(review.createdAt)}</div>
                               </div>
                               <div className="mt-1 flex items-center gap-1 text-amber-500">
                                 <StarRating rating={review.rating} size="w-4 h-4" />
                               </div>
                               <div className="relative mt-2 sm:mt-3 text-gray-700 leading-relaxed break-words text-sm sm:text-base">
-                                <div className="max-h-16 overflow-hidden whitespace-pre-wrap">{review.message}</div>
-                                {String(review.message || '').length > 120 && (
+                                <div className="max-h-16 overflow-hidden whitespace-pre-wrap">{review.message || review.review_text || 'No review message provided.'}</div>
+                                {(String(review.message || review.review_text || '').length > 120) && (
                                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent"></div>
                                 )}
                               </div>
@@ -1717,12 +1752,14 @@ const BusinessListing = () => {
                     })}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button 
-                      className="px-8 py-3 border-2 border-green-500 text-green-600 rounded-full font-semibold hover:bg-green-50 transition-all duration-300"
-                      onClick={() => setShowAllReviews(prev => !prev)}
-                    >
-                      {showAllReviews ? 'Show Less' : `View All ${ratings.length} Reviews`}
-                    </button>
+                    {ratings.length > 3 && (
+                      <button 
+                        className="px-8 py-3 border-2 border-green-500 text-green-600 rounded-full font-semibold hover:bg-green-50 transition-all duration-300"
+                        onClick={() => setShowAllReviews(prev => !prev)}
+                      >
+                        {showAllReviews ? 'Show Less' : `View All ${ratings.length} Reviews`}
+                      </button>
+                    )}
                     <button
                       className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300"
                       onClick={() => navigate(`/review/${businessProfile.id}`)}

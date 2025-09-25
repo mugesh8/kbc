@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, Grid3X3, User } from 'lucide-react';
+import { Home, Users, Grid3X3, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const MobileFooter = () => {
@@ -17,10 +17,10 @@ const MobileFooter = () => {
       active: isActive('/home')
     },
     {
-      icon: Search,
-      label: 'Browse',
-      path: '/browse',
-      active: isActive('/browse')
+      icon: Users,
+      label: 'Members',
+      path: '/members',
+      active: isActive('/members')
     },
     {
       icon: Grid3X3,

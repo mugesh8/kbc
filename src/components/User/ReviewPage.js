@@ -14,7 +14,7 @@ const ReviewPage = () => {
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [businessProfile, setBusinessProfile] = useState(null);
+  const [businessName, setBusinessName] = useState('');
   
   // Check authentication on component mount
   useEffect(() => {
@@ -26,35 +26,20 @@ const ReviewPage = () => {
     }
   }, [navigate, t]);
 
-  // Fetch business profile data to get business_id
+  // Get business name from localStorage or use a default
   useEffect(() => {
-    const fetchBusinessProfile = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
-      try {
-        const response = await fetch(`${baseurl}/api/business-profile/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        const data = await response.json();
-        console.log('Business Profile Response:', data);
-        
-        if (data.success && data.data) {
-          setBusinessProfile(data.data);
-        } else {
-          setSnackbar({ open: true, message: data.message || t('errorFetchingBusinessProfile'), severity: 'error' });
-        }
-      } catch (error) {
-        console.error('Error fetching business profile:', error);
-        setSnackbar({ open: true, message: t('errorFetchingBusinessProfile'), severity: 'error' });
-      }
-    };
-    
-    fetchBusinessProfile();
-  }, [id, t]);
+    // You can get business name from various sources:
+    // 1. From localStorage if stored previously
+    // 2. From URL parameters or state if passed
+    // 3. Use a default name
+    const businessData = localStorage.getItem('currentBusiness');
+    if (businessData) {
+      const business = JSON.parse(businessData);
+      setBusinessName(business.company_name || 'Business');
+    } else {
+      setBusinessName('Business'); // Default fallback
+    }
+  }, [id]);
 
   const handleSubmit = async () => {
     const token = localStorage.getItem('token');
@@ -66,11 +51,6 @@ const ReviewPage = () => {
     
     try {
       // Enhanced validation
-      if (!businessProfile) {
-        setSnackbar({ open: true, message: 'Business profile data not loaded', severity: 'error' });
-        return;
-      }
-      
       if (!review.trim()) {
         setSnackbar({ open: true, message: t('reviewRequired'), severity: 'error' });
         return;
@@ -78,26 +58,22 @@ const ReviewPage = () => {
       
       setLoading(true);
       
-      // Log the data for debugging
-      console.log('Business Profile:', businessProfile);
-      
-      // Ensure we have the correct IDs
+      // Get member data from localStorage
       const loggedInMember = JSON.parse(localStorage.getItem('memberData'));
       const memberId = loggedInMember?.mid; // Use logged-in user's ID
-      const businessId = businessProfile.id; // Use id from business profile
       
       if (!memberId) {
         throw new Error('Logged-in Member ID (mid) not found in localStorage');
       }
       
-      if (!businessId) {
-        throw new Error('Business ID not found in business profile');
+      if (!id) {
+        throw new Error('Business ID not found in URL parameters');
       }
       
-      // Create the payload with only required fields that backend expects
+      // Create the payload according to your backend API
       const requestPayload = {
-        member_id: memberId, // logged-in user
-        business_id: businessId, // profile's business
+        member_id: parseInt(memberId), // Ensure it's a number
+        business_id: parseInt(id), // Use the ID from URL parameters
         rating: parseInt(value),
         message: review.trim()
       };
@@ -109,6 +85,14 @@ const ReviewPage = () => {
       
       if (requestPayload.rating < 1 || requestPayload.rating > 5) {
         throw new Error('Rating must be between 1 and 5');
+      }
+      
+      if (isNaN(requestPayload.member_id)) {
+        throw new Error('Invalid member ID');
+      }
+      
+      if (isNaN(requestPayload.business_id)) {
+        throw new Error('Invalid business ID');
       }
       
       console.log('Submitting rating with payload:', requestPayload);
@@ -187,23 +171,21 @@ const ReviewPage = () => {
           <div className="w-10" />
         </div>
 
-        {businessProfile && (
-          <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-base sm:text-lg font-semibold text-gray-900">
-                  {businessProfile.company_name || 'Business'}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                  {businessProfile.business_type || 'Business Type'}
-                </p>
-              </div>
-              <div className="px-2 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-100">
-                {t('rating')}: {value}.0/5
-              </div>
+        <div className="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-base sm:text-lg font-semibold text-gray-900">
+                {businessName}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                Business
+              </p>
+            </div>
+            <div className="px-2 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-100">
+              {t('rating')}: {value}.0/5
             </div>
           </div>
-        )}
+        </div>
 
         <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
           <div>
