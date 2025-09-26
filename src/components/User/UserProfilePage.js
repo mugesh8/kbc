@@ -1125,8 +1125,8 @@ const ProfilePage = () => {
     let textColor = '';
     switch (status?.toLowerCase()) {
       case 'approved':
-        bgColor = 'bg-green-100';
-        textColor = 'text-green-800';
+        bgColor = 'bg-green-500';
+        textColor = 'text-white';
         break;
       case 'pending':
         bgColor = 'bg-yellow-100';
