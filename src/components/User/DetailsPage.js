@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Star, Phone, Globe, MapPin, Clock, Mail, Users, ChevronDown, Briefcase, Building2, User as UserIcon, Tag, X, Award, TrendingUp, Shield, Heart } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
+import MobileFooter from './MobileFooter'; // Adjust the path as needed
 import baseurl from '../../components/Baseurl/baseurl';
 
 const BusinessListing = () => {
@@ -26,7 +27,7 @@ const BusinessListing = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [memberDetails, setMemberDetails] = useState(null);
   const [memberDetailsLoading, setMemberDetailsLoading] = useState(false);
-  
+
   // New state for collapsible sections and popup
   const [expandedSections, setExpandedSections] = useState({
     memberInfo: false,
@@ -52,14 +53,14 @@ const BusinessListing = () => {
       try {
         const profileImg = businessProfile?.business_profile_image
           ? (businessProfile.business_profile_image.startsWith('https')
-              ? businessProfile.business_profile_image
-              : `${baseurl}/${businessProfile.business_profile_image}`)
+            ? businessProfile.business_profile_image
+            : `${baseurl}/${businessProfile.business_profile_image}`)
           : '';
         const memberObj = memberDetails || businessProfile?.Member || {};
         const memberImg = memberObj?.profile_image
           ? (memberObj.profile_image.startsWith('https')
-              ? memberObj.profile_image
-              : `${baseurl}/${memberObj.profile_image}`)
+            ? memberObj.profile_image
+            : `${baseurl}/${memberObj.profile_image}`)
           : '';
         const raw = businessProfile?.media_gallery || '';
         const items = Array.isArray(raw)
@@ -288,7 +289,7 @@ const BusinessListing = () => {
         if (isMounted.current) {
           if (ratingsData && ratingsData.data && Array.isArray(ratingsData.data)) {
             // Filter ratings by business ID
-            const businessRatings = ratingsData.data.filter(rating => 
+            const businessRatings = ratingsData.data.filter(rating =>
               parseInt(rating.business_id) === parseInt(id)
             );
             console.log("Filtered ratings for business:", businessRatings);
@@ -348,7 +349,7 @@ const BusinessListing = () => {
   // Image Popup Component
   const ImagePopup = ({ imageUrl, altText, onClose }) => {
     if (!imageUrl) return null;
-    
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div className="relative max-w-5xl max-h-full">
@@ -405,24 +406,24 @@ const BusinessListing = () => {
   // Review Popup Component
   const ReviewPopup = ({ review, onClose }) => {
     if (!review) return null;
-    
+
     // Extract reviewer information - adjust based on your API response structure
-    const reviewerName = review.ratedBy 
-      ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim() 
+    const reviewerName = review.ratedBy
+      ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim()
       : review.member_name || 'Anonymous';
-    
-    const reviewerInitials = reviewerName !== 'Anonymous' 
+
+    const reviewerInitials = reviewerName !== 'Anonymous'
       ? reviewerName.split(' ').map(n => n.charAt(0)).join('').toUpperCase()
       : 'AN';
-    
-    const avatarUrl = review.ratedBy?.profile_image 
-      ? (review.ratedBy.profile_image.startsWith('https') 
-          ? review.ratedBy.profile_image 
-          : `${baseurl}/${review.ratedBy.profile_image}`)
-      : review.member_profile_image 
+
+    const avatarUrl = review.ratedBy?.profile_image
+      ? (review.ratedBy.profile_image.startsWith('https')
+        ? review.ratedBy.profile_image
+        : `${baseurl}/${review.ratedBy.profile_image}`)
+      : review.member_profile_image
         ? (review.member_profile_image.startsWith('https')
-            ? review.member_profile_image
-            : `${baseurl}/${review.member_profile_image}`)
+          ? review.member_profile_image
+          : `${baseurl}/${review.member_profile_image}`)
         : '';
 
     return (
@@ -469,9 +470,8 @@ const BusinessListing = () => {
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         <button
           onClick={onToggle}
-          className={`w-full px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between transition-all duration-300 ${
-            gradient ? 'bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100' : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-green-50'
-          }`}
+          className={`w-full px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between transition-all duration-300 ${gradient ? 'bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100' : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-green-50'
+            }`}
         >
           <div className="flex items-center gap-3 sm:gap-4">
             {Icon && (
@@ -592,8 +592,8 @@ const BusinessListing = () => {
   const heroImageUrl = profileImageUrl
     ? profileImageUrl
     : (memberProfileImageUrl
-        ? memberProfileImageUrl
-        : (heroBackgroundUrl || '/fallback.png'));
+      ? memberProfileImageUrl
+      : (heroBackgroundUrl || '/fallback.png'));
 
   // Helper: Build Google Maps URL for an address string
   const buildMapsUrl = (addressString) => {
@@ -677,7 +677,7 @@ const BusinessListing = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50">
       <Header />
-      
+
       {/* Image Popup */}
       {showImagePopup && (
         <ImagePopup
@@ -697,7 +697,7 @@ const BusinessListing = () => {
               <div className="absolute top-32 right-20 w-16 h-16 bg-white rounded-full animate-pulse delay-300"></div>
               <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white rounded-full animate-pulse delay-700"></div>
             </div>
-            
+
             {/* Background image */}
             {heroImageUrl && (
               <img
@@ -706,7 +706,7 @@ const BusinessListing = () => {
                 className="absolute inset-0 w-full h-full object-cover z-0"
               />
             )}
-            
+
             <div className="absolute inset-x-0 bottom-0 px-4 sm:px-6 pb-6 sm:pb-8 z-20">
               <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
@@ -714,7 +714,7 @@ const BusinessListing = () => {
                   <div className="relative flex-shrink-0">
                     <div className="relative">
                       <div className="w-24 h-24 md:w-28 md:h-28 bg-white rounded-3xl p-1 shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105">
-                        <div 
+                        <div
                           className="w-full h-full rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center"
                           onClick={() => memberProfileImageUrl && setShowImagePopup(true)}
                         >
@@ -737,7 +737,7 @@ const BusinessListing = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Enhanced Title Section */}
                   <div className="flex-1 text-center md:text-left">
                     <div className="mb-4">
@@ -758,7 +758,7 @@ const BusinessListing = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons removed as requested */}
                 </div>
               </div>
@@ -790,7 +790,7 @@ const BusinessListing = () => {
                 </a>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
                 <Phone className="w-5 h-5 text-white" />
@@ -809,7 +809,7 @@ const BusinessListing = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl">
               <div className="p-3 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-md">
                 <Globe className="w-5 h-5 text-white" />
@@ -914,7 +914,7 @@ const BusinessListing = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Contact Information */}
             <div className="space-y-4">
               <h4 className="font-semibold text-green-800 border-b pb-2 text-left">Contact Information</h4>
@@ -984,7 +984,7 @@ const BusinessListing = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Emergency & Cultural Information */}
             <div className="space-y-4">
               <h4 className="font-semibold text-green-800 border-b pb-2 text-left">Emergency & Cultural</h4>
@@ -1032,11 +1032,10 @@ const BusinessListing = () => {
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Access Level</span>
                   <p className="text-gray-600">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      resolvedMember?.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
-                      resolvedMember?.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${resolvedMember?.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
+                        resolvedMember?.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
+                          'bg-blue-100 text-blue-800'
+                      }`}>
                       {resolvedMember?.access_level || 'Basic'}
                     </span>
                   </p>
@@ -1047,12 +1046,11 @@ const BusinessListing = () => {
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Status</span>
                   <p className="text-gray-600">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      resolvedMember?.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                      resolvedMember?.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      resolvedMember?.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${resolvedMember?.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
+                        resolvedMember?.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          resolvedMember?.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                      }`}>
                       {resolvedMember?.status || 'Unknown'}
                     </span>
                   </p>
@@ -1060,7 +1058,7 @@ const BusinessListing = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Address Section */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <h4 className="font-semibold text-green-800 mb-4 text-left">Address Information</h4>
@@ -1117,7 +1115,7 @@ const BusinessListing = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Social Media Section */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <h4 className="font-semibold text-green-800 mb-4 text-left">Social Media & Online Presence</h4>
@@ -1166,7 +1164,7 @@ const BusinessListing = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Referral Information (only show if exists) */}
           {resolvedMember?.Referral && (
             <div className="mt-8 pt-6 border-t border-gray-200">
@@ -1260,7 +1258,7 @@ const BusinessListing = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-6 bg-white rounded-2xl border border-green-100 text-left">
                 <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-green-600" />
@@ -1330,7 +1328,7 @@ const BusinessListing = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Right Column */}
             <div className="space-y-6">
               <div className="p-6 bg-white rounded-2xl border border-purple-100 text-left">
@@ -1340,43 +1338,43 @@ const BusinessListing = () => {
                 </h4>
                 <div className="space-y-3 text-sm text-left">
                   {businessProfile.website && (
-                    <a href={businessProfile.website} target="_blank" rel="noopener noreferrer" 
-                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
+                    <a href={businessProfile.website} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <Globe className="w-5 h-5 text-blue-500" />
                       <span className="text-gray-700 group-hover:text-blue-600 break-all">{businessProfile.website}</span>
                     </a>
                   )}
                   {businessProfile.google_link && (
                     <a href={businessProfile.google_link} target="_blank" rel="noopener noreferrer"
-                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
+                      className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <Globe className="w-5 h-5 text-red-500" />
                       <span className="text-gray-700 group-hover:text-red-600">Google Link</span>
                     </a>
                   )}
                   {businessProfile.facebook_link && (
                     <a href={businessProfile.facebook_link} target="_blank" rel="noopener noreferrer"
-                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
+                      className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <div className="w-5 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">f</div>
                       <span className="text-gray-700 group-hover:text-blue-600">Facebook</span>
                     </a>
                   )}
                   {businessProfile.instagram_link && (
                     <a href={businessProfile.instagram_link} target="_blank" rel="noopener noreferrer"
-                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
+                      className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded text-white text-xs flex items-center justify-center font-bold">ig</div>
                       <span className="text-gray-700 group-hover:text-purple-600">Instagram</span>
                     </a>
                   )}
                   {businessProfile.linkedin_link && (
                     <a href={businessProfile.linkedin_link} target="_blank" rel="noopener noreferrer"
-                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
+                      className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <div className="w-5 h-5 bg-blue-700 rounded text-white text-xs flex items-center justify-center font-bold">in</div>
                       <span className="text-gray-700 group-hover:text-blue-600">LinkedIn</span>
                     </a>
                   )}
                 </div>
               </div>
-              
+
               <div className="p-6 bg-white rounded-2xl border border-amber-100 text-left">
                 <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-green-600" />
@@ -1456,10 +1454,10 @@ const BusinessListing = () => {
                     {isVideo ? (
                       <video src={url} className="w-full h-full object-cover" muted />
                     ) : (
-                      <img 
-                        src={url} 
-                        alt={`Business Media ${idx + 1}`} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      <img
+                        src={url}
+                        alt={`Business Media ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
@@ -1680,7 +1678,7 @@ const BusinessListing = () => {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800 mb-3">No reviews yet</h3>
                   <p className="text-gray-600 mb-6">Be the first to review this business!</p>
-                  <button 
+                  <button
                     className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-semibold hover:from-green-600 hover:to-emerald-700 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl"
                     onClick={() => navigate(`/review/${businessProfile.id}`)}
                   >
@@ -1691,22 +1689,22 @@ const BusinessListing = () => {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10">
                     {(showAllReviews ? ratings : ratings.slice(0, 3)).map((review, index) => {
-                      const reviewerName = review.ratedBy 
-                        ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim() 
+                      const reviewerName = review.ratedBy
+                        ? `${review.ratedBy.first_name || ''} ${review.ratedBy.last_name || ''}`.trim()
                         : review.member_name || 'Anonymous';
-                      
-                      const reviewerInitials = reviewerName !== 'Anonymous' 
+
+                      const reviewerInitials = reviewerName !== 'Anonymous'
                         ? reviewerName.split(' ').map(n => n.charAt(0)).join('').toUpperCase()
                         : 'AN';
-                      
-                      const avatarUrl = review.ratedBy?.profile_image 
-                        ? (review.ratedBy.profile_image.startsWith('https') 
-                            ? review.ratedBy.profile_image 
-                            : `${baseurl}/${review.ratedBy.profile_image}`)
-                        : review.member_profile_image 
+
+                      const avatarUrl = review.ratedBy?.profile_image
+                        ? (review.ratedBy.profile_image.startsWith('https')
+                          ? review.ratedBy.profile_image
+                          : `${baseurl}/${review.ratedBy.profile_image}`)
+                        : review.member_profile_image
                           ? (review.member_profile_image.startsWith('https')
-                              ? review.member_profile_image
-                              : `${baseurl}/${review.member_profile_image}`)
+                            ? review.member_profile_image
+                            : `${baseurl}/${review.member_profile_image}`)
                           : '';
 
                       return (
@@ -1753,7 +1751,7 @@ const BusinessListing = () => {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     {ratings.length > 3 && (
-                      <button 
+                      <button
                         className="px-8 py-3 border-2 border-green-500 text-green-600 rounded-full font-semibold hover:bg-green-50 transition-all duration-300"
                         onClick={() => setShowAllReviews(prev => !prev)}
                       >
@@ -1789,6 +1787,9 @@ const BusinessListing = () => {
 
       <div className="hidden md:block">
         <Footer />
+      </div>
+      <div className="md:hidden">
+        <MobileFooter />
       </div>
     </div>
   );

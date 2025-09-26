@@ -68,7 +68,7 @@ const registerMember = async (req, res) => {
 
         // Destructure member data
         let {
-            first_name, last_name, email, password,
+            first_name, email, password,
             dob, gender, join_date, aadhar_no,
             blood_group, contact_no, alternate_contact_no,
             marital_status, address, city, state, zip_code,
@@ -105,7 +105,6 @@ const registerMember = async (req, res) => {
         // Create member
         const newMember = await Member.create({
             first_name,
-            last_name: last_name || null,
             email,
             password: hashedPassword,
             dob, gender, join_date, aadhar_no, blood_group,

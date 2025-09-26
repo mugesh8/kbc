@@ -98,8 +98,8 @@ const uploadBusinessProfileMedia = (req, res, next) => {
     ];
 
     for (let i = 0; i < maxProfiles; i++) {
-      fields.push({ name: `business_profile_image`, maxCount: 1 });
-      fields.push({ name: `media_gallery`, maxCount: 5 });
+      fields.push({ name: `business_profile_image_${i}`, maxCount: 1 });
+      fields.push({ name: `media_gallery_${i}`, maxCount: 5 });
     }
 
     upload.fields(fields)(req, res, (err) => {
