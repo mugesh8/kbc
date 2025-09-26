@@ -60,6 +60,7 @@ const FamilyInformation = () => {
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
@@ -126,23 +127,54 @@ const FamilyInformation = () => {
         setDeleteDialogOpen(true);
     };
 
-    const handleDeleteConfirm = async (id) => {
+    // Fixed delete function
+    const handleDeleteConfirm = async () => {
+        if (!selectedMember || !selectedMember.MemberFamily || !selectedMember.MemberFamily.id) {
+            console.error('No family ID found for deletion');
+            setDeleteDialogOpen(false);
+            return;
+        }
+
         try {
-            const response = await fetch(`${baseurl}/api/family/delete/${id}`, {
+            setDeleteLoading(true);
+            const familyId = selectedMember.MemberFamily.id;
+            
+            const response = await fetch(`${baseurl}/api/family/delete/${familyId}`, {
                 method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('Failed to delete family record');
+                throw new Error(data.msg || 'Failed to delete family record');
             }
 
             console.log('Family record deleted successfully');
-            // Refresh list or update state here
+            
+            // Update the members state by removing the deleted family record
+            setMembers(prevMembers => 
+                prevMembers.map(member => 
+                    member.mid === selectedMember.mid 
+                        ? { ...member, MemberFamily: null }
+                        : member
+                ).filter(member => member.MemberFamily !== null)
+            );
+
+            // Close dialog and reset selected member
+            setDeleteDialogOpen(false);
+            setSelectedMember(null);
+
         } catch (error) {
             console.error('Error deleting family record:', error);
+            // You might want to show an error message to the user here
+            alert('Failed to delete family record: ' + error.message);
+        } finally {
+            setDeleteLoading(false);
         }
     };
-
 
     const handleExport = () => {
         // Prepare data for export
@@ -200,24 +232,10 @@ const FamilyInformation = () => {
                     </Box>
 
                     <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
-                        {/* <Button
-                            variant="contained"
-                            startIcon={<FamilyRestroomIcon />}
-                            onClick={handleEditFamily} 
-                            sx={{
-                                backgroundColor: '#4CAF50',
-                                '&:hover': { backgroundColor: '#45a049' },
-                                px: 3,
-                                py: 1.5,
-                                fontWeight: 600
-                            }}
-                        >
-                            Edit Family
-                        </Button> */}
                         <Button
                             variant="outlined"
                             startIcon={<FileDownload />}
-                            onClick={handleExport} // Add this onClick handler
+                            onClick={handleExport}
                             sx={{
                                 borderColor: '#ddd',
                                 color: '#666',
@@ -575,11 +593,10 @@ const FamilyInformation = () => {
                 </DialogContent>
             </Dialog>
 
-
             {/* Delete Confirmation Dialog */}
             <Dialog
                 open={deleteDialogOpen}
-                onClose={() => setDeleteDialogOpen(false)}
+                onClose={() => !deleteLoading && setDeleteDialogOpen(false)}
                 maxWidth="xs"
                 fullWidth
             >
@@ -597,10 +614,16 @@ const FamilyInformation = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                         This action cannot be undone. All associated family data will be permanently removed.
                     </Typography>
+                    {selectedMember && selectedMember.MemberFamily && (
+                        <Typography variant="body2" sx={{ mt: 2, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                            Family ID: {selectedMember.MemberFamily.id}
+                        </Typography>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
                     <Button
                         onClick={() => setDeleteDialogOpen(false)}
+                        disabled={deleteLoading}
                         sx={{
                             color: '#666',
                             '&:hover': { backgroundColor: '#f5f5f5' }
@@ -613,12 +636,13 @@ const FamilyInformation = () => {
                         variant="contained"
                         color="error"
                         startIcon={<Delete />}
+                        disabled={deleteLoading}
                         sx={{
                             backgroundColor: '#d32f2f',
                             '&:hover': { backgroundColor: '#b71c1c' }
                         }}
                     >
-                        Delete
+                        {deleteLoading ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>

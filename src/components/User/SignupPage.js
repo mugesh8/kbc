@@ -14,12 +14,12 @@ const TopHeader = React.memo(({ navigate }) => (
             <img
               src="/image.png"
               alt="profile"
-              className="w-16 h-16 rounded-full object-cover"
+              className="w-full h-full object-cover"
             />
           </div>
           <div className="hidden sm:block">
             <h1 className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Your Company
+              KBC
             </h1>
           </div>
         </div>
@@ -816,9 +816,17 @@ const BusinessProfile = React.memo(({
   </StepContainer>
 ));
 
-// Autocomplete field for family member names with phone autofill
-const NameAutocompleteField = React.memo(({ label, nameValue, contactValue, onNameChange, onContactChange, suggestionsSource }) => {
-  const [localQuery, setLocalQuery] = useState('');
+// Fixed Autocomplete field for family member names with phone autofill
+const NameAutocompleteField = React.memo(({ 
+  label, 
+  nameValue, 
+  contactValue, 
+  onNameChange, 
+  onContactChange, 
+  suggestionsSource,
+  error 
+}) => {
+  const [localQuery, setLocalQuery] = useState(nameValue || '');
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -826,32 +834,38 @@ const NameAutocompleteField = React.memo(({ label, nameValue, contactValue, onNa
   }, [nameValue]);
 
   const filtered = (suggestionsSource || [])
-    .filter(s =>
-      (s.name || '').toLowerCase().includes((localQuery || '').toLowerCase()) ||
-      (s.phone || '').includes((localQuery || ''))
-    )
+    .filter(s => {
+      const nameMatch = (s.name || '').toLowerCase().includes((localQuery || '').toLowerCase());
+      const phoneMatch = (s.phone || '').includes((localQuery || ''));
+      return nameMatch || phoneMatch;
+    })
     .slice(0, 8);
 
   const handleSelect = (item) => {
-    onNameChange(item.name);
-    if (item.phone) onContactChange(item.phone);
+    // Update both name and contact fields when a suggestion is selected
+    if (onNameChange) onNameChange(item.name || '');
+    if (onContactChange) onContactChange(item.phone || '');
+    setLocalQuery(item.name || '');
     setIsOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setLocalQuery(value);
+    if (onNameChange) onNameChange(value);
+    setIsOpen(true);
   };
 
   return (
     <div className="mb-4 relative">
       <label className="block text-gray-800 text-sm font-semibold mb-2">{label}</label>
       <input
-        value={localQuery || ''}
-        onChange={(e) => {
-          setLocalQuery(e.target.value);
-          onNameChange(e.target.value);
-          setIsOpen(true);
-        }}
+        value={localQuery}
+        onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
         placeholder={`Enter ${label.toLowerCase()}`}
-        className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm border-gray-200"
+        className={`w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm ${error ? 'border-red-500' : 'border-gray-200'}`}
       />
       {isOpen && localQuery && filtered.length > 0 && (
         <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-auto">
@@ -860,7 +874,7 @@ const NameAutocompleteField = React.memo(({ label, nameValue, contactValue, onNa
               type="button"
               key={idx}
               className="w-full text-left px-4 py-2 hover:bg-green-50 flex items-center justify-between"
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
               onClick={() => handleSelect(item)}
             >
               <span className="text-gray-800">{item.name}</span>
@@ -869,135 +883,155 @@ const NameAutocompleteField = React.memo(({ label, nameValue, contactValue, onNa
           ))}
         </div>
       )}
+      {error && <p className="mt-1 text-red-500 text-sm">{error}</p>}
     </div>
   );
 });
 
-const FamilyDetails = React.memo(({ formData, createInputChangeHandler, createNumericInputChangeHandler, handleInputChange, nextStep, loading, error, memberSuggestions, onFillFamily, validationErrors }) => (
-  <StepContainer>
-    <div className="max-w-2xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Family Details</h2>
-        <p className="text-gray-600">Please provide your family information</p>
-      </div>
-      <div className="space-y-4 text-left">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <NameAutocompleteField
-            label="Father Name"
-            nameValue={formData.father_name}
-            contactValue={formData.father_contact}
-            suggestionsSource={memberSuggestions}
-            onNameChange={(val) => onFillFamily('father', { name: val, phone: formData.father_contact })}
-            onContactChange={(val) => onFillFamily('father', { name: formData.father_name, phone: val })}
-          />
-          <InputField
-            label="Father Contact"
-            name="father_contact"
-            placeholder="Enter father's contact number"
-            value={formData.father_contact}
-            onChange={createNumericInputChangeHandler('father_contact')}
-          />
+const FamilyDetails = React.memo(({ 
+  formData, 
+  createInputChangeHandler, 
+  createNumericInputChangeHandler, 
+  handleInputChange, 
+  nextStep, 
+  loading, 
+  error, 
+  memberSuggestions, 
+  onFillFamily, 
+  validationErrors 
+}) => {
+  
+  // Handler for name field changes
+  const handleNameChange = (role, field, value) => {
+    onFillFamily(role, { [field]: value });
+  };
+
+  return (
+    <StepContainer>
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Family Details</h2>
+          <p className="text-gray-600">Please provide your family information</p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <NameAutocompleteField
-            label="Mother Name"
-            nameValue={formData.mother_name}
-            contactValue={formData.mother_contact}
-            suggestionsSource={memberSuggestions}
-            onNameChange={(val) => onFillFamily('mother', { name: val, phone: formData.mother_contact })}
-            onContactChange={(val) => onFillFamily('mother', { name: formData.mother_name, phone: val })}
-          />
-          <InputField
-            label="Mother Contact"
-            name="mother_contact"
-            placeholder="Enter mother's contact number"
-            value={formData.mother_contact}
-            onChange={createNumericInputChangeHandler('mother_contact')}
-          />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <NameAutocompleteField
-            label="Spouse Name"
-            nameValue={formData.spouse_name}
-            contactValue={formData.spouse_contact}
-            suggestionsSource={memberSuggestions}
-            onNameChange={(val) => onFillFamily('spouse', { name: val, phone: formData.spouse_contact })}
-            onContactChange={(val) => onFillFamily('spouse', { name: formData.spouse_name, phone: val })}
-          />
-          <InputField
-            label="Spouse Contact"
-            name="spouse_contact"
-            placeholder="Enter spouse's contact number"
-            value={formData.spouse_contact}
-            onChange={createNumericInputChangeHandler('spouse_contact')}
-          />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <InputField
-            label="Number of Children"
-            name="number_of_children"
-            placeholder="Enter number of children"
-            value={formData.number_of_children}
-            onChange={createInputChangeHandler('number_of_children')}
-          />
-          <InputField
-            label="Family Address"
-            name="family_address"
-            placeholder="Enter family address"
-            value={formData.family_address}
-            onChange={createInputChangeHandler('family_address')}
-          />
-        </div>
-        <div className="mb-6">
-          <label className="block text-gray-800 text-sm font-semibold mb-2">Children Names</label>
-          <textarea
-            placeholder="Enter children names (separated by comma)"
-            rows={4}
-            name="children_names"
-            value={formData.children_names}
-            onChange={createInputChangeHandler('children_names')}
-            className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 resize-none bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
-          />
+        <div className="space-y-4 text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <NameAutocompleteField
+              label="Father Name"
+              nameValue={formData.father_name}
+              contactValue={formData.father_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => handleNameChange('father', 'name', val)}
+              onContactChange={(val) => handleNameChange('father', 'phone', val)}
+            />
+            <InputField
+              label="Father Contact"
+              name="father_contact"
+              placeholder="Enter father's contact number"
+              value={formData.father_contact}
+              onChange={createNumericInputChangeHandler('father_contact')}
+            />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <NameAutocompleteField
+              label="Mother Name"
+              nameValue={formData.mother_name}
+              contactValue={formData.mother_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => handleNameChange('mother', 'name', val)}
+              onContactChange={(val) => handleNameChange('mother', 'phone', val)}
+            />
+            <InputField
+              label="Mother Contact"
+              name="mother_contact"
+              placeholder="Enter mother's contact number"
+              value={formData.mother_contact}
+              onChange={createNumericInputChangeHandler('mother_contact')}
+            />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <NameAutocompleteField
+              label="Spouse Name"
+              nameValue={formData.spouse_name}
+              contactValue={formData.spouse_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => handleNameChange('spouse', 'name', val)}
+              onContactChange={(val) => handleNameChange('spouse', 'phone', val)}
+            />
+            <InputField
+              label="Spouse Contact"
+              name="spouse_contact"
+              placeholder="Enter spouse's contact number"
+              value={formData.spouse_contact}
+              onChange={createNumericInputChangeHandler('spouse_contact')}
+            />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <InputField
+              label="Number of Children"
+              name="number_of_children"
+              placeholder="Enter number of children"
+              value={formData.number_of_children}
+              onChange={createInputChangeHandler('number_of_children')}
+            />
+            <InputField
+              label="Family Address"
+              name="family_address"
+              placeholder="Enter family address"
+              value={formData.family_address}
+              onChange={createInputChangeHandler('family_address')}
+            />
+          </div>
+          <div className="mb-6">
+            <label className="block text-gray-800 text-sm font-semibold mb-2">Children Names</label>
+            <textarea
+              placeholder="Enter children names (separated by comma)"
+              rows={4}
+              name="children_names"
+              value={formData.children_names}
+              onChange={createInputChangeHandler('children_names')}
+              className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 resize-none bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
+            />
+          </div>
+          
+          {/* Terms and Conditions */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                name="accepted_terms"
+                checked={!!formData.accepted_terms}
+                onChange={handleInputChange}
+                className={`mt-1 w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 ${validationErrors.accepted_terms ? 'ring-2 ring-red-500' : ''}`}
+              />
+              <span className="text-sm text-gray-700">
+                I agree to the
+                {' '}<Link to="/terms?embed=1" className="text-green-700 underline hover:text-green-800">Terms & Conditions</Link>
+                {' '}and consent to my information being used by KBC for the business directory.
+              </span>
+            </label>
+            {validationErrors.accepted_terms && (
+              <p className="mt-2 text-red-500 text-sm ml-7">{validationErrors.accepted_terms}</p>
+            )}
+          </div>
         </div>
         
-        {/* Terms and Conditions */}
-        <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="accepted_terms"
-              checked={!!formData.accepted_terms}
-              onChange={handleInputChange}
-              className={`mt-1 w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 ${validationErrors.accepted_terms ? 'ring-2 ring-red-500' : ''}`}
-            />
-            <span className="text-sm text-gray-700">
-              I agree to the
-              {' '}<Link to="/terms?embed=1" className="text-green-700 underline hover:text-green-800">Terms & Conditions</Link>
-              {' '}and consent to my information being used by KBC for the business directory.
-            </span>
-          </label>
-          {validationErrors.accepted_terms && (
-            <p className="mt-2 text-red-500 text-sm ml-7">{validationErrors.accepted_terms}</p>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={nextStep}
+          className="w-full mt-8 bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+          disabled={loading}
+        >
+          {loading ? 'Creating Account...' : 'Create Account'}
+        </button>
+        {error && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
       </div>
-      
-      <button
-        type="button"
-        onClick={nextStep}
-        className="w-full mt-8 bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-        disabled={loading}
-      >
-        {loading ? 'Creating Account...' : 'Create Account'}
-      </button>
-      {error && (
-        <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-    </div>
-  </StepContainer>
-));
+    </StepContainer>
+  );
+});
 
 const CompleteStep = React.memo(({ navigate }) => (
   <StepContainer>
@@ -1488,12 +1522,12 @@ const SignupForm = () => {
     });
   }, []);
 
-  // Autofill handler for family fields from suggestions
-  const handleFillFamilyFromSuggestion = useCallback((role, { name, phone }) => {
+  // Fixed autofill handler for family fields from suggestions
+  const handleFillFamilyFromSuggestion = useCallback((role, updates) => {
     setFormData(prev => ({
       ...prev,
-      [`${role}_name`]: name !== undefined ? name : prev[`${role}_name`],
-      [`${role}_contact`]: phone !== undefined ? (String(phone || '').replace(/\D+/g, '')) : prev[`${role}_contact`]
+      ...(updates.name !== undefined && { [`${role}_name`]: updates.name }),
+      ...(updates.phone !== undefined && { [`${role}_contact`]: (String(updates.phone || '').replace(/\D+/g, '')) })
     }));
   }, []);
 
@@ -1635,8 +1669,6 @@ const SignupForm = () => {
       setLoading(false);
     }
   };
-
-
 
   const renderCurrentStep = () => {
     switch (currentStep) {

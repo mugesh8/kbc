@@ -1660,15 +1660,12 @@ const ProfilePage = () => {
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <div className="flex items-center space-x-2">
                   <div className="flex items-center space-x-1">
-                    <CheckCircle className="w-4 h-4 text-white" />
                     <StatusBadge status={profileData.personal.status} />
                   </div>
                   <div className="flex items-center space-x-1">
-                    <Shield className="w-4 h-4 text-white" />
                     <AccessLevelBadge level={profileData.personal.accessLevel} />
                   </div>
                   <div className="flex items-center space-x-1">
-                    <CreditCard className="w-4 h-4 text-white" />
                     <PaidStatusBadge status={profileData.personal.paidStatus} />
                   </div>
                 </div>
@@ -2635,5 +2632,6 @@ const ProfilePage = () => {
     </div>
   );
 };
+
 
 export default ProfilePage;
