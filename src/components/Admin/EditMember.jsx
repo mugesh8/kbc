@@ -17,6 +17,11 @@ import {
   CardContent,
   CardHeader,
   Grid,
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Switch,
+  FormLabel,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import Footer from '../User/Footer';
@@ -47,6 +52,17 @@ const EditMember = () => {
   // State for profile image
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // State for additional forum memberships
+  const [forumMemberships, setForumMemberships] = useState({
+    arakattalai_member: false,
+    kns_member: false,
+    kbn_member: false,
+    bni: false,
+    rotary: false,
+    lions: false,
+    other_forums: ''
+  });
 
   const [formData, setFormData] = useState({
     // Basic Details
@@ -84,7 +100,15 @@ const EditMember = () => {
     status: 'Pending',
     access_level: 'Basic',
     profile_image: '',
-    rejection_reason: ''
+    rejection_reason: '',
+    // Additional forum fields
+    arakattalai_member: false,
+    kns_member: false,
+    kbn_member: false,
+    bni: false,
+    rotary: false,
+    lions: false,
+    other_forums: ''
   });
 
   useEffect(() => {
@@ -144,8 +168,27 @@ const EditMember = () => {
             status: memberData.status || 'Pending',
             access_level: memberData.access_level || 'Basic',
             profile_image: memberData.profile_image || '',
-            rejection_reason: memberData.rejection_reason || ''
+            rejection_reason: memberData.rejection_reason || '',
+            // Additional forum fields
+            arakattalai_member: memberData.arakattalai_member || false,
+            kns_member: memberData.kns_member || false,
+            kbn_member: memberData.kbn_member || false,
+            bni: memberData.bni || false,
+            rotary: memberData.rotary || false,
+            lions: memberData.lions || false,
+            other_forums: memberData.other_forums || ''
           };
+
+          // Set forum memberships state
+          setForumMemberships({
+            arakattalai_member: memberData.arakattalai_member || false,
+            kns_member: memberData.kns_member || false,
+            kbn_member: memberData.kbn_member || false,
+            bni: memberData.bni || false,
+            rotary: memberData.rotary || false,
+            lions: memberData.lions || false,
+            other_forums: memberData.other_forums || ''
+          });
 
           // Initialize custom values if existing value is not in predefined options
           const genderOptions = ['male', 'female', 'Others'];
@@ -211,6 +254,38 @@ const EditMember = () => {
     }));
   };
 
+  const handleForumMembershipChange = (e) => {
+    const { name, checked } = e.target;
+    
+    // Update forum memberships state
+    setForumMemberships(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+
+    // Update main form data
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+  };
+
+  const handleOtherForumsChange = (e) => {
+    const { value } = e.target;
+    
+    // Update forum memberships state
+    setForumMemberships(prev => ({
+      ...prev,
+      other_forums: value
+    }));
+
+    // Update main form data
+    setFormData(prev => ({
+      ...prev,
+      other_forums: value
+    }));
+  };
+
   const handleImageChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -272,6 +347,14 @@ const EditMember = () => {
           formDataObj.append(key, value);
         }
       });
+
+      // Append boolean values for forum memberships (they should be sent even if false)
+      formDataObj.append('arakattalai_member', formDataToSend.arakattalai_member);
+      formDataObj.append('kns_member', formDataToSend.kns_member);
+      formDataObj.append('kbn_member', formDataToSend.kbn_member);
+      formDataObj.append('bni', formDataToSend.bni);
+      formDataObj.append('rotary', formDataToSend.rotary);
+      formDataObj.append('lions', formDataToSend.lions);
 
       // Append image if selected
       if (selectedImage) {
@@ -553,7 +636,6 @@ const EditMember = () => {
     instagram: { label: t('Instagram'), type: 'text' },
     twitter: { label: t('Twitter'), type: 'text' },
     youtube: { label: t('YouTube'), type: 'text' },
-
   };
 
   return (
@@ -737,6 +819,173 @@ const EditMember = () => {
                   {renderField(fieldName, config)}
                 </Grid>
               ))}
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Additional Details Section - Forum Memberships */}
+        <Card sx={{ mb: 3 }}>
+          <CardHeader
+            title="Additional Details"
+            titleTypographyProps={{
+              variant: "h6",
+              color: "green",
+              borderBottom: '2px solid #e0e0e0',
+            }}
+          />
+          <CardContent>
+            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+              Forum Memberships
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <FormControl component="fieldset" fullWidth>
+                  {/* <FormLabel component="legend" sx={{ mb: 1 }}>Membership Status</FormLabel> */}
+                  <FormGroup>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.arakattalai_member}
+                          onChange={handleForumMembershipChange}
+                          name="arakattalai_member"
+                          color="success"
+                        />
+                      }
+                      label="Arakattalai Member"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.kns_member}
+                          onChange={handleForumMembershipChange}
+                          name="kns_member"
+                          color="success"
+                        />
+                      }
+                      label="KNS Member"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.kbn_member}
+                          onChange={handleForumMembershipChange}
+                          name="kbn_member"
+                          color="success"
+                        />
+                      }
+                      label="KBN Member"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                  </FormGroup>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl component="fieldset" fullWidth>
+                  {/* <FormLabel component="legend" sx={{ mb: 1 }}>Membership Status</FormLabel> */}
+                  <FormGroup>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.bni}
+                          onChange={handleForumMembershipChange}
+                          name="bni"
+                          color="success"
+                        />
+                      }
+                      label="BNI"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.rotary}
+                          onChange={handleForumMembershipChange}
+                          name="rotary"
+                          color="success"
+                        />
+                      }
+                      label="Rotary"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={forumMemberships.lions}
+                          onChange={handleForumMembershipChange}
+                          name="lions"
+                          color="success"
+                        />
+                      }
+                      label="Lions"
+                      labelPlacement="start"
+                      sx={{ 
+                        justifyContent: 'space-between',
+                        marginLeft: 0,
+                        marginRight: 0,
+                        '& .MuiFormControlLabel-label': {
+                          flex: 1
+                        }
+                      }}
+                    />
+                  </FormGroup>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  margin="dense"
+                  label="Other Forums (Optional)"
+                  name="other_forums"
+                  value={forumMemberships.other_forums}
+                  onChange={handleOtherForumsChange}
+                  placeholder="Please specify other forum memberships"
+                  inputProps={{
+                    style: { textAlign: "left" }
+                  }}
+                />
+              </Grid>
             </Grid>
           </CardContent>
         </Card>
