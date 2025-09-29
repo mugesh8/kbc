@@ -212,27 +212,27 @@ const Member = db.define('Member', {
     },
     Arakattalai: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     KNS_Member: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     KBN_Member: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     BNI: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     Rotary: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     Lions: {
         type: DataTypes.ENUM("Yes", "No"),
-        allowNull: false
+        allowNull: true
     },
     Other_forum: {
         type: DataTypes.STRING,
