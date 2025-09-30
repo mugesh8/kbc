@@ -53,17 +53,6 @@ const EditMember = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // State for additional forum memberships
-  const [forumMemberships, setForumMemberships] = useState({
-    arakattalai_member: false,
-    kns_member: false,
-    kbn_member: false,
-    bni: false,
-    rotary: false,
-    lions: false,
-    other_forums: ''
-  });
-
   const [formData, setFormData] = useState({
     // Basic Details
     first_name: '',
@@ -101,14 +90,14 @@ const EditMember = () => {
     access_level: 'Basic',
     profile_image: '',
     rejection_reason: '',
-    // Additional forum fields
-    arakattalai_member: false,
-    kns_member: false,
-    kbn_member: false,
-    bni: false,
-    rotary: false,
-    lions: false,
-    other_forums: ''
+    // Forum membership fields - using exact backend field names
+    Arakattalai: 'No',
+    KNS_Member: 'No',
+    KBN_Member: 'No',
+    BNI: 'No',
+    Rotary: 'No',
+    Lions: 'No',
+    Other_forum: ''
   });
 
   useEffect(() => {
@@ -169,26 +158,15 @@ const EditMember = () => {
             access_level: memberData.access_level || 'Basic',
             profile_image: memberData.profile_image || '',
             rejection_reason: memberData.rejection_reason || '',
-            // Additional forum fields
-            arakattalai_member: memberData.arakattalai_member || false,
-            kns_member: memberData.kns_member || false,
-            kbn_member: memberData.kbn_member || false,
-            bni: memberData.bni || false,
-            rotary: memberData.rotary || false,
-            lions: memberData.lions || false,
-            other_forums: memberData.other_forums || ''
+            // Forum membership fields - using correct field names and enum values
+            Arakattalai: memberData.Arakattalai || 'No',
+            KNS_Member: memberData.KNS_Member || 'No',
+            KBN_Member: memberData.KBN_Member || 'No',
+            BNI: memberData.BNI || 'No',
+            Rotary: memberData.Rotary || 'No',
+            Lions: memberData.Lions || 'No',
+            Other_forum: memberData.Other_forum || ''
           };
-
-          // Set forum memberships state
-          setForumMemberships({
-            arakattalai_member: memberData.arakattalai_member || false,
-            kns_member: memberData.kns_member || false,
-            kbn_member: memberData.kbn_member || false,
-            bni: memberData.bni || false,
-            rotary: memberData.rotary || false,
-            lions: memberData.lions || false,
-            other_forums: memberData.other_forums || ''
-          });
 
           // Initialize custom values if existing value is not in predefined options
           const genderOptions = ['male', 'female', 'Others'];
@@ -257,32 +235,23 @@ const EditMember = () => {
   const handleForumMembershipChange = (e) => {
     const { name, checked } = e.target;
     
-    // Update forum memberships state
-    setForumMemberships(prev => ({
-      ...prev,
-      [name]: checked
-    }));
-
-    // Update main form data
+    // Convert boolean to enum value
+    const enumValue = checked ? 'Yes' : 'No';
+    
+    // Update main form data directly with correct backend field names
     setFormData(prev => ({
       ...prev,
-      [name]: checked
+      [name]: enumValue
     }));
   };
 
   const handleOtherForumsChange = (e) => {
     const { value } = e.target;
     
-    // Update forum memberships state
-    setForumMemberships(prev => ({
-      ...prev,
-      other_forums: value
-    }));
-
-    // Update main form data
+    // Update main form data directly
     setFormData(prev => ({
       ...prev,
-      other_forums: value
+      Other_forum: value
     }));
   };
 
@@ -347,14 +316,6 @@ const EditMember = () => {
           formDataObj.append(key, value);
         }
       });
-
-      // Append boolean values for forum memberships (they should be sent even if false)
-      formDataObj.append('arakattalai_member', formDataToSend.arakattalai_member);
-      formDataObj.append('kns_member', formDataToSend.kns_member);
-      formDataObj.append('kbn_member', formDataToSend.kbn_member);
-      formDataObj.append('bni', formDataToSend.bni);
-      formDataObj.append('rotary', formDataToSend.rotary);
-      formDataObj.append('lions', formDataToSend.lions);
 
       // Append image if selected
       if (selectedImage) {
@@ -556,7 +517,7 @@ const EditMember = () => {
 
   const personalInfoConfig = {
     first_name: { label: t('First Name'), type: 'text', required: true },
-    // last_name: { label: t('Last Name'), type: 'text' },
+    last_name: { label: t('Last Name'), type: 'text' },
     email: { label: t('Email'), type: 'email', required: true },
     dob: { label: t('Date of Birth'), type: 'date', InputLabelProps: { shrink: true } },
     gender: {
@@ -604,6 +565,7 @@ const EditMember = () => {
       ]
     },
   };
+
   const addressInfoConfig = {
     address: { label: t('Address'), type: 'text', multiline: true, rows: 3, required: true },
     city: { label: t('City'), type: 'text', required: true },
@@ -840,14 +802,13 @@ const EditMember = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <FormControl component="fieldset" fullWidth>
-                  {/* <FormLabel component="legend" sx={{ mb: 1 }}>Membership Status</FormLabel> */}
                   <FormGroup>
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.arakattalai_member}
+                          checked={formData.Arakattalai === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="arakattalai_member"
+                          name="Arakattalai"
                           color="success"
                         />
                       }
@@ -865,9 +826,9 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.kns_member}
+                          checked={formData.KNS_Member === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="kns_member"
+                          name="KNS_Member"
                           color="success"
                         />
                       }
@@ -885,9 +846,9 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.kbn_member}
+                          checked={formData.KBN_Member === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="kbn_member"
+                          name="KBN_Member"
                           color="success"
                         />
                       }
@@ -907,14 +868,13 @@ const EditMember = () => {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <FormControl component="fieldset" fullWidth>
-                  {/* <FormLabel component="legend" sx={{ mb: 1 }}>Membership Status</FormLabel> */}
                   <FormGroup>
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.bni}
+                          checked={formData.BNI === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="bni"
+                          name="BNI"
                           color="success"
                         />
                       }
@@ -932,9 +892,9 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.rotary}
+                          checked={formData.Rotary === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="rotary"
+                          name="Rotary"
                           color="success"
                         />
                       }
@@ -952,9 +912,9 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={forumMemberships.lions}
+                          checked={formData.Lions === 'Yes'}
                           onChange={handleForumMembershipChange}
-                          name="lions"
+                          name="Lions"
                           color="success"
                         />
                       }
@@ -977,8 +937,8 @@ const EditMember = () => {
                   fullWidth
                   margin="dense"
                   label="Other Forums (Optional)"
-                  name="other_forums"
-                  value={forumMemberships.other_forums}
+                  name="Other_forum"
+                  value={formData.Other_forum}
                   onChange={handleOtherForumsChange}
                   placeholder="Please specify other forum memberships"
                   inputProps={{

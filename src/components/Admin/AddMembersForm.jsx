@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -47,155 +47,439 @@ import {
   FamilyRestroom,
   Close,
   Add,
-  Work
+  Work,
+  Check,
+  Visibility,
+  VisibilityOff
 } from '@mui/icons-material';
 import baseurl from '../Baseurl/baseurl';
 import { useNavigate } from 'react-router-dom';
 
-// FamilyModal Component (unchanged)
+// Extracted NameAutocompleteField to top-level to avoid remounting on each FamilyModal render
+const NameAutocompleteField = React.memo(({ 
+  label, 
+  nameValue, 
+  contactValue, 
+  onNameChange, 
+  onContactChange, 
+  suggestionsSource,
+  error 
+}) => {
+  const [localQuery, setLocalQuery] = useState(nameValue || '');
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setLocalQuery(nameValue || '');
+  }, [nameValue]);
+
+  const filtered = (suggestionsSource || [])
+    .filter(s => {
+      const q = (localQuery || '').toLowerCase();
+      const nameMatch = (s.name || '').toLowerCase().includes(q);
+      const phoneMatch = (s.phone || '').includes(localQuery || '');
+      return nameMatch || phoneMatch;
+    })
+    .slice(0, 8);
+
+  const handleSelect = (item) => {
+    if (onNameChange) onNameChange(item.name || '');
+    if (onContactChange) onContactChange(item.phone || '');
+    setLocalQuery(item.name || '');
+    setIsOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setLocalQuery(value);
+    if (onNameChange) onNameChange(value);
+    setIsOpen(!!value);
+  };
+
+  const handleFocus = () => {
+    setIsOpen(!!localQuery);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setIsOpen(false), 150);
+  };
+
+  return (
+    <div style={{ marginBottom: '16px', position: 'relative' }}>
+      <TextField
+        fullWidth
+        label={label}
+        value={localQuery}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder={`Enter ${label.toLowerCase()}`}
+        error={!!error}
+        helperText={error}
+        inputRef={inputRef}
+        autoComplete="off"
+        inputProps={{ autoComplete: 'off' }}
+        sx={{
+          '& .MuiOutlinedInput-root': {
+            '&:hover fieldset': {
+              borderColor: '#d1d5db',
+            },
+            '&.Mui-focused fieldset': {
+              borderColor: '#10b981',
+            },
+          },
+        }}
+      />
+      {isOpen && localQuery && filtered.length > 0 && (
+        <div style={{
+          position: 'absolute',
+          zIndex: 20,
+          marginTop: '4px',
+          width: '100%',
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          maxHeight: '256px',
+          overflow: 'auto'
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+        }}
+        >
+          {filtered.map((item, idx) => (
+            <button
+              type="button"
+              key={idx}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '12px 16px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '14px'
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(item);
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f0fdf4';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+              }}
+            >
+              <span style={{ color: '#1f2937', fontWeight: 500 }}>{item.name}</span>
+              <span style={{ color: '#6b7280', fontSize: '12px' }}>{item.phone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+// FamilyModal Component with fixed autofill functionality
 const FamilyModal = ({
   open,
   onClose,
   familyData,
   onFamilyDataChange,
-  onSubmit
-}) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    maxWidth="md"
-    fullWidth
-  >
-    <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Typography variant="h6" fontWeight={600}>
-        Family Details
-      </Typography>
-      <IconButton onClick={onClose} color="error">
-        <Close />
-      </IconButton>
-    </DialogTitle>
-    <DialogContent sx={{ p: 3 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Father's Name"
-            value={familyData.father_name || ''}
-            onChange={(e) => onFamilyDataChange('father_name', e.target.value)}
-            placeholder="Robert Brown"
-          />
+  onSubmit,
+  memberSuggestions
+}) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" fontWeight={600}>
+          Family Details
+        </Typography>
+        <IconButton onClick={onClose} color="error">
+          <Close />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <NameAutocompleteField
+              label="Father's Name"
+              nameValue={familyData.father_name}
+              contactValue={familyData.father_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => onFamilyDataChange('father_name', val)}
+              onContactChange={(val) => onFamilyDataChange('father_contact', val)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Father's Contact"
+              value={familyData.father_contact || ''}
+              onChange={(e) => onFamilyDataChange('father_contact', e.target.value)}
+              placeholder="+91 98765 43210"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <NameAutocompleteField
+              label="Mother's Name"
+              nameValue={familyData.mother_name}
+              contactValue={familyData.mother_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => onFamilyDataChange('mother_name', val)}
+              onContactChange={(val) => onFamilyDataChange('mother_contact', val)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Mother's Contact"
+              value={familyData.mother_contact || ''}
+              onChange={(e) => onFamilyDataChange('mother_contact', e.target.value)}
+              placeholder="+91 98765 43210"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <NameAutocompleteField
+              label="Spouse Name (if Married)"
+              nameValue={familyData.spouse_name}
+              contactValue={familyData.spouse_contact}
+              suggestionsSource={memberSuggestions}
+              onNameChange={(val) => onFamilyDataChange('spouse_name', val)}
+              onContactChange={(val) => onFamilyDataChange('spouse_contact', val)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Spouse Contact"
+              value={familyData.spouse_contact || ''}
+              onChange={(e) => onFamilyDataChange('spouse_contact', e.target.value)}
+              placeholder="+91 98765 43210"
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              label="No. of Children"
+              type="number"
+              value={familyData.number_of_children || ''}
+              onChange={(e) => onFamilyDataChange('number_of_children', e.target.value)}
+              placeholder="2"
+            />
+          </Grid>
+          <Grid item xs={12} sm={8}>
+            <TextField
+              fullWidth
+              label="Children Names (comma separated)"
+              value={familyData.children_names || ''}
+              onChange={(e) => onFamilyDataChange('children_names', e.target.value)}
+              placeholder="Chris John, Jane Doe"
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Home Address"
+              multiline
+              rows={2}
+              value={familyData.address || ''}
+              onChange={(e) => onFamilyDataChange('address', e.target.value)}
+              placeholder="123, ABC Road, Chennai - 600001"
+            />
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Father's Contact"
-            value={familyData.father_contact || ''}
-            onChange={(e) => onFamilyDataChange('father_contact', e.target.value)}
-            placeholder="+91 98765 43210"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Mother's Name"
-            value={familyData.mother_name || ''}
-            onChange={(e) => onFamilyDataChange('mother_name', e.target.value)}
-            placeholder="Jessica"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Mother's Contact"
-            value={familyData.mother_contact || ''}
-            onChange={(e) => onFamilyDataChange('mother_contact', e.target.value)}
-            placeholder="+91 98765 43210"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Spouse Name (if Married)"
-            value={familyData.spouse_name || ''}
-            onChange={(e) => onFamilyDataChange('spouse_name', e.target.value)}
-            placeholder="Maria John"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label="Spouse Contact"
-            value={familyData.spouse_contact || ''}
-            onChange={(e) => onFamilyDataChange('spouse_contact', e.target.value)}
-            placeholder="+91 98765 43210"
-          />
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField
-            fullWidth
-            label="No. of Children"
-            type="number"
-            value={familyData.number_of_children || ''}
-            onChange={(e) => onFamilyDataChange('number_of_children', e.target.value)}
-            placeholder="2"
-          />
-        </Grid>
-        <Grid item xs={12} sm={8}>
-          <TextField
-            fullWidth
-            label="Children Names (comma separated)"
-            value={familyData.children_names || ''}
-            onChange={(e) => onFamilyDataChange('children_names', e.target.value)}
-            placeholder="Chris John, Jane Doe"
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Home Address"
-            multiline
-            rows={2}
-            value={familyData.address || ''}
-            onChange={(e) => onFamilyDataChange('address', e.target.value)}
-            placeholder="123, ABC Road, Chennai - 600001"
-          />
-        </Grid>
-      </Grid>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-        <Button
-          variant="contained"
-          color="success"
-          onClick={onSubmit}
-          sx={{ px: 4 }}
-        >
-          Continue
-        </Button>
-      </Box>
-    </DialogContent>
-  </Dialog>
-);
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={onSubmit}
+            sx={{ px: 4 }}
+          >
+            Continue
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
-// BusinessProfileModal Component with custom business registration type
+// TagsInput Component (without label)
+const TagsInput = ({ tags = [], onAdd, onRemove, suggestions = [] }) => {
+  const [inputValue, setInputValue] = useState('');
+
+  const filteredSuggestions = suggestions
+    .filter(s => s.toLowerCase().includes(inputValue.toLowerCase()))
+    .filter(s => !tags.some(t => t.toLowerCase() === s.toLowerCase()))
+    .slice(0, 8);
+
+  const handleAdd = (tag) => {
+    if (!tag) return;
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    if (tags.find(t => t.toLowerCase() === trimmed.toLowerCase())) return;
+    onAdd && onAdd(trimmed);
+    setInputValue('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      handleAdd(inputValue);
+    } else if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
+      onRemove && onRemove(tags.length - 1);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <div style={{
+        width: '100%',
+        padding: '12px',
+        border: '1px solid #e5e7eb',
+        borderRadius: '12px',
+        backgroundColor: '#f9fafb'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          {tags.map((tag, idx) => (
+            <span key={idx} style={{
+              backgroundColor: '#dcfce7',
+              color: '#166534',
+              padding: '4px 8px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              {tag}
+              <button 
+                type="button" 
+                style={{ 
+                  color: '#166534', 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  fontSize: '16px'
+                }} 
+                onClick={() => onRemove && onRemove(idx)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type to add tags"
+            style={{
+              flex: 1,
+              minWidth: '120px',
+              backgroundColor: 'transparent',
+              outline: 'none',
+              border: 'none',
+              color: '#374151'
+            }}
+          />
+        </div>
+      </div>
+      {filteredSuggestions.length > 0 && (
+        <div style={{
+          marginTop: '8px',
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          padding: '8px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '8px'
+        }}>
+          {filteredSuggestions.map((s, i) => (
+            <button
+              type="button"
+              key={i}
+              onClick={() => handleAdd(s)}
+              style={{
+                textAlign: 'left',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                backgroundColor: '#f9fafb',
+                border: '1px solid #f3f4f6',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f0fdf4';
+                e.target.style.color = '#166534';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f9fafb';
+                e.target.style.color = 'inherit';
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// BusinessProfileModal Component
 const BusinessProfileModal = ({
   open,
   onClose,
   businessData,
   onBusinessDataChange,
   onSubmit,
-  onImageChange,
-  onGalleryChange,
   categories,
-  handleSocialMediaToggle,
-  handleSocialMediaUrlChange,
-  socialMedia
+  handleTagAdd,
+  handleTagRemove,
+  handleBusinessFileUpload,
+  handleRemoveBusinessProfileImage,
+  handleRemoveBusinessMedia
 }) => {
   const [customBusinessRegistrationType, setCustomBusinessRegistrationType] = useState('');
+  const [categoryInput, setCategoryInput] = useState('');
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
 
   useEffect(() => {
     if (open) {
       setCustomBusinessRegistrationType('');
+      setCategoryInput(businessData.category_input || '');
     }
-  }, [open]);
+  }, [open, businessData.category_input]);
+
+  const filteredCategories = (categories || [])
+    .filter(c => c.category_name.toLowerCase().includes((categoryInput || '').toLowerCase()))
+    .slice(0, 8);
+
+  const handleSelectExistingCategory = (cid, name) => {
+    onBusinessDataChange("category_id", String(cid));
+    setCategoryInput(name);
+    setShowCategorySuggestions(false);
+  };
+
+  const handleCategoryInputChange = (value) => {
+    setCategoryInput(value);
+    setShowCategorySuggestions(true);
+    onBusinessDataChange("category_input", value);
+    if (!value || value.trim() === '' || (businessData.category_id && value.trim().toLowerCase() !== (categories.find(c => String(c.cid) === String(businessData.category_id))?.category_name || '').toLowerCase())) {
+      onBusinessDataChange("category_id", '');
+    }
+  };
 
   return (
     <Dialog
@@ -214,55 +498,6 @@ const BusinessProfileModal = ({
       </DialogTitle>
       <DialogContent sx={{ p: 3 }}>
         <Grid container spacing={3}>
-          {/* Business Profile Image */}
-          <Grid item xs={12}>
-            {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                  Business Profile Image
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Avatar
-                    sx={{
-                      width: 100,
-                      height: 100,
-                      bgcolor: "grey.200",
-                      "& img": { objectFit: "cover" },
-                    }}
-                    src={
-                      businessData.business_profile_image
-                        ? typeof businessData.business_profile_image === 'string'
-                          ? businessData.business_profile_image
-                          : URL.createObjectURL(businessData.business_profile_image)
-                        : null
-                    }
-                  >
-                    <Work sx={{ fontSize: 40, color: "grey.500" }} />
-                  </Avatar>
-                  <Box>
-                    <Button
-                      variant="outlined"
-                      startIcon={<CloudUpload />}
-                      component="label"
-                      sx={{ mb: 1 }}
-                    >
-                      Upload Image
-                      <input
-                        type="file"
-                        hidden
-                        accept="image/*"
-                        onChange={(e) => onImageChange(e.target.files[0])}
-                      />
-                    </Button>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      Recommended size: 500x500px
-                    </Typography>
-                  </Box>
-                </Box>
-              </Box>
-            )}
-          </Grid>
-
           {/* Business Details */}
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth required sx={{ minWidth: 180, marginTop: '10px' }}>
@@ -279,28 +514,80 @@ const BusinessProfileModal = ({
             </FormControl>
           </Grid>
 
-          {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
+          {(businessData.business_type === "self-employed" || businessData.business_type === "business" || businessData.business_type === "salary") && (
             <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required sx={{ minWidth: 150, marginTop: '10px' }}>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={businessData.category_id || ""}
-                  label="Category"
-                  onChange={(e) =>
-                    onBusinessDataChange("category_id", e.target.value)
-                  }
-                >
-                  {categories.length > 0 ? (
-                    categories.map((cat) => (
-                      <MenuItem key={cat.cid} value={cat.cid}>
+              <div style={{ marginBottom: '16px', position: 'relative' }}>
+                <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                  Category <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={categoryInput}
+                  onChange={(e) => handleCategoryInputChange(e.target.value)}
+                  placeholder="Type to search or add category"
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    outline: 'none',
+                    backgroundColor: '#f9fafb',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#10b981';
+                    e.target.style.backgroundColor = '#ffffff';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.1)';
+                    setShowCategorySuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 150)}
+                />
+                {showCategorySuggestions && categoryInput && filteredCategories.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    zIndex: 20,
+                    marginTop: '8px',
+                    width: '100%',
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    maxHeight: '224px',
+                    overflow: 'auto'
+                  }}>
+                    {filteredCategories.map(cat => (
+                      <button
+                        type="button"
+                        key={cat.cid}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '12px 16px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSelectExistingCategory(cat.cid, cat.category_name)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = '#f0fdf4';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'transparent';
+                        }}
+                      >
                         {cat.category_name}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem disabled>No categories available</MenuItem>
-                  )}
-                </Select>
-              </FormControl>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </Grid>
           )}
 
@@ -316,24 +603,28 @@ const BusinessProfileModal = ({
             />
           </Grid>
 
+       
+
           {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
             <>
               <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required sx={{ minWidth: 270, marginTop: '10px' }}>
                   <InputLabel>Business Registration Type</InputLabel>
-                  <Select
-                    value={businessData.business_registration_type || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      onBusinessDataChange("business_registration_type", value);
-                      if (value !== "Others") {
-                        setCustomBusinessRegistrationType('');
-                      }
-                    }}
-                    label="Business Registration Type"
-                  >
-                    <MenuItem value="proprietor">Proprietor</MenuItem>
-                    <MenuItem value="partnership">Partnership</MenuItem>
+              <Select
+                value={businessData.business_registration_type || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  onBusinessDataChange("business_registration_type", value);
+                  if (value !== "Others") {
+                    setCustomBusinessRegistrationType('');
+                    onBusinessDataChange("business_registration_type_other", '');
+                  }
+                }}
+                label="Business Registration Type"
+              >
+                    <MenuItem value="Proprietor">Proprietor</MenuItem>
+                    <MenuItem value="Partnership">Partnership</MenuItem>
+                    <MenuItem value="Private Limited">Private Limited</MenuItem>
                     <MenuItem value="Others">Others</MenuItem>
                   </Select>
                 </FormControl>
@@ -345,46 +636,136 @@ const BusinessProfileModal = ({
                     onChange={(e) => {
                       const customValue = e.target.value;
                       setCustomBusinessRegistrationType(customValue);
-                      onBusinessDataChange("business_registration_type", customValue);
+                  onBusinessDataChange("business_registration_type_other", customValue);
                     }}
                     sx={{ mt: 1 }}
                   />
                 )}
               </Grid>
 
+              {businessData.business_type === 'self-employed' && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Work Experience (years)"
+                    placeholder="Enter years of experience"
+                    type="number"
+                    value={businessData.experience || ''}
+                    onChange={(e) => onBusinessDataChange("experience", e.target.value)}
+                  />
+                </Grid>
+              )}
+
               <Grid item xs={12}>
+                <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                  About <span style={{ color: '#ef4444' }}>*</span>
+                </label>
                 <TextareaAutosize
                   minRows={4}
-                  placeholder="Write about your business"
-                  style={{ width: "100%", padding: "10px", fontSize: "16px" }}
+                  placeholder="Enter company about"
+                  required
                   value={businessData.about || ""}
                   onChange={(e) => onBusinessDataChange("about", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#10b981';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  placeholder="Enter email"
                   required
+                  value={businessData.email || ""}
+                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="text"
-                  label="Business Starting Year"
-                  value={businessData.business_starting_year || ""}
-                  onChange={(e) =>
-                    onBusinessDataChange("business_starting_year", e.target.value)
-                  }
-                  InputLabelProps={{ shrink: true }}
+              {businessData.business_type === 'self-employed' && (
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Business Contact Number"
+                    placeholder="Enter business contact number"
+                    required
+                    value={businessData.contact_no || ''}
+                    onChange={(e) => onBusinessDataChange("contact_no", e.target.value)}
+                  />
+                </Grid>
+              )}
+
+              <Grid item xs={12}>
+                <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                  Company Address <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <TextareaAutosize
+                  minRows={4}
+                  placeholder="Enter company address"
+                  value={businessData.company_address || ""}
+                  onChange={(e) => onBusinessDataChange("company_address", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#10b981';
+                    e.target.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e5e7eb';
+                    e.target.style.boxShadow = 'none';
+                  }}
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
-                  label="Business Work Contract"
-                  value={businessData.business_work_contract || ""}
-                  onChange={(e) =>
-                    onBusinessDataChange("business_work_contract", e.target.value)
-                  }
-                  placeholder="Enter business work contract"
+                  label="City"
+                  placeholder="Enter city"
+                  value={businessData.city || ""}
+                  onChange={(e) => onBusinessDataChange("city", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="State"
+                  placeholder="Enter state"
+                  value={businessData.state || ""}
+                  onChange={(e) => onBusinessDataChange("state", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Pincode"
+                  placeholder="Enter pincode"
+                  value={businessData.zip_code || ""}
+                  onChange={(e) => onBusinessDataChange("zip_code", e.target.value)}
                 />
               </Grid>
             </>
@@ -396,20 +777,20 @@ const BusinessProfileModal = ({
                 <TextField
                   fullWidth
                   label="Designation"
-                  value={businessData.designation || ""}
-                  onChange={(e) => onBusinessDataChange("designation", e.target.value)}
                   placeholder="Enter designation"
                   required
+                  value={businessData.designation || ""}
+                  onChange={(e) => onBusinessDataChange("designation", e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="email"
-                  value={businessData.email || ""}
-                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
+                  label="Email"
                   placeholder="Enter email"
                   required
+                  value={businessData.email || ""}
+                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
                 />
               </Grid>
 
@@ -417,10 +798,10 @@ const BusinessProfileModal = ({
                 <TextField
                   fullWidth
                   label="Location"
-                  value={businessData.location || ""}
-                  onChange={(e) => onBusinessDataChange("location", e.target.value)}
                   placeholder="Enter location"
                   required
+                  value={businessData.location || ""}
+                  onChange={(e) => onBusinessDataChange("location", e.target.value)}
                 />
               </Grid>
 
@@ -429,10 +810,10 @@ const BusinessProfileModal = ({
                   fullWidth
                   type="number"
                   label="Experience (Years)"
-                  value={businessData.experience || ""}
-                  onChange={(e) => onBusinessDataChange("experience", e.target.value)}
                   placeholder="Enter years of experience"
                   required
+                  value={businessData.experience || ""}
+                  onChange={(e) => onBusinessDataChange("experience", e.target.value)}
                 />
               </Grid>
 
@@ -441,319 +822,114 @@ const BusinessProfileModal = ({
                   fullWidth
                   type="number"
                   label="Salary"
-                  value={businessData.salary || ""}
-                  onChange={(e) => onBusinessDataChange("salary", e.target.value)}
                   placeholder="Enter salary"
                   required
+                  value={businessData.salary || ""}
+                  onChange={(e) => onBusinessDataChange("salary", e.target.value)}
                 />
               </Grid>
             </>
           )}
 
-          {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
-            <>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Staff Size"
-                  value={businessData.staff_size || ""}
-                  onChange={(e) => onBusinessDataChange("staff_size", e.target.value)}
-                  placeholder="Enter number of employees"
-                />
-              </Grid>
+          {/* Tags Input for all business types */}
+          <Grid item xs={12}>
+            <TagsInput
+              tags={businessData.tags || []}
+              onAdd={(tag) => handleTagAdd && handleTagAdd(tag)}
+              onRemove={(tagIndex) => handleTagRemove && handleTagRemove(tagIndex)}
+            />
+          </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  type="email"
-                  label="Email"
-                  value={businessData.email || ""}
-                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
-                  placeholder="Enter email"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Tags"
-                  value={businessData.tags || ""}
-                  onChange={(e) => onBusinessDataChange("tags", e.target.value)}
-                  placeholder="Enter tags"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Company Address"
-                  value={businessData.company_address || ''}
-                  onChange={(e) =>
-                    onBusinessDataChange("company_address", e.target.value)
-                  }
-                  placeholder="Enter Company Address"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="City"
-                  value={businessData.city || ''}
-                  onChange={(e) => onBusinessDataChange("city", e.target.value)}
-                  placeholder="City"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="State"
-                  value={businessData.state || ''}
-                  onChange={(e) => onBusinessDataChange("state", e.target.value)}
-                  placeholder="Enter State"
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Pin Code"
-                  value={businessData.zip_code || ''}
-                  onChange={(e) => onBusinessDataChange("zip_code", e.target.value)}
-                  placeholder="Enter Pin Code"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                  Social Media Platforms
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
-                  {[
-                    { platform: 'Facebook', icon: <Facebook />, color: '#1877F2' },
-                    { platform: 'Twitter', icon: <Twitter />, color: '#1DA1F2' },
-                    { platform: 'Instagram', icon: <Instagram />, color: '#E4405F' },
-                    { platform: 'YouTube', icon: <YouTube />, color: '#FF0000' }
-                  ].map(({ platform, icon, color }) => (
-                    <Button
-                      key={platform}
-                      variant={socialMedia.includes(platform) ? "contained" : "outlined"}
-                      startIcon={icon}
-                      onClick={() => handleSocialMediaToggle(platform)}
-                      sx={{
-                        borderColor: color,
-                        color: socialMedia.includes(platform) ? 'white' : color,
-                        backgroundColor: socialMedia.includes(platform) ? color : 'transparent',
-                        '&:hover': {
-                          backgroundColor: socialMedia.includes(platform) ? color : `${color}15`
-                        }
-                      }}
-                    >
-                      {platform}
-                    </Button>
-                  ))}
-                </Box>
-              </Grid>
-
-              <Grid container spacing={2}>
-                {socialMedia.includes('Facebook') && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Facebook Profile URL"
-                      value={businessData.facebook_link || ''}
-                      onChange={handleSocialMediaUrlChange('Facebook')}
-                      placeholder="https://facebook.com/yourprofile"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Facebook sx={{ color: '#1877F2' }} />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                )}
-
-                {socialMedia.includes('Twitter') && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Twitter Profile URL"
-                      value={businessData.twitter_link || ''}
-                      onChange={handleSocialMediaUrlChange('Twitter')}
-                      placeholder="https://twitter.com/yourprofile"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Twitter sx={{ color: '#1DA1F2' }} />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                )}
-
-                {socialMedia.includes('Instagram') && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Instagram Profile URL"
-                      value={businessData.instagram_link || ''}
-                      onChange={handleSocialMediaUrlChange('Instagram')}
-                      placeholder="https://instagram.com/yourprofile"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Instagram sx={{ color: '#E4405F' }} />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                )}
-
-                {socialMedia.includes('YouTube') && (
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="YouTube Channel URL"
-                      value={businessData.youtube_link || ''}
-                      onChange={handleSocialMediaUrlChange('YouTube')}
-                      placeholder="https://youtube.com/c/yourchannel"
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <YouTube sx={{ color: '#FF0000' }} />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Grid>
-                )}
-              </Grid>
-            </>
-          )}
-
-          {/* Media Gallery */}
-          {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
-            <Grid item xs={12}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 500 }}>
-                  Media Gallery
-                </Typography>
+          {/* File Uploads for all business types */}
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Business Profile Image
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Button
                   variant="outlined"
-                  startIcon={<CloudUpload />}
                   component="label"
-                  sx={{ mb: 2 }}
+                  startIcon={<CloudUpload />}
+                  sx={{ minWidth: 200 }}
+                >
+                  Upload Image
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleBusinessFileUpload('business_profile_image', e.target.files[0]);
+                      }
+                    }}
+                  />
+                </Button>
+                {businessData.business_profile_image && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {businessData.business_profile_image.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleRemoveBusinessProfileImage}
+                      color="error"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Media Gallery ({businessData.media_gallery?.length || 0}/5)
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{ minWidth: 200 }}
                 >
                   Upload Media
                   <input
                     type="file"
                     hidden
-                    multiple
                     accept="image/*,video/*"
-                    onChange={(e) => onGalleryChange(Array.from(e.target.files))}
+                    multiple
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleBusinessFileUpload('media_gallery', e.target.files);
+                      }
+                    }}
                   />
                 </Button>
-
-                {businessData.media_gallery && businessData.media_gallery.length > 0 && (
-                  <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                    {businessData.media_gallery.map((file, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          position: "relative",
-                          width: 100,
-                          height: 100,
-                          borderRadius: 1,
-                          overflow: "hidden",
-                          border: "1px solid",
-                          borderColor: "divider",
-                        }}
-                      >
-                        {typeof file === 'string' ? (
-                          file.includes('.mp4') || file.includes('.mov') ? (
-                            <Box
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                bgcolor: "grey.100",
-                              }}
-                            >
-                              <Typography variant="caption">Video</Typography>
-                            </Box>
-                          ) : (
-                            <img
-                              src={file}
-                              alt={`Gallery ${index + 1}`}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          )
-                        ) : file.type.startsWith("image/") ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={`Gallery ${index + 1}`}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <Box
-                            sx={{
-                              width: "100%",
-                              height: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              bgcolor: "grey.100",
-                            }}
-                          >
-                            <Typography variant="caption">Video</Typography>
-                          </Box>
-                        )}
-
-                        <IconButton
-                          size="small"
-                          sx={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                            bgcolor: "rgba(0,0,0,0.5)",
-                            color: "white",
-                            "&:hover": { bgcolor: "rgba(0,0,0,0.7)" },
-                          }}
-                          onClick={() => {
-                            const newGallery = [...businessData.media_gallery];
-                            newGallery.splice(index, 1);
-                            onBusinessDataChange("media_gallery", newGallery);
-                          }}
-                        >
-                          <Close fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
               </Box>
-            </Grid>
-          )}
+              {businessData.media_gallery && businessData.media_gallery.length > 0 && (
+                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {businessData.media_gallery.map((file, index) => (
+                    <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.100', px: 1, py: 0.5, borderRadius: 1 }}>
+                      <Typography variant="caption" sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {file.name}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveBusinessMedia(index)}
+                        color="error"
+                        sx={{ p: 0.25 }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Grid>
         </Grid>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
@@ -795,6 +971,7 @@ const AddNewMemberForm = () => {
     business_registration_type: []
   });
   const [showFamilyDetails, setShowFamilyDetails] = useState(false);
+  const [memberSuggestions, setMemberSuggestions] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -820,6 +997,35 @@ const AddNewMemberForm = () => {
     fetchCategories();
   }, []);
 
+  // Fetch family entries for autocomplete suggestions
+  useEffect(() => {
+    const fetchMembersForSuggestions = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member-family/all`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const families = data.data || [];
+        const uniq = new Map();
+        families.forEach(f => {
+          const candidates = [
+            { name: (f.father_name || '').trim(), phone: (f.father_contact || '').trim() },
+            { name: (f.mother_name || '').trim(), phone: (f.mother_contact || '').trim() },
+            { name: (f.spouse_name || '').trim(), phone: (f.spouse_contact || '').trim() },
+          ];
+          candidates.forEach(c => {
+            if (c.name) {
+              const key = `${c.name}|${c.phone}`;
+              if (!uniq.has(key)) uniq.set(key, c);
+            }
+          });
+        });
+        setMemberSuggestions(Array.from(uniq.values()));
+      } catch (e) {
+        // silent fail for suggestions
+      }
+    };
+    fetchMembersForSuggestions();
+  }, []);
 
   const [formData, setFormData] = useState({
     // Step 1 - Basic Info (required fields)
@@ -835,7 +1041,6 @@ const AddNewMemberForm = () => {
     zip_code: '',
 
     // Other fields (optional)
-    last_name: '',
     alternate_contact_no: '',
     join_date: '',
     aadhar_no: '',
@@ -863,6 +1068,7 @@ const AddNewMemberForm = () => {
     // Step 3 - Access & Links
     access_level: 'Basic',
     status: 'Approved',
+    has_referral: false,
     referral_name: '',
     referral_code: '',
     profile_image: null,
@@ -888,35 +1094,33 @@ const AddNewMemberForm = () => {
     company_name: '',
     business_type: '',
     category_id: '',
+    category_input: '',
     business_registration_type: '',
+    business_registration_type_other: '',
     about: '',
     company_address: '',
     city: '',
     state: '',
     zip_code: '',
-    business_starting_year: '',
     staff_size: '',
     business_work_contract: '',
     email: '',
     source: '',
-    tags: '',
+    tags: [],
     designation: '',
     salary: '',
     location: '',
     experience: '',
+    contact_no: '',
     business_profile_image: null,
     media_gallery: [],
-    socialMedia: [],
-    facebook_link: '',
-    twitter_link: '',
-    instagram_link: '',
-    youtube_link: ''
   });
-
-  const socialMedia = businessData.socialMedia || [];
 
   // Add profile image state
   const [profileImage, setProfileImage] = useState(null);
+
+  // Password visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   // Add profile image handler
   const handleProfileImageChange = (event) => {
@@ -986,7 +1190,17 @@ const AddNewMemberForm = () => {
       newErrors.password = 'Password must be at least 8 characters long';
     }
 
-    formData.business_profiles.forEach((profile, index) => {
+    // If referral is enabled, require referral code (same as Signup)
+    if (formData.has_referral) {
+      const code = (formData.referral_code || '').trim();
+      if (!code) newErrors.referral_code = 'Referral code is required';
+    }
+
+    if (!Array.isArray(formData.business_profiles) || formData.business_profiles.length === 0) {
+      newErrors.business_profiles = 'At least one business profile is required';
+    }
+
+    (formData.business_profiles || []).forEach((profile, index) => {
       if (!profile.company_name) {
         newErrors[`business_company_${index}`] = 'Company name is required';
       }
@@ -1012,9 +1226,8 @@ const AddNewMemberForm = () => {
 
       // Prepare personal info with custom values
       const personalFields = [
-        'first_name', 'last_name', 'email', 'password', 'dob',
-        'contact_no', 'marital_status', 'address', 'city', 'state', 'zip_code',
-        'referral_name', 'referral_code'
+        'first_name', 'email', 'password', 'dob',
+        'contact_no', 'marital_status', 'address', 'city', 'state', 'zip_code'
       ];
 
       personalFields.forEach(field => {
@@ -1035,6 +1248,15 @@ const AddNewMemberForm = () => {
       const kovilValue = formData.kovil === 'Others' ? customValues.kovil : formData.kovil;
       formDataToSend.append('kovil', kovilValue);
 
+      // Handle referral (same as Signup)
+      formDataToSend.append('has_referral', formData.has_referral ? 'true' : 'false');
+      if (formData.has_referral) {
+        const refName = (formData.referral_name || '').trim();
+        const refCode = (formData.referral_code || '').trim().toUpperCase();
+        if (refName) formDataToSend.append('referral_name', refName);
+        if (refCode) formDataToSend.append('referral_code', refCode);
+      }
+
       // Add default values for required backend fields
       formDataToSend.append('status', 'Pending');
       formDataToSend.append('access_level', 'Basic');
@@ -1046,26 +1268,37 @@ const AddNewMemberForm = () => {
 
       // Handle business profiles with custom values
       const businessProfilesForBackend = formData.business_profiles.map((profile, index) => {
-        const { business_profile_image, media_gallery, ...profileData } = profile;
+        const { business_profile_image, media_gallery, category_input, ...profileData } = profile;
 
-        // Replace business_registration_type with custom value if needed
-        if (profile.business_registration_type === 'Others' && customValues.business_registration_type[index]) {
-          profileData.business_registration_type = customValues.business_registration_type[index];
+        // If no category_id but category_input present, send as new_category_name
+        if ((!profileData.category_id || String(profileData.category_id).trim() === '') && category_input && category_input.trim()) {
+          profileData.new_category_name = category_input.trim();
         }
 
-        return profileData;
+        // Pass through business_registration_type_other when Others is chosen
+        if (profile.business_registration_type !== 'Others') {
+          delete profileData.business_registration_type_other;
+        }
+
+        // Ensure tags is a TEXT (string) for backend
+        const normalizedTags = Array.isArray(profile.tags)
+          ? profile.tags.join(',')
+          : (typeof profile.tags === 'string' ? profile.tags : '');
+
+        return { ...profileData, tags: normalizedTags };
       });
 
       formDataToSend.append('business_profiles', JSON.stringify(businessProfilesForBackend));
 
-      // Add business profile images separately
+      // Handle business profile images and media gallery files separately
       formData.business_profiles.forEach((profile, index) => {
         if (profile.business_profile_image) {
           formDataToSend.append(`business_profile_image_${index}`, profile.business_profile_image);
         }
 
+        // Handle media gallery files
         if (profile.media_gallery && profile.media_gallery.length > 0) {
-          profile.media_gallery.forEach(file => {
+          profile.media_gallery.forEach((file) => {
             formDataToSend.append(`media_gallery_${index}`, file);
           });
         }
@@ -1113,27 +1346,18 @@ const AddNewMemberForm = () => {
     }
   };
 
-  const handleSocialMediaToggle = (platform) => {
-    setBusinessData(prev => {
-      const newSocialMedia = prev.socialMedia.includes(platform)
-        ? prev.socialMedia.filter(p => p !== platform)
-        : [...prev.socialMedia, platform];
-
-      // Reset URL when platform is removed
-      const urlField = `${platform.toLowerCase()}_link`;
-      return {
-        ...prev,
-        socialMedia: newSocialMedia,
-        [urlField]: prev.socialMedia.includes(platform) ? '' : prev[urlField]
-      };
-    });
-  };
-
-  const handleSocialMediaUrlChange = (platform) => (event) => {
-    const urlField = `${platform.toLowerCase()}_link`;
+  // Tag handlers for business profiles
+  const handleTagAdd = (tag) => {
     setBusinessData(prev => ({
       ...prev,
-      [urlField]: event.target.value
+      tags: [...(prev.tags || []), tag]
+    }));
+  };
+
+  const handleTagRemove = (tagIndex) => {
+    setBusinessData(prev => ({
+      ...prev,
+      tags: (prev.tags || []).filter((_, idx) => idx !== tagIndex)
     }));
   };
 
@@ -1169,9 +1393,15 @@ const AddNewMemberForm = () => {
       return;
     }
 
+    // Validate category for all business types
+    if (!businessData.category_id && !(businessData.category_input && businessData.category_input.trim())) {
+      setError('Category is required');
+      return;
+    }
+
     if (businessData.business_type === 'self-employed' || businessData.business_type === 'business') {
-      if (!businessData.category_id || !businessData.business_registration_type || !businessData.about) {
-        setError('Category, registration type, and about are required for this business type');
+      if (!businessData.about || !businessData.email) {
+        setError('About and email are required for this business type');
         return;
       }
     }
@@ -1183,50 +1413,81 @@ const AddNewMemberForm = () => {
       }
     }
 
-    // Store custom business registration type if applicable
-    if (businessData.business_registration_type === 'Others') {
-      const newCustomValues = { ...customValues };
-      newCustomValues.business_registration_type[businessProfiles.length] = businessData.business_registration_type;
-      setCustomValues(newCustomValues);
+    // Add computed fields expected by backend
+    const payloadBusiness = { ...businessData };
+    if ((!payloadBusiness.category_id || String(payloadBusiness.category_id).trim() === '') && payloadBusiness.category_input && payloadBusiness.category_input.trim()) {
+      payloadBusiness.new_category_name = payloadBusiness.category_input.trim();
     }
 
     // Add the current business data to the profiles array
-    setBusinessProfiles(prev => [...prev, { ...businessData }]);
-    setFormData(prev => ({ ...prev, business_profiles: [...prev.business_profiles, businessData] }));
+    setBusinessProfiles(prev => [...prev, { ...payloadBusiness }]);
+    setFormData(prev => ({ ...prev, business_profiles: [...prev.business_profiles, payloadBusiness] }));
 
     // Reset the form data for next entry
     setBusinessData({
       company_name: '',
       business_type: '',
       category_id: '',
+      category_input: '',
       business_registration_type: '',
+      business_registration_type_other: '',
       about: '',
       company_address: '',
       city: '',
       state: '',
       zip_code: '',
-      business_starting_year: '',
       staff_size: '',
       business_work_contract: '',
       email: '',
       source: '',
-      tags: '',
+      tags: [],
       designation: '',
       salary: '',
       location: '',
       experience: '',
+      contact_no: '',
       business_profile_image: null,
       media_gallery: [],
-      socialMedia: [],
-      facebook_link: '',
-      twitter_link: '',
-      instagram_link: '',
-      youtube_link: ''
     });
 
     // Close modal
     setBusinessModalOpen(false);
     setError(null);
+  };
+
+  const handleBusinessDataChange = (field, value) => {
+    setBusinessData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Add file upload handlers for business profile
+  const handleBusinessFileUpload = (field, file) => {
+    if (field === 'media_gallery') {
+      // Handle multiple files for media gallery
+      const filesArray = Array.from(file);
+      setBusinessData(prev => ({
+        ...prev,
+        media_gallery: [...(prev.media_gallery || []), ...filesArray]
+      }));
+    } else {
+      setBusinessData(prev => ({
+        ...prev,
+        [field]: file
+      }));
+    }
+  };
+
+  const handleRemoveBusinessProfileImage = () => {
+    setBusinessData(prev => ({
+      ...prev,
+      business_profile_image: null
+    }));
+  };
+
+  const handleRemoveBusinessMedia = (mediaIndex) => {
+    setBusinessData(prev => ({
+      ...prev,
+      media_gallery: (prev.media_gallery || []).filter((_, idx) => idx !== mediaIndex)
+    }));
   };
 
   const handleRemoveBusinessProfile = (index) => {
@@ -1240,21 +1501,6 @@ const AddNewMemberForm = () => {
     const newCustomValues = { ...customValues };
     newCustomValues.business_registration_type = newCustomValues.business_registration_type.filter((_, i) => i !== index);
     setCustomValues(newCustomValues);
-  };
-
-  const handleBusinessDataChange = (field, value) => {
-    setBusinessData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleBusinessImageChange = (file) => {
-    setBusinessData(prev => ({ ...prev, business_profile_image: file }));
-  };
-
-  const handleBusinessGalleryChange = (files) => {
-    setBusinessData(prev => ({
-      ...prev,
-      media_gallery: [...(prev.media_gallery || []), ...files]
-    }));
   };
 
   // Step 1 - Basic Info
@@ -1305,7 +1551,7 @@ const AddNewMemberForm = () => {
           Basic Information
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Name"
@@ -1316,7 +1562,7 @@ const AddNewMemberForm = () => {
               helperText={errors.first_name}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Email Address"
@@ -1328,16 +1574,29 @@ const AddNewMemberForm = () => {
               helperText={errors.email || (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? "Please enter a valid email" : "")}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
               label="Password"
               required
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={formData.password}
               onChange={handleInputChange('password')}
               error={!!errors.password}
               helperText={errors.password || "Password must be at least 8 characters long"}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label="toggle password visibility"
+                      onClick={() => setShowPassword(prev => !prev)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
             />
           </Grid>
         </Grid>
@@ -1560,22 +1819,6 @@ const AddNewMemberForm = () => {
           Primary Contact Information
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Last Name"
-              value={formData.last_name}
-              onChange={handleInputChange('last_name')}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Mobile Phone"
-              value={formData.mobile_no}
-              onChange={handleInputChange('mobile_no')}
-            />
-          </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
@@ -1840,7 +2083,7 @@ const AddNewMemberForm = () => {
                       {profile.company_name} - {profile.business_type}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {profile.category_id} • {profile.staff_size} employees
+                      {profile.category_id} • {profile.tags?.length || 0} tags
                     </Typography>
                   </Box>
                 </Box>
@@ -1891,24 +2134,48 @@ const AddNewMemberForm = () => {
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Referral Source
         </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Referral Name"
-              value={formData.referral_name}
-              onChange={handleInputChange('referral_name')}
-            />
+        <Box sx={{ mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!formData.has_referral}
+                onChange={handleInputChange('has_referral')}
+                color="success"
+              />
+            }
+            label={
+              <Box>
+                <Typography variant="body2" fontWeight={500}>
+                  Do You Have Referral
+                </Typography>
+              </Box>
+            }
+          />
+        </Box>
+        {formData.has_referral && (
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Referral Name"
+                value={formData.referral_name}
+                onChange={handleInputChange('referral_name')}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Referral ID"
+                value={formData.referral_code}
+                onChange={handleInputChange('referral_code')}
+                placeholder="Member Application ID"
+                error={!!errors.referral_code}
+                helperText={errors.referral_code}
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Referral ID"
-              value={formData.referral_code}
-              onChange={handleInputChange('referral_code')}
-              placeholder="Member Application ID"
-            />
-          </Grid>
+        )}
+        <Grid container spacing={3} sx={{ mt: 5 }}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
@@ -1923,7 +2190,6 @@ const AddNewMemberForm = () => {
               </Select>
             </FormControl>
           </Grid>
-
         </Grid>
       </Box>
     </Box>
@@ -2068,6 +2334,7 @@ const AddNewMemberForm = () => {
         familyData={familyData}
         onFamilyDataChange={handleFamilyInputChange}
         onSubmit={handleFamilySubmit}
+        memberSuggestions={memberSuggestions}
       />
 
       {/* BusinessProfileModal */}
@@ -2080,40 +2347,38 @@ const AddNewMemberForm = () => {
             company_name: '',
             business_type: '',
             category_id: '',
+            category_input: '',
             business_registration_type: '',
+            business_registration_type_other: '',
             about: '',
             company_address: '',
             city: '',
             state: '',
             zip_code: '',
-            business_starting_year: '',
             staff_size: '',
             business_work_contract: '',
             email: '',
             source: '',
-            tags: '',
+            tags: [],
             designation: '',
             salary: '',
             location: '',
             experience: '',
+            contact_no: '',
             business_profile_image: null,
             media_gallery: [],
-            socialMedia: [],
-            facebook_link: '',
-            twitter_link: '',
-            instagram_link: '',
-            youtube_link: ''
+    
           });
         }}
         businessData={businessData}
         onBusinessDataChange={handleBusinessDataChange}
-        onImageChange={handleBusinessImageChange}
-        onGalleryChange={handleBusinessGalleryChange}
-        onSubmit={handleBusinessSubmit}
         categories={categories}
-        handleSocialMediaToggle={handleSocialMediaToggle}
-        handleSocialMediaUrlChange={handleSocialMediaUrlChange}
-        socialMedia={socialMedia}
+        handleTagAdd={handleTagAdd}
+        handleTagRemove={handleTagRemove}
+        handleBusinessFileUpload={handleBusinessFileUpload}
+        handleRemoveBusinessProfileImage={handleRemoveBusinessProfileImage}
+        handleRemoveBusinessMedia={handleRemoveBusinessMedia}
+        onSubmit={handleBusinessSubmit}
       />
 
       {/* Snackbar for notifications */}

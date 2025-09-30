@@ -86,7 +86,7 @@ const uploadBusinessProfileMedia = (req, res, next) => {
 
     const upload = multer({
       storage,
-      limits: { fileSize: 30 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
       files: 6, 
       fileFilter: getFileFilter("all"),
     });
