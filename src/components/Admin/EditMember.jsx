@@ -29,6 +29,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import baseurl from '../Baseurl/baseurl';
 import { ArrowBack } from '@mui/icons-material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 const EditMember = () => {
   const { t } = useTranslation();
@@ -52,6 +54,25 @@ const EditMember = () => {
   // State for profile image
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+
+  // State for additional forum memberships
+  const [forumMemberships, setForumMemberships] = useState({
+    arakattalai_member: false,
+    kns_member: false,
+    kbn_member: false,
+    bni: false,
+    rotary: false,
+    lions: false,
+    other_forums: ''
+  });
+
+  // State for squads
+  const [squads, setSquads] = useState([
+    'Govt Squad',
+    'Doctor Squad',
+    'Legal Squad',
+    'Advisory Squad'
+  ]);
 
   const [formData, setFormData] = useState({
     // Basic Details
@@ -90,15 +111,25 @@ const EditMember = () => {
     access_level: 'Basic',
     profile_image: '',
     rejection_reason: '',
-    // Forum membership fields - using exact backend field names
-    Arakattalai: 'No',
-    KNS_Member: 'No',
-    KBN_Member: 'No',
-    BNI: 'No',
-    Rotary: 'No',
-    Lions: 'No',
-    Other_forum: ''
+    // Pro Member fields
+    pro: 'Unpro', // Changed from is_pro_member to match API
+    core_pro: '', // Added to match API
+    // Squad fields
+    squad: '',
+    squad_fields: '',
+    new_squad_name: '', // Added to handle new squad names
+    // Additional forum fields
+    arakattalai_member: false,
+    kns_member: false,
+    kbn_member: false,
+    bni: false,
+    rotary: false,
+    lions: false,
+    other_forums: ''
   });
+
+  // Pro members list for Core Pro dropdown
+  const [proMembers, setProMembers] = useState([]);
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -119,6 +150,24 @@ const EditMember = () => {
           const memberData = data.data;
           // Store member ID for update
           localStorage.setItem('memberId', memberData.mid);
+
+          // Define predefined squads
+          const predefinedSquads = ['Govt Squad', 'Doctor Squad', 'Legal Squad', 'Advisory Squad'];
+
+          // Check if squad is predefined or custom
+          let squadValue = memberData.squad || '';
+          let newSquadNameValue = '';
+
+          if (memberData.squad && !predefinedSquads.includes(memberData.squad)) {
+            // This is a custom squad
+            squadValue = memberData.squad; // Use the actual squad name
+            newSquadNameValue = memberData.squad;
+
+            // Add to squads list if not already there
+            if (!squads.includes(memberData.squad)) {
+              setSquads(prev => [...prev, memberData.squad]);
+            }
+          }
 
           // Prepare form data
           const newFormData = {
@@ -158,15 +207,33 @@ const EditMember = () => {
             access_level: memberData.access_level || 'Basic',
             profile_image: memberData.profile_image || '',
             rejection_reason: memberData.rejection_reason || '',
-            // Forum membership fields - using correct field names and enum values
-            Arakattalai: memberData.Arakattalai || 'No',
-            KNS_Member: memberData.KNS_Member || 'No',
-            KBN_Member: memberData.KBN_Member || 'No',
-            BNI: memberData.BNI || 'No',
-            Rotary: memberData.Rotary || 'No',
-            Lions: memberData.Lions || 'No',
-            Other_forum: memberData.Other_forum || ''
+            // Pro Member fields - Updated to match API
+            pro: memberData.pro || 'Unpro',
+            core_pro: memberData.core_pro || '',
+            // Squad fields - Updated to match API
+            squad: squadValue,
+            squad_fields: memberData.squad_fields || '',
+            new_squad_name: newSquadNameValue,
+            // Additional forum fields
+            arakattalai_member: memberData.Arakattalai === 'Yes',
+            kns_member: memberData.KNS_Member === 'Yes',
+            kbn_member: memberData.KBN_Member === 'Yes',
+            bni: memberData.BNI === 'Yes',
+            rotary: memberData.Rotary === 'Yes',
+            lions: memberData.Lions === 'Yes',
+            other_forums: memberData.Other_forum || ''
           };
+
+          // Set forum memberships state
+          setForumMemberships({
+            arakattalai_member: memberData.Arakattalai === 'Yes',
+            kns_member: memberData.KNS_Member === 'Yes',
+            kbn_member: memberData.KBN_Member === 'Yes',
+            bni: memberData.BNI === 'Yes',
+            rotary: memberData.Rotary === 'Yes',
+            lions: memberData.Lions === 'Yes',
+            other_forums: memberData.Other_forum || ''
+          });
 
           // Initialize custom values if existing value is not in predefined options
           const genderOptions = ['male', 'female', 'Others'];
@@ -210,12 +277,47 @@ const EditMember = () => {
     }
   }, [id]);
 
+  // Fetch Pro members for Core Pro dropdown
+  useEffect(() => {
+    const fetchProMembers = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member/pro`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setProMembers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pro members:', err);
+      }
+    };
+    fetchProMembers();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    // Special handling for squad selection
+    if (name === 'squad') {
+      if (value === 'add_new') {
+        setFormData(prev => ({
+          ...prev,
+          squad: value,
+          new_squad_name: ''
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          squad: value,
+          new_squad_name: ''
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleCustomInputChange = (e) => {
@@ -234,24 +336,33 @@ const EditMember = () => {
 
   const handleForumMembershipChange = (e) => {
     const { name, checked } = e.target;
-    
-    // Convert boolean to enum value
-    const enumValue = checked ? 'Yes' : 'No';
-    
-    // Update main form data directly with correct backend field names
+
+    // Update forum memberships state
+    setForumMemberships(prev => ({
+      ...prev,
+      [name]: checked
+    }));
+
+    // Update main form data
     setFormData(prev => ({
       ...prev,
-      [name]: enumValue
+      [name]: checked
     }));
   };
 
   const handleOtherForumsChange = (e) => {
     const { value } = e.target;
-    
-    // Update main form data directly
+
+    // Update forum memberships state
+    setForumMemberships(prev => ({
+      ...prev,
+      other_forums: value
+    }));
+
+    // Update main form data
     setFormData(prev => ({
       ...prev,
-      Other_forum: value
+      other_forums: value
     }));
   };
 
@@ -307,6 +418,35 @@ const EditMember = () => {
       if (customValues.kovil && formData.kovil === 'Others') {
         formDataToSend.kovil = customValues.kovil;
       }
+
+      // Handle squad field - if "add_new" is selected and new_squad_name has a value, use that
+      if (formData.squad === 'add_new' && formData.new_squad_name) {
+        formDataToSend.squad = formData.new_squad_name;
+
+        // Add to squads list for future use
+        if (!squads.includes(formData.new_squad_name)) {
+          setSquads(prev => [...prev, formData.new_squad_name]);
+        }
+      }
+
+      // Map forum memberships to API format
+      formDataToSend.Arakattalai = formDataToSend.arakattalai_member ? 'Yes' : 'No';
+      formDataToSend.KNS_Member = formDataToSend.kns_member ? 'Yes' : 'No';
+      formDataToSend.KBN_Member = formDataToSend.kbn_member ? 'Yes' : 'No';
+      formDataToSend.BNI = formDataToSend.bni ? 'Yes' : 'No';
+      formDataToSend.Rotary = formDataToSend.rotary ? 'Yes' : 'No';
+      formDataToSend.Lions = formDataToSend.lions ? 'Yes' : 'No';
+      formDataToSend.Other_forum = formDataToSend.other_forums;
+
+      // Remove old field names and temporary fields
+      delete formDataToSend.arakattalai_member;
+      delete formDataToSend.kns_member;
+      delete formDataToSend.kbn_member;
+      delete formDataToSend.bni;
+      delete formDataToSend.rotary;
+      delete formDataToSend.lions;
+      delete formDataToSend.other_forums;
+      delete formDataToSend.new_squad_name;
 
       const formDataObj = new FormData();
 
@@ -517,7 +657,7 @@ const EditMember = () => {
 
   const personalInfoConfig = {
     first_name: { label: t('First Name'), type: 'text', required: true },
-    last_name: { label: t('Last Name'), type: 'text' },
+    // last_name: { label: t('Last Name'), type: 'text' },
     email: { label: t('Email'), type: 'email', required: true },
     dob: { label: t('Date of Birth'), type: 'date', InputLabelProps: { shrink: true } },
     gender: {
@@ -565,7 +705,6 @@ const EditMember = () => {
       ]
     },
   };
-
   const addressInfoConfig = {
     address: { label: t('Address'), type: 'text', multiline: true, rows: 3, required: true },
     city: { label: t('City'), type: 'text', required: true },
@@ -701,6 +840,121 @@ const EditMember = () => {
           </Card>
         </Box>
 
+        <Box display="flex" gap={3} sx={{ flexDirection: { xs: 'column', md: 'row' } }}>
+          {/* Pro Member Card */}
+          <Card sx={{ mb: 3, flex: 1 }}>
+            <CardHeader
+              title="Pro Member"
+              titleTypographyProps={{ variant: "h6", color: "green", borderBottom: '2px solid #e0e0e0' }}
+            />
+            <CardContent>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.pro === 'Pro'}
+                    onChange={(e) => {
+                      const value = e.target.checked ? 'Pro' : 'Unpro';
+                      setFormData(prev => ({
+                        ...prev,
+                        pro: value,
+                        core_pro: value === 'Pro' ? '' : prev.core_pro
+                      }));
+                    }}
+                    name="pro" color="success"
+                  />
+                }
+                label="Pro Member" labelPlacement="start"
+                sx={{ justifyContent: 'space-between', marginLeft: 0, width: '100%' }}
+              />
+              {formData.pro === 'Unpro' && (
+                <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
+                  <InputLabel>Core Pro</InputLabel>
+                  <Select
+                    value={formData.core_pro || ''}
+                    name="core_pro"
+                    label="Core Pro"
+                    onChange={handleInputChange}
+                    sx={{ textAlign: 'left' }}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {proMembers.map((m) => {
+                      const fullName = [m.first_name].filter(Boolean).join(' ').trim() || m.first_name || m.email;
+                      return (
+                        <MenuItem key={m.mid} value={fullName}>{fullName}</MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Squads Card */}
+          <Card sx={{ mb: 3, flex: 1 }}>
+            <CardHeader
+              title="Squads"
+              titleTypographyProps={{
+                variant: "h6",
+                color: "green",
+                borderBottom: '2px solid #e0e0e0',
+              }}
+            />
+            <CardContent>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                Assign member to a squad.
+              </Typography>
+
+              <FormControl fullWidth>
+                <InputLabel>Select Squad</InputLabel>
+                <Select
+                  name="squad"
+                  value={formData.squad || ""}
+                  onChange={handleInputChange}
+                  label="Select Squad"
+                >
+                  {/* Default squads */}
+                  {squads.map((squad) => (
+                    <MenuItem key={squad} value={squad}>{squad}</MenuItem>
+                  ))}
+                  <MenuItem value="add_new">Add new Squad</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Show new squad name input when "Add new Squad" is selected */}
+              {formData.squad === "add_new" && (
+                <TextField
+                  fullWidth
+                  margin="dense"
+                  label="New Squad Name"
+                  name="new_squad_name"
+                  value={formData.new_squad_name || ""}
+                  onChange={handleInputChange}
+                  inputProps={{
+                    style: { textAlign: "left" }
+                  }}
+                />
+              )}
+
+              {/* Show specialization input for predefined squads OR when new squad name has at least one character */}
+              {(formData.squad && formData.squad !== "add_new") ||
+                (formData.squad === "add_new" && formData.new_squad_name && formData.new_squad_name.length > 0) ? (
+                <TextField
+                  fullWidth
+                  margin="dense"
+                  label="Specialization"
+                  name="squad_fields"
+                  value={formData.squad_fields || ""}
+                  onChange={handleInputChange}
+                  inputProps={{
+                    style: { textAlign: "left" }
+                  }}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+        </Box>
+
         {/* Personal Information Section */}
         <Card sx={{ mb: 3 }}>
           <CardHeader
@@ -806,15 +1060,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.Arakattalai === 'Yes'}
+                          checked={forumMemberships.arakattalai_member}
                           onChange={handleForumMembershipChange}
-                          name="Arakattalai"
+                          name="arakattalai_member"
                           color="success"
                         />
                       }
                       label="Arakattalai Member"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -826,15 +1080,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.KNS_Member === 'Yes'}
+                          checked={forumMemberships.kns_member}
                           onChange={handleForumMembershipChange}
-                          name="KNS_Member"
+                          name="kns_member"
                           color="success"
                         />
                       }
                       label="KNS Member"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -846,15 +1100,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.KBN_Member === 'Yes'}
+                          checked={forumMemberships.kbn_member}
                           onChange={handleForumMembershipChange}
-                          name="KBN_Member"
+                          name="kbn_member"
                           color="success"
                         />
                       }
                       label="KBN Member"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -872,15 +1126,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.BNI === 'Yes'}
+                          checked={forumMemberships.bni}
                           onChange={handleForumMembershipChange}
-                          name="BNI"
+                          name="bni"
                           color="success"
                         />
                       }
                       label="BNI"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -892,15 +1146,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.Rotary === 'Yes'}
+                          checked={forumMemberships.rotary}
                           onChange={handleForumMembershipChange}
-                          name="Rotary"
+                          name="rotary"
                           color="success"
                         />
                       }
                       label="Rotary"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -912,15 +1166,15 @@ const EditMember = () => {
                     <FormControlLabel
                       control={
                         <Switch
-                          checked={formData.Lions === 'Yes'}
+                          checked={forumMemberships.lions}
                           onChange={handleForumMembershipChange}
-                          name="Lions"
+                          name="lions"
                           color="success"
                         />
                       }
                       label="Lions"
                       labelPlacement="start"
-                      sx={{ 
+                      sx={{
                         justifyContent: 'space-between',
                         marginLeft: 0,
                         marginRight: 0,
@@ -937,8 +1191,8 @@ const EditMember = () => {
                   fullWidth
                   margin="dense"
                   label="Other Forums (Optional)"
-                  name="Other_forum"
-                  value={formData.Other_forum}
+                  name="other_forums"
+                  value={forumMemberships.other_forums}
                   onChange={handleOtherForumsChange}
                   placeholder="Please specify other forum memberships"
                   inputProps={{

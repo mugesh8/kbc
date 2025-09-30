@@ -18,6 +18,7 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
+  Switch,
   Radio,
   RadioGroup,
   Paper,
@@ -973,6 +974,15 @@ const AddNewMemberForm = () => {
   const [showFamilyDetails, setShowFamilyDetails] = useState(false);
   const [memberSuggestions, setMemberSuggestions] = useState([]);
   const navigate = useNavigate();
+  const [squads, setSquads] = useState([
+    'Govt Squad',
+    'Doctor Squad',
+    'Legal Squad',
+    'Advisory Squad'
+  ]);
+  
+  // Add Pro members state
+  const [proMembers, setProMembers] = useState([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -995,6 +1005,23 @@ const AddNewMemberForm = () => {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Fetch Pro members for Core Pro dropdown - Same as EditMember
+  useEffect(() => {
+    const fetchProMembers = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member/pro`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setProMembers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pro members:', err);
+      }
+    };
+    fetchProMembers();
   }, []);
 
   // Fetch family entries for autocomplete suggestions
@@ -1068,6 +1095,12 @@ const AddNewMemberForm = () => {
     // Step 3 - Access & Links
     access_level: 'Basic',
     status: 'Approved',
+    // Pro & Squad
+    pro: 'Unpro',
+    core_pro: '',
+    squad: '',
+    squad_fields: '',
+    new_squad_name: '',
     has_referral: false,
     referral_name: '',
     referral_code: '',
@@ -1315,6 +1348,21 @@ const AddNewMemberForm = () => {
         }
 
         formDataToSend.append('family_details', JSON.stringify(familyData));
+      }
+
+      // Pro & Squad fields
+      formDataToSend.append('pro', formData.pro || 'Unpro');
+      if (formData.pro === 'Unpro' && formData.core_pro) {
+        formDataToSend.append('core_pro', formData.core_pro);
+      }
+      const finalSquad = (formData.squad === 'add_new' && formData.new_squad_name)
+        ? formData.new_squad_name
+        : formData.squad;
+      if (finalSquad) {
+        formDataToSend.append('squad', finalSquad);
+      }
+      if (formData.squad_fields) {
+        formDataToSend.append('squad_fields', formData.squad_fields);
       }
 
       const response = await fetch(`${baseurl}/api/member/register`, {
@@ -1822,6 +1870,14 @@ const AddNewMemberForm = () => {
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
+              label="Mobile Phone"
+              value={formData.mobile_no}
+              onChange={handleInputChange('mobile_no')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
               label="Preferred Contact"
               value={formData.preferred_contact}
               onChange={handleInputChange('preferred_contact')}
@@ -1938,6 +1994,102 @@ const AddNewMemberForm = () => {
   // Step 3 - Access & Links
   const renderAccessLinks = () => (
     <Box>
+      {/* Pro Member */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Pro Member
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={formData.pro === 'Pro'}
+              onChange={(e) => {
+                const value = e.target.checked ? 'Pro' : 'Unpro';
+                setFormData(prev => ({
+                  ...prev,
+                  pro: value,
+                  core_pro: value === 'Pro' ? '' : prev.core_pro
+                }));
+              }}
+              name="pro"
+              color="success"
+            />
+          }
+          label="Pro Member"
+          labelPlacement="start"
+          sx={{ justifyContent: 'space-between', marginLeft: 0, width: '100%' }}
+        />
+        {formData.pro === 'Unpro' && (
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Core Pro</InputLabel>
+            <Select
+              value={formData.core_pro || ''}
+              name="core_pro"
+              label="Core Pro"
+              onChange={handleInputChange('core_pro')}
+            >
+              <MenuItem value="">None</MenuItem>
+              {/* Updated to use proMembers from API like EditMember */}
+              {proMembers.map((m) => {
+                const fullName = [m.first_name].filter(Boolean).join(' ').trim() || m.first_name || m.email;
+                return (
+                  <MenuItem key={m.mid} value={fullName}>{fullName}</MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+        )}
+      </Box>
+
+      {/* Squads */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Squads
+        </Typography>
+        <FormControl fullWidth>
+          <InputLabel>Select Squad</InputLabel>
+          <Select
+            name="squad"
+            value={formData.squad || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData(prev => ({ ...prev, squad: value, ...(value !== 'add_new' ? { new_squad_name: '' } : {}) }));
+            }}
+            label="Select Squad"
+          >
+            {squads.map((s) => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+            <MenuItem value="add_new">Add new Squad</MenuItem>
+          </Select>
+        </FormControl>
+
+        {formData.squad === 'add_new' && (
+          <TextField
+            fullWidth
+            margin="dense"
+            label="New Squad Name"
+            name="new_squad_name"
+            value={formData.new_squad_name || ''}
+            onChange={handleInputChange('new_squad_name')}
+            sx={{ mt: 2 }}
+          />
+        )}
+
+        {((formData.squad && formData.squad !== 'add_new') ||
+          (formData.squad === 'add_new' && formData.new_squad_name && formData.new_squad_name.length > 0)) && (
+          <TextField
+            fullWidth
+            margin="dense"
+            label="Specialization"
+            name="squad_fields"
+            value={formData.squad_fields || ''}
+            onChange={handleInputChange('squad_fields')}
+            sx={{ mt: 2 }}
+          />
+        )}
+      </Box>
+
       {/* Access Level Management */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>

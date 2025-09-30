@@ -11,12 +11,15 @@ router.post('/member/logout/:id', memberController.logoutMember);
 
 // Profile routes - protected by authentication middleware
 router.get('/member/all', memberController.getAllMembers);
+router.get('/member/pro', memberController.getProMembers);
 router.get('/member/:id', memberController.getMemberById);
+
+
 router.put('/member/update/:id', uploadBusinessProfileMedia, memberController.updateMember);
 router.put('/business-profile/update/:id', uploadBusinessProfileMedia, memberController.updateBusinessProfile);
 router.put('/family-details/update/:id', memberController.updateFamilyDetails);
-router.delete('/member/delete/:id', memberController.deleteMember);
 
+router.delete('/member/delete/:id', memberController.deleteMember);
 router.delete('/business/delete/:id', memberController.deleteBusinessProfile);
 router.delete('/family/delete/:id', memberController.deleteFamily);
 

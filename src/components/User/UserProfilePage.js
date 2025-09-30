@@ -126,6 +126,8 @@ const ProfilePage = () => {
   const [loadingBusiness, setLoadingBusiness] = useState(false);
   const [categories, setCategories] = useState([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
   const fileInputRef = useRef(null);
 
   // Media handling states
@@ -232,6 +234,49 @@ const ProfilePage = () => {
       setLoading(false);
     }
   }, [id]);
+  
+  // Fetch ratings data
+  useEffect(() => {
+    if (!memberId) return;
+    
+    const fetchRatings = async () => {
+      try {
+        const response = await fetch(`${baseurl}/api/ratings/all`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ratings: ${response.status}`);
+        }
+        
+        const ratingsData = await response.json();
+        
+        if (ratingsData && ratingsData.data && Array.isArray(ratingsData.data)) {
+          // Filter ratings for this member's businesses
+          const memberBusinessIds = businessProfiles.map(business => business.id);
+          const memberRatings = ratingsData.data.filter(rating => 
+            memberBusinessIds.includes(rating.business_id) && 
+            rating.status === 'approved'
+          );
+          
+          setRatings(memberRatings);
+          
+          // Calculate average rating
+          if (memberRatings.length > 0) {
+            const total = memberRatings.reduce((sum, rating) => sum + rating.rating, 0);
+            const avg = total / memberRatings.length;
+            setAverageRating(Math.round(avg * 10) / 10); // Round to 1 decimal place
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching ratings:", error);
+      }
+    };
+    
+    if (businessProfiles.length > 0) {
+      fetchRatings();
+    }
+  }, [memberId, businessProfiles]);
 
   // Fetch categories
   useEffect(() => {
@@ -1063,6 +1108,15 @@ const ProfilePage = () => {
     instagram: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, instagram: value } })),
     twitter: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, twitter: value } })),
     youtube: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, youtube: value } })),
+    Arakattalai: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Arakattalai: value } })),
+    KNS_Member: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, KNS_Member: value } })),
+    KBN_Member: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, KBN_Member: value } })),
+    BNI: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, BNI: value } })),
+    Rotary: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Rotary: value } })),
+    Lions: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Lions: value } })),
+    Other_forum: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Other_forum: value } })),
+    pro: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, pro: value } })),
+    paidStatus: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, paidStatus: value } })),
     referralName: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, referralName: value } })),
     referralCode: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, referralCode: value } }))
   }), []);
@@ -1664,7 +1718,10 @@ const ProfilePage = () => {
                     <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <p className="text-xs sm:text-sm font-medium text-white/80">Rating</p>
-                  <p className="text-sm sm:text-lg font-bold text-white">4.8 ⭐</p>
+                  <p className="text-sm sm:text-lg font-bold text-white">
+                    {averageRating > 0 ? `${averageRating.toFixed(1)} ⭐` : 'No ratings'}
+                    {ratings.length > 0 && <span className="text-xs ml-1">({ratings.length})</span>}
+                  </p>
                 </div>
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
@@ -2234,12 +2291,7 @@ const ProfilePage = () => {
                         />
                       )}
 
-                      <InputField
-                        label="Business Starting Year"
-                        value={profileData.business.startingYear}
-                        onChange={businessHandlers.startingYear}
-                        disabled={editingSection !== 'business'}
-                      />
+
                       <InputField
                         label="Business Email"
                         value={profileData.business.businessEmail}

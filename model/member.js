@@ -203,12 +203,12 @@ const Member = db.define('Member', {
         allowNull: true,
     },
     paid_status: {
-      type: DataTypes.ENUM("Paid", "Unpaid"),
-      defaultValue: "Unpaid"
+        type: DataTypes.ENUM("Paid", "Unpaid"),
+        defaultValue: "Unpaid"
     },
     membership_valid_until: {
-      type: DataTypes.DATE,
-      allowNull: true
+        type: DataTypes.DATE,
+        allowNull: true
     },
     Arakattalai: {
         type: DataTypes.ENUM("Yes", "No"),
@@ -235,6 +235,23 @@ const Member = db.define('Member', {
         allowNull: true
     },
     Other_forum: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    pro: {
+        type: DataTypes.ENUM("Pro", "Unpro"),
+        allowNull: true,
+        defaultValue: "Unpro"
+    },
+    core_pro: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    squad: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    squad_fields: {
         type: DataTypes.STRING,
         allowNull: true
     }

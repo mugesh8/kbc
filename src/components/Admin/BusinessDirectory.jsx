@@ -49,6 +49,8 @@ const BusinessDirectoryForm = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [errors, setErrors] = useState({});
   const [memberId, setMemberId] = useState(null);
+  const [categoryInput, setCategoryInput] = useState('');
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   
   // Media handling states
   const profileImageInputRef = useRef(null);
@@ -62,7 +64,6 @@ const BusinessDirectoryForm = () => {
     category_id: '',
     registrationNumber: '',
     registrationNumberOther: '',
-    startingYear: '',
     experience: '',
     businessAddress: '',
     businessEmail: '',
@@ -151,6 +152,16 @@ const BusinessDirectoryForm = () => {
     fetchBusinessData();
   }, [id]);
 
+  // Sync category input display name from selected id when categories or selection changes
+  useEffect(() => {
+    const selected = categories.find(c => String(c.cid) === String(formData.category_id || ''));
+    if (selected) {
+      setCategoryInput(selected.category_name || '');
+    } else if (!formData.category_id) {
+      setCategoryInput(prev => prev); // keep what user typed
+    }
+  }, [categories, formData.category_id]);
+
   const transformBusinessData = (apiData) => {
     console.log('Raw API data:', apiData);
     
@@ -188,7 +199,6 @@ const BusinessDirectoryForm = () => {
       category_id: apiData.category_id?.toString() || '',
       registrationNumber: registrationNumber,
       registrationNumberOther: registrationNumberOther,
-      startingYear: apiData.business_starting_year?.toString() || '',
       experience: apiData.experience?.toString() || '',
       businessAddress: apiData.company_address || '',
       businessEmail: apiData.email || '',
@@ -254,6 +264,23 @@ const BusinessDirectoryForm = () => {
         profileImageType: isImage ? 'image' : 'video'
       }));
     }
+  };
+
+  // Category input handlers (similar to signup flow)
+  const handleCategoryInputChange = (e) => {
+    const value = e.target.value || '';
+    setCategoryInput(value);
+    setShowCategorySuggestions(true);
+    const matchedSelectedName = (categories.find(c => String(c.cid) === String(formData.category_id))?.category_name || '').toLowerCase();
+    if (value.trim() === '' || value.trim().toLowerCase() !== matchedSelectedName) {
+      setFormData(prev => ({ ...prev, category_id: '' }));
+    }
+  };
+
+  const handleSelectExistingCategory = (cid, name) => {
+    setFormData(prev => ({ ...prev, category_id: String(cid) }));
+    setCategoryInput(name || '');
+    setShowCategorySuggestions(false);
   };
 
   const handleMediaGalleryChange = (e) => {
@@ -452,7 +479,6 @@ const BusinessDirectoryForm = () => {
         business_registration_type: formData.registrationNumber === 'Others' 
           ? formData.registrationNumberOther 
           : formData.registrationNumber,
-        business_starting_year: formData.startingYear ? parseInt(formData.startingYear) : null,
         experience: formData.experience || null,
         company_address: formData.businessAddress || null,
         email: formData.businessEmail || null,
@@ -677,21 +703,35 @@ const BusinessDirectoryForm = () => {
 
               {(formData.business_type === 'self-employed' || formData.business_type === 'business') && (
                 <Grid item xs={12} md={6}>
-                  <FormControl fullWidth size="medium">
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      name="category_id"
-                      value={formData.category_id}
+                  <Box sx={{ position: 'relative' }}>
+                    <TextField
+                      fullWidth
                       label="Category"
-                      onChange={handleInputChange}
-                    >
-                      {categories.map((category) => (
-                        <MenuItem key={category.cid} value={category.cid.toString()}>
-                          {category.category_name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                      value={categoryInput}
+                      onChange={handleCategoryInputChange}
+                      onFocus={() => setShowCategorySuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 120)}
+                      size="medium"
+                      placeholder="Type to search and select category"
+                    />
+                    {showCategorySuggestions && (categoryInput || '').length > 0 && (
+                      <Paper elevation={3} sx={{ position: 'absolute', zIndex: 10, width: '100%', mt: 1, maxHeight: 240, overflowY: 'auto' }}>
+                        {categories
+                          .filter(c => (c.category_name || '').toLowerCase().includes((categoryInput || '').toLowerCase()))
+                          .slice(0, 10)
+                          .map(c => (
+                            <MenuItem key={c.cid} onMouseDown={(e) => e.preventDefault()} onClick={() => handleSelectExistingCategory(c.cid, c.category_name)}>
+                              {c.category_name}
+                            </MenuItem>
+                          ))}
+                        {categories.filter(c => (c.category_name || '').toLowerCase().includes((categoryInput || '').toLowerCase())).length === 0 && (
+                          <Box sx={{ p: 1.5 }}>
+                            <Typography variant="body2" color="text.secondary">No matches</Typography>
+                          </Box>
+                        )}
+                      </Paper>
+                    )}
+                  </Box>
                 </Grid>
               )}
 
@@ -771,17 +811,6 @@ const BusinessDirectoryForm = () => {
                     </Grid>
                   )}
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Business Starting Year"
-                      name="startingYear"
-                      value={formData.startingYear}
-                      onChange={handleInputChange}
-                      size="medium"
-                      type="number"
-                    />
-                  </Grid>
 
                   <Grid item xs={12} md={6}>
                     <TextField

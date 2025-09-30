@@ -88,7 +88,16 @@ const registerMember = async (req, res) => {
             Rotary = 'No', // ✅ new forum field
             Lions = 'No', // ✅ new forum field
             Other_forum = null, // ✅ new forum field
+            pro = 'Unpro',          // ✅ new field
+            core_pro = null,        // ✅ new field
+            squad = null,           // ✅ new field
+            squad_fields = null
         } = req.body;
+
+        let coreProFinal = null;
+        if (pro === 'Unpro') {
+            coreProFinal = core_pro || null;
+        }
 
         if (Array.isArray(email)) email = email[0];
 
@@ -131,6 +140,10 @@ const registerMember = async (req, res) => {
             Rotary, // ✅ save forum membership
             Lions, // ✅ save forum membership
             Other_forum, // ✅ save other forum
+            pro,           // ✅ save pro/unpro toggle
+            core_pro: coreProFinal,     // ✅ save core_pro
+            squad,         // ✅ save squad
+            squad_fields
         }, { transaction: t });
 
         // Handle referral
@@ -214,6 +227,7 @@ const registerMember = async (req, res) => {
                 city: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.city : null,
                 state: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.state : null,
                 zip_code: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.zip_code : null,
+                // business_starting_year: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_starting_year : null,
                 business_work_contract: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_work_contract : null,
 
                 // Business-specific fields
@@ -537,6 +551,10 @@ const updateMember = async (req, res) => {
             Rotary = member.Rotary, // ✅ forum membership
             Lions = member.Lions, // ✅ forum membership
             Other_forum = member.Other_forum, // ✅ other forum
+            pro = member.pro,
+            core_pro = member.core_pro,
+            squad = member.squad,
+            squad_fields = member.squad_fields
         } = req.body;
 
         // Ensure rejection reason only if status = Rejected
@@ -599,6 +617,10 @@ const updateMember = async (req, res) => {
             Rotary, // ✅ forum membership
             Lions, // ✅ forum membership
             Other_forum, // ✅ other forum
+            pro,
+            core_pro,
+            squad,
+            squad_fields
         }, { transaction: t });
 
         await t.commit();
@@ -723,7 +745,7 @@ const updateBusinessProfile = async (req, res) => {
 
         // Parse business data from request
         let businessData = req.body.business_profile || req.body;
-        
+
         if (typeof businessData === 'string') {
             try {
                 businessData = JSON.parse(businessData);
@@ -737,7 +759,7 @@ const updateBusinessProfile = async (req, res) => {
         let business_profile_image = profile.business_profile_image;
         if (req.files?.business_profile_image?.[0]) {
             business_profile_image = req.files.business_profile_image[0].path.replace(/\\/g, "/");
-            
+
             // Delete old profile image if it exists and is being replaced
             if (profile.business_profile_image && profile.business_profile_image !== business_profile_image) {
                 try {
@@ -757,13 +779,13 @@ const updateBusinessProfile = async (req, res) => {
         // Process removed media
         if (req.body.removed_media) {
             try {
-                const removedMedia = typeof req.body.removed_media === 'string' 
-                    ? JSON.parse(req.body.removed_media) 
+                const removedMedia = typeof req.body.removed_media === 'string'
+                    ? JSON.parse(req.body.removed_media)
                     : req.body.removed_media;
-                
+
                 if (Array.isArray(removedMedia) && removedMedia.length > 0) {
                     const currentGallery = finalMediaGallery ? finalMediaGallery.split(',') : [];
-                    
+
                     // Filter out removed media and delete the files
                     finalMediaGallery = currentGallery
                         .filter(item => {
@@ -790,12 +812,12 @@ const updateBusinessProfile = async (req, res) => {
         // Process new media gallery files
         if (req.files?.media_gallery && req.files.media_gallery.length > 0) {
             const newGalleryPaths = req.files.media_gallery.map(file => file.path.replace(/\\/g, "/"));
-            
+
             // Determine media type based on first file
             if (newGalleryPaths.length > 0) {
                 gallery_type = /\.(mp4|mov|avi|mkv|webm|ogg)$/i.test(newGalleryPaths[0]) ? "video" : "image";
             }
-            
+
             // Add new files to existing gallery
             const currentGallery = finalMediaGallery ? finalMediaGallery.split(',') : [];
             finalMediaGallery = [...currentGallery, ...newGalleryPaths].join(',');
@@ -831,6 +853,9 @@ const updateBusinessProfile = async (req, res) => {
             zip_code: newBusinessType === 'self-employed'
                 ? (businessData.zip_code || profile.zip_code)
                 : (newBusinessType !== profile.business_type ? null : profile.zip_code),
+            business_starting_year: newBusinessType === 'self-employed'
+                ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
+                : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
             business_work_contract: newBusinessType === 'self-employed'
                 ? (businessData.business_work_contract || profile.business_work_contract)
                 : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),
@@ -1246,6 +1271,22 @@ const getBusinessProfileById = async (req, res) => {
     }
 };
 
+// GET: Pro Members (for Core Pro dropdown)
+const getProMembers = async (req, res) => {
+    try {
+        console.log('Fetching pro members');
+        const members = await Member.findAll({
+            where: { pro: 'Pro' },
+            attributes: ['mid', 'first_name', 'email']
+        });
+        console.log('Pro members fetched:', members);
+        return res.status(200).json({ success: true, data: members });
+    } catch (error) {
+        console.error('Error fetching pro members:', error);
+        return res.status(500).json({ success: false, msg: 'Failed to fetch pro members', error: error.message });
+    }
+};
+
 // ✅ Add Family Information for Existing Member
 const addFamilyForMember = async (req, res) => {
     const t = await MemberFamily.sequelize.transaction();
@@ -1349,5 +1390,6 @@ module.exports = {
     getBusinessProfileById,
     addFamilyForMember,
     checkExpiredMemberships,
-    scheduleExpirationCheck
+    scheduleExpirationCheck,
+    getProMembers
 };

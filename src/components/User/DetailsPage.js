@@ -223,7 +223,7 @@ const BusinessListing = () => {
                   if (resp.ok) {
                     const json = await resp.json();
                     if (json.success && json.data) {
-                      setMemberDetails(json.profile);
+                      setMemberDetails(json.data);
                     }
                   }
                 } catch (e) {
@@ -897,6 +897,62 @@ const BusinessListing = () => {
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Gender</span>
                   <p className="text-gray-600">{resolvedMember?.gender || 'Not available'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Award className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">Arakattalai</span>
+                  <p className="text-gray-600">{resolvedMember?.Arakattalai || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">BNI</span>
+                  <p className="text-gray-600">{resolvedMember?.BNI || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">KBN Member</span>
+                  <p className="text-gray-600">{resolvedMember?.KBN_Member || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">KNS Member</span>
+                  <p className="text-gray-600">{resolvedMember?.KNS_Member || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Heart className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">Lions</span>
+                  <p className="text-gray-600">{resolvedMember?.Lions || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Globe className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">Rotary</span>
+                  <p className="text-gray-600">{resolvedMember?.Rotary || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">Other Forum</span>
+                  <p className="text-gray-600">{resolvedMember?.Other_forum || 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Briefcase className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-left">
+                  <span className="font-semibold text-gray-800 block">Pro</span>
+                  <p className="text-gray-600">{resolvedMember?.pro || 'Unpro'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
