@@ -14,7 +14,7 @@ import { useParams } from 'react-router-dom';
 const ProfilePage = () => {
   const { id } = useParams();
   const [editingSection, setEditingSection] = useState(null);
-  
+
   const [profileData, setProfileData] = useState({
     personal: {
       fullName: '',
@@ -51,6 +51,13 @@ const ProfilePage = () => {
       kootamOther: '',
       kovil: '',
       kovilOther: '',
+      Arakattalai: 'No',
+      KNS_Member: 'No',
+      KBN_Member: 'No',
+      BNI: 'No',
+      Rotary: 'No',
+      Lions: 'No',
+      Other_forum: '',
       hasReferral: false,
       referralName: '',
       referralCode: '',
@@ -120,19 +127,19 @@ const ProfilePage = () => {
   const [categories, setCategories] = useState([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
   const fileInputRef = useRef(null);
-  
+
   // Media handling states
   const [removedMediaGallery, setRemovedMediaGallery] = useState([]);
   const profileImageInputRef = useRef(null);
   const mediaGalleryInputRef = useRef(null);
-  
+
   // Media preview modal states
   const [mediaPreview, setMediaPreview] = useState({
     isOpen: false,
     media: null,
     type: 'image'
   });
-  
+
   // Change password modal states
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -142,11 +149,11 @@ const ProfilePage = () => {
   });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
-  
+
   // Format date function
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-US', {
@@ -162,13 +169,13 @@ const ProfilePage = () => {
   // Format relative time function
   const formatRelativeTime = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
       const now = new Date();
       const diffTime = Math.abs(now - date);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 1) return '1 day ago';
       if (diffDays < 7) return `${diffDays} days ago`;
       if (diffDays < 30) return `${Math.ceil(diffDays / 7)} weeks ago`;
@@ -184,7 +191,7 @@ const ProfilePage = () => {
     let bgColor = '';
     let textColor = '';
     let icon = null;
-    
+
     switch (status?.toLowerCase()) {
       case 'paid':
         bgColor = 'bg-green-100';
@@ -201,7 +208,7 @@ const ProfilePage = () => {
         textColor = 'text-gray-800';
         icon = <CreditCard className="w-3 h-3 sm:w-4 sm:h-4" />;
     }
-    
+
     return (
       <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${bgColor} ${textColor} flex items-center space-x-1`}>
         {icon}
@@ -225,7 +232,7 @@ const ProfilePage = () => {
       setLoading(false);
     }
   }, [id]);
-  
+
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
@@ -244,7 +251,7 @@ const ProfilePage = () => {
     };
     fetchCategories();
   }, []);
-  
+
   // Fetch profile data when memberId is available
   useEffect(() => {
     if (memberId) {
@@ -253,7 +260,7 @@ const ProfilePage = () => {
       fetchFamilyDetails();
     }
   }, [memberId]);
-  
+
   const fetchProfileData = async () => {
     try {
       setLoading(true);
@@ -283,7 +290,7 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
-  
+
   const fetchFamilyDetails = async () => {
     try {
       const response = await fetch(`http://localhost:8000/api/member/all`, {
@@ -291,11 +298,11 @@ const ProfilePage = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch family details: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.success) {
         const memberData = data.data.find(member => member.mid === parseInt(memberId));
@@ -319,22 +326,22 @@ const ProfilePage = () => {
           return true;
         }
       }
-      
+
       throw new Error('Family data not found in primary endpoint');
     } catch (err) {
       console.error('Failed to load family details from primary endpoint:', err);
-      
+
       try {
         const fallbackResponse = await fetch(`${baseurl}/api/member/${memberId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         if (!fallbackResponse.ok) {
           throw new Error('Fallback endpoint also failed');
         }
-        
+
         const fallbackData = await fallbackResponse.json();
         if (fallbackData.success && fallbackData.data.MemberFamily) {
           setProfileData(prev => ({
@@ -357,7 +364,7 @@ const ProfilePage = () => {
         }
       } catch (fallbackErr) {
         console.error('Fallback endpoint also failed:', fallbackErr);
-        
+
         setProfileData(prev => ({
           ...prev,
           family: {
@@ -378,7 +385,7 @@ const ProfilePage = () => {
       }
     }
   };
-  
+
   const transformPersonalApiData = (apiData) => {
     let streetAddress = '';
     let city = '';
@@ -414,36 +421,36 @@ const ProfilePage = () => {
         }
       }
     }
-    
+
     const predefinedGenders = ['Male', 'Female', 'Other'];
     const predefinedKootams = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai'];
     const predefinedKovils = ['Madurai Meenakshi Amman', 'Thanjavur Brihadeeswarar', 'Palani Murugan', 'Srirangam Ranganathar', 'Kanchipuram Kamakshi Amman'];
-    
+
     let gender = apiData.gender || '';
     let genderOther = '';
     if (gender && !predefinedGenders.includes(gender)) {
       genderOther = gender;
       gender = 'Other';
     }
-    
+
     let kootam = apiData.kootam || '';
     let kootamOther = '';
     if (kootam && !predefinedKootams.includes(kootam)) {
       kootamOther = kootam;
       kootam = 'Others';
     }
-    
+
     let kovil = apiData.kovil || '';
     let kovilOther = '';
     if (kovil && !predefinedKovils.includes(kovil)) {
       kovilOther = kovil;
       kovil = 'Others';
     }
-    
+
     const hasReferral = !!apiData.Referral;
     const referralName = apiData.Referral?.referral_name || '';
     const referralCode = apiData.Referral?.referral_code || '';
-    
+
     return {
       fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
       email: apiData.email || '',
@@ -479,6 +486,13 @@ const ProfilePage = () => {
       kootamOther: kootamOther,
       kovil: kovil,
       kovilOther: kovilOther,
+      Arakattalai: apiData.Arakattalai || 'No',
+      KNS_Member: apiData.KNS_Member || 'No',
+      KBN_Member: apiData.KBN_Member || 'No',
+      BNI: apiData.BNI || 'No',
+      Rotary: apiData.Rotary || 'No',
+      Lions: apiData.Lions || 'No',
+      Other_forum: apiData.Other_forum || '',
       hasReferral: hasReferral,
       referralName: referralName,
       referralCode: referralCode,
@@ -490,7 +504,7 @@ const ProfilePage = () => {
       updatedAt: apiData.updatedAt || ''
     };
   };
-  
+
   const fetchBusinessProfiles = async () => {
     try {
       setLoadingBusiness(true);
@@ -499,28 +513,28 @@ const ProfilePage = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch business profiles: ${response.status}`);
       }
-      
+
       const data = await response.json();
       if (data.success) {
         const memberBusinessProfiles = data.data.filter(
           business => business.member_id === parseInt(memberId)
         );
-        
+
         const predefinedRegistrationTypes = ['proprietor', 'partnership', 'Others'];
-        
+
         const transformedBusinesses = memberBusinessProfiles.map(business => {
           let registrationNumber = business.business_registration_type || '';
           let registrationNumberOther = '';
-          
+
           if (registrationNumber && !predefinedRegistrationTypes.includes(registrationNumber)) {
             registrationNumberOther = registrationNumber;
             registrationNumber = 'Others';
           }
-          
+
           // Parse media gallery - handle both images and videos
           let mediaGallery = [];
           if (business.media_gallery) {
@@ -535,11 +549,11 @@ const ProfilePage = () => {
               };
             });
           }
-          
+
           // Determine profile image type
           const profileImageUrl = business.business_profile_image || null;
           const isProfileVideo = profileImageUrl && profileImageUrl.match(/\.(mp4|webm|ogg|mov|avi)$/i);
-          
+
           return {
             id: business.id,
             businessName: business.company_name || '',
@@ -576,9 +590,9 @@ const ProfilePage = () => {
             location: business.location || '',
           };
         });
-        
+
         setBusinessProfiles(transformedBusinesses);
-        
+
         if (transformedBusinesses.length > 0) {
           setSelectedBusinessId(transformedBusinesses[0].id);
           setProfileData(prev => ({
@@ -600,11 +614,11 @@ const ProfilePage = () => {
       setLoadingBusiness(false);
     }
   };
-  
+
   const handleEdit = (section) => {
     setEditingSection(section);
   };
-  
+
   // Enhanced media handling functions
   const handleProfileImageClick = () => {
     if (editingSection === 'business') {
@@ -613,17 +627,17 @@ const ProfilePage = () => {
       openMediaPreview(profileData.business.profileImage, profileData.business.profileImageType);
     }
   };
-  
+
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const isImage = file.type.startsWith('image/');
-      
+
       if (!isImage) {
         setError('Please select an image file for profile picture');
         return;
       }
-      
+
       const previewUrl = URL.createObjectURL(file);
       setProfileData(prev => ({
         ...prev,
@@ -636,13 +650,13 @@ const ProfilePage = () => {
       }));
     }
   };
-  
+
   const handleMediaGalleryAddClick = () => {
     if (editingSection === 'business') {
       mediaGalleryInputRef.current.click();
     }
   };
-  
+
   const handleMediaGalleryChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 0) {
@@ -650,7 +664,7 @@ const ProfilePage = () => {
         const isImage = file.type.startsWith('image/');
         const isVideo = file.type.startsWith('video/');
         const previewUrl = URL.createObjectURL(file);
-        
+
         return {
           file: file,
           url: previewUrl,
@@ -659,7 +673,7 @@ const ProfilePage = () => {
           isNew: true
         };
       });
-      
+
       setProfileData(prev => ({
         ...prev,
         business: {
@@ -669,16 +683,16 @@ const ProfilePage = () => {
       }));
     }
   };
-  
+
   const handleRemoveMediaGalleryItem = (index) => {
     const item = profileData.business.mediaGallery[index];
-    
+
     if (item.isNew) {
       URL.revokeObjectURL(item.url);
     } else {
       setRemovedMediaGallery(prev => [...prev, item.url]);
     }
-    
+
     setProfileData(prev => ({
       ...prev,
       business: {
@@ -687,16 +701,16 @@ const ProfilePage = () => {
       }
     }));
   };
-  
+
   const handleRemoveProfileImage = () => {
     const currentProfileImage = profileData.business.profileImage;
-    
+
     if (currentProfileImage && !currentProfileImage.startsWith('blob:')) {
       setRemovedMediaGallery(prev => [...prev, currentProfileImage]);
     } else if (currentProfileImage) {
       URL.revokeObjectURL(currentProfileImage);
     }
-    
+
     setProfileData(prev => ({
       ...prev,
       business: {
@@ -707,7 +721,7 @@ const ProfilePage = () => {
       }
     }));
   };
-  
+
   // Media preview functions
   const openMediaPreview = (mediaUrl, mediaType) => {
     setMediaPreview({
@@ -716,7 +730,7 @@ const ProfilePage = () => {
       type: mediaType
     });
   };
-  
+
   const closeMediaPreview = () => {
     setMediaPreview({
       isOpen: false,
@@ -724,7 +738,7 @@ const ProfilePage = () => {
       type: 'image'
     });
   };
-  
+
   const MediaPreviewComponent = ({ media, onRemove, editable = false, onClick }) => {
     if (media.type === 'video') {
       return (
@@ -798,6 +812,7 @@ const ProfilePage = () => {
     }
   };
 
+  // CORRECTED handleSave function
   const handleSave = async (section) => {
     try {
       setLoading(true);
@@ -805,16 +820,14 @@ const ProfilePage = () => {
       if (!memberId) {
         throw new Error('Member ID is missing');
       }
-      
+  
       if (section === 'business') {
         const businessData = profileData.business;
-        
-        // Prepare business data
         const apiData = {
           business_type: businessData.businessType,
           company_name: businessData.businessName,
-          business_registration_type: businessData.registrationNumber === 'Others' 
-            ? businessData.registrationNumberOther 
+          business_registration_type: businessData.registrationNumber === 'Others'
+            ? businessData.registrationNumberOther
             : businessData.registrationNumber,
           business_starting_year: businessData.startingYear,
           experience: businessData.experience,
@@ -838,30 +851,20 @@ const ProfilePage = () => {
           salary: businessData.salary,
           location: businessData.location,
         };
-  
-        // Create FormData for the request
         const formData = new FormData();
-        
-        // Add business data as JSON
         formData.append('business_profile', JSON.stringify(apiData));
-        
-        // Add profile image if exists
+  
         if (businessData.profileImageFile) {
           formData.append('business_profile_image', businessData.profileImageFile);
         }
-        
-        // Add media gallery files - FIXED: Use correct field name
         businessData.mediaGallery.forEach((media) => {
           if (media.isNew && media.file) {
             formData.append('media_gallery', media.file);
           }
         });
-        
-        // Add removed media gallery items
         if (removedMediaGallery.length > 0) {
           formData.append('removed_media', JSON.stringify(removedMediaGallery));
         }
-        
         let url, method;
         if (businessData.id) {
           url = `${baseurl}/api/business-profile/update/${businessData.id}`;
@@ -871,7 +874,6 @@ const ProfilePage = () => {
           method = 'POST';
           formData.append('business_profiles', JSON.stringify([apiData]));
         }
-        
         const response = await fetch(url, {
           method,
           headers: {
@@ -879,14 +881,11 @@ const ProfilePage = () => {
           },
           body: formData
         });
-        
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData?.message || `Server returned ${response.status}`);
         }
-        
         const result = await response.json();
-        
         if (result.success) {
           setRemovedMediaGallery([]);
           setSuccess('Business information updated successfully');
@@ -896,9 +895,42 @@ const ProfilePage = () => {
         } else {
           throw new Error(result.message || 'Update failed');
         }
-      } else {
-        // ... rest of your handleSave function for other sections
+      } else if (section === 'personal') {
+        const apiData = prepareDataForApi('personal', profileData.personal);
+  
+        const response = await fetch(`${baseurl}/api/member/update/${memberId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(apiData)
+        });
+  
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData?.message || `Server returned ${response.status}`);
+        }
+  
+        const result = await response.json();
+  
+        if (result.success) {
+          setSuccess('Personal information updated successfully');
+          setEditingSection(null);
+          fetchProfileData(); // Refetch to get the latest data
+          setTimeout(() => setSuccess(''), 3000);
+        } else {
+          throw new Error(result.message || 'Update failed');
+        }
+      } else if (section === 'family') {
+          // NOTE: You will need to implement this part next.
+          // It requires a specific API endpoint to update family details.
+          console.log("Saving family details is not yet implemented.");
+          setError("Family details save functionality is not available yet.");
+          setTimeout(() => setError(''), 3000);
+          setEditingSection(null); // Temporarily close the section
       }
+  
     } catch (err) {
       setError(err.message);
       console.error('Update error:', err);
@@ -906,17 +938,17 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
-  
+
   const prepareDataForApi = (section, data) => {
     if (section === 'personal') {
       const nameParts = data.fullName.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-      
+
       const gender = data.gender === 'Other' ? data.genderOther : data.gender;
       const kootam = data.kootam === 'Others' ? data.kootamOther : data.kootam;
       const kovil = data.kovil === 'Others' ? data.kovilOther : data.kovil;
-      
+
       const apiData = {
         first_name: firstName,
         last_name: lastName,
@@ -949,20 +981,28 @@ const ProfilePage = () => {
         kovil: kovil,
         access_level: data.accessLevel,
         status: data.status,
-        paid_status: data.paidStatus
+        paid_status: data.paidStatus,
+        // Forum membership fields
+        Arakattalai: data.Arakattalai,
+        KNS_Member: data.KNS_Member,
+        KBN_Member: data.KBN_Member,
+        BNI: data.BNI,
+        Rotary: data.Rotary,
+        Lions: data.Lions,
+        Other_forum: data.Other_forum
       };
-      
+
       Object.keys(apiData).forEach(key => {
         if (apiData[key] === '' || apiData[key] === null || apiData[key] === undefined) {
           delete apiData[key];
         }
       });
-      
+
       return apiData;
     }
     return data;
   };
-  
+
   const handleCancel = () => {
     setEditingSection(null);
     fetchProfileData();
@@ -970,7 +1010,7 @@ const ProfilePage = () => {
     fetchFamilyDetails();
     setRemovedMediaGallery([]);
   };
-  
+
   const handleInputChange = useCallback((section, field, value) => {
     setProfileData(prev => ({
       ...prev,
@@ -994,6 +1034,13 @@ const ProfilePage = () => {
     kootamOther: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kootamOther: value } })),
     kovil: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kovil: value } })),
     kovilOther: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kovilOther: value } })),
+    Arakattalai: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Arakattalai: value } })),
+    KNS_Member: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, KNS_Member: value } })),
+    KBN_Member: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, KBN_Member: value } })),
+    BNI: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, BNI: value } })),
+    Rotary: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Rotary: value } })),
+    Lions: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Lions: value } })),
+    Other_forum: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Other_forum: value } })),
     status: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, status: value } })),
     accessLevel: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, accessLevel: value } })),
     paidStatus: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, paidStatus: value } })),
@@ -1063,24 +1110,24 @@ const ProfilePage = () => {
   const InputField = React.memo(({ label, value, onChange, type = "text", required = false, disabled = false }) => {
     const [localValue, setLocalValue] = React.useState(value);
     const inputRef = React.useRef(null);
-    
+
     React.useEffect(() => {
       if (value !== localValue && document.activeElement !== inputRef.current) {
         setLocalValue(value);
       }
     }, [value]);
-    
+
     const handleChange = (e) => {
       const newValue = e.target.value;
       setLocalValue(newValue);
     };
-    
+
     const handleBlur = () => {
       if (localValue !== value) {
         onChange(localValue);
       }
     };
-    
+
     return (
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">
@@ -1099,7 +1146,7 @@ const ProfilePage = () => {
       </div>
     );
   });
-  
+
   const SelectField = React.memo(({ label, value, onChange, options, disabled = false }) => (
     <div className="space-y-1">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
@@ -1119,7 +1166,7 @@ const ProfilePage = () => {
       </select>
     </div>
   ));
-  
+
   const StatusBadge = React.memo(({ status }) => {
     let bgColor = '';
     let textColor = '';
@@ -1146,7 +1193,7 @@ const ProfilePage = () => {
       </span>
     );
   });
-  
+
   const AccessLevelBadge = React.memo(({ level }) => {
     let bgColor = '';
     let textColor = '';
@@ -1208,7 +1255,7 @@ const ProfilePage = () => {
         disabled={isPersonalDisabled}
         type="date"
       />
-      
+
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">Gender</label>
         <select
@@ -1224,7 +1271,7 @@ const ProfilePage = () => {
           <option value="Other">Other</option>
         </select>
       </div>
-      
+
       {profileData.personal.gender === 'Other' && isPersonalEditing && (
         <InputField
           label="Specify Gender"
@@ -1233,7 +1280,7 @@ const ProfilePage = () => {
           disabled={isPersonalDisabled}
         />
       )}
-      
+
       <SelectField
         label="Marital Status"
         value={profileData.personal.maritalStatus}
@@ -1241,7 +1288,7 @@ const ProfilePage = () => {
         options={['Single', 'Married', 'Divorced', 'Widowed']}
         disabled={isPersonalDisabled}
       />
-      
+
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">Kootam</label>
         <select
@@ -1260,7 +1307,7 @@ const ProfilePage = () => {
           <option value="Others">Others</option>
         </select>
       </div>
-      
+
       {profileData.personal.kootam === 'Others' && isPersonalEditing && (
         <InputField
           label="Specify Kootam"
@@ -1269,7 +1316,7 @@ const ProfilePage = () => {
           disabled={isPersonalDisabled}
         />
       )}
-      
+
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">Kovil</label>
         <select
@@ -1288,7 +1335,7 @@ const ProfilePage = () => {
           <option value="Others">Others</option>
         </select>
       </div>
-      
+
       {profileData.personal.kovil === 'Others' && isPersonalEditing && (
         <InputField
           label="Specify Kovil"
@@ -1297,7 +1344,7 @@ const ProfilePage = () => {
           disabled={isPersonalDisabled}
         />
       )}
-      
+
       <SelectField
         label="Status"
         value={profileData.personal.status}
@@ -1321,7 +1368,7 @@ const ProfilePage = () => {
       />
     </div>
   ), [profileData.personal, isPersonalEditing, isPersonalDisabled, personalHandlers]);
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -1330,13 +1377,13 @@ const ProfilePage = () => {
       uploadProfileImage(file);
     }
   };
-  
+
   const uploadProfileImage = async (file) => {
     try {
       setLoading(true);
       const formData = new FormData();
       formData.append('profile_image', file);
-      
+
       const response = await fetch(`${baseurl}/api/member/update/${memberId}`, {
         method: 'PUT',
         headers: {
@@ -1344,11 +1391,11 @@ const ProfilePage = () => {
         },
         body: formData
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to upload profile image');
       }
-      
+
       const result = await response.json();
       if (result.success) {
         setSuccess('Profile image updated successfully');
@@ -1363,17 +1410,17 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
-  
+
   const triggerFileInput = () => {
     fileInputRef.current.click();
   };
-  
+
   const handleBusinessSelect = (businessId) => {
     if (businessId === 'new') {
       handleAddNewBusiness();
       return;
     }
-    
+
     const business = businessProfiles.find(b => b.id === parseInt(businessId));
     if (business) {
       setSelectedBusinessId(business.id);
@@ -1384,7 +1431,7 @@ const ProfilePage = () => {
       setEditingSection(null);
     }
   };
-  
+
   const handleAddNewBusiness = () => {
     const newBusiness = {
       id: null,
@@ -1421,7 +1468,7 @@ const ProfilePage = () => {
       salary: '',
       location: '',
     };
-    
+
     setProfileData(prev => ({
       ...prev,
       business: newBusiness
@@ -1429,12 +1476,12 @@ const ProfilePage = () => {
     setSelectedBusinessId('new');
     setEditingSection('business');
   };
-  
+
   const handleDeleteBusiness = async (businessId) => {
     if (!window.confirm('Are you sure you want to delete this business profile?')) {
       return;
     }
-    
+
     try {
       setLoading(true);
       const response = await fetch(`${baseurl}/api/business-profile/delete/${businessId}`, {
@@ -1443,11 +1490,11 @@ const ProfilePage = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete business profile');
       }
-      
+
       const result = await response.json();
       if (result.success) {
         setSuccess('Business profile deleted successfully');
@@ -1463,7 +1510,7 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
-  
+
   const handleChangePassword = () => {
     setShowChangePasswordModal(true);
     setPasswordError('');
@@ -1474,7 +1521,7 @@ const ProfilePage = () => {
       confirmPassword: ''
     });
   };
-  
+
   const handlePasswordChange = (field, value) => {
     setPasswordData(prev => ({
       ...prev,
@@ -1482,27 +1529,27 @@ const ProfilePage = () => {
     }));
     if (passwordError) setPasswordError('');
   };
-  
+
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
-    
+
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       setPasswordError('All fields are required');
       return;
     }
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError('New password and confirm password do not match');
       return;
     }
-    
+
     if (passwordData.newPassword.length < 6) {
       setPasswordError('New password must be at least 6 characters long');
       return;
     }
-    
+
     try {
       setLoading(true);
       const response = await fetch(`${baseurl}/api/member/change-password/${memberId}`, {
@@ -1516,12 +1563,12 @@ const ProfilePage = () => {
           newPassword: passwordData.newPassword
         })
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData?.message || 'Failed to change password');
       }
-      
+
       const result = await response.json();
       if (result.success) {
         setPasswordSuccess('Password changed successfully');
@@ -1539,7 +1586,7 @@ const ProfilePage = () => {
       setLoading(false);
     }
   };
-  
+
   const closePasswordModal = () => {
     setShowChangePasswordModal(false);
     setPasswordError('');
@@ -1550,7 +1597,7 @@ const ProfilePage = () => {
       confirmPassword: ''
     });
   };
-  
+
   if (loading && !profileData.personal.fullName) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1558,7 +1605,7 @@ const ProfilePage = () => {
       </div>
     );
   }
-  
+
   if (error && !memberId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1575,7 +1622,7 @@ const ProfilePage = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -1642,7 +1689,7 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-20 lg:pb-8">
         {/* Personal Details Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -1688,10 +1735,10 @@ const ProfilePage = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 sm:p-6">
             {PersonalFormSection}
-            
+
             <div className="mt-6 space-y-4">
               <h3 className="text-base sm:text-lg font-semibold text-blue-600">Address Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left">
@@ -1721,7 +1768,7 @@ const ProfilePage = () => {
                 />
               </div>
             </div>
-            
+
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
               <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-4 sm:mb-5">
                 Additional Contact Information
@@ -1773,7 +1820,7 @@ const ProfilePage = () => {
                 />
               </div>
             </div>
-            
+
             <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
               <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-4">Social Media Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left">
@@ -1827,7 +1874,109 @@ const ProfilePage = () => {
                 />
               </div>
             </div>
-            
+
+            <div className="mt-6 space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-blue-600">Forum Memberships</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 text-left">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Arakattalai</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.Arakattalai === 'Yes'}
+                        onChange={(e) => personalHandlers.Arakattalai(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">KNS Member</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.KNS_Member === 'Yes'}
+                        onChange={(e) => personalHandlers.KNS_Member(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">KBN Member</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.KBN_Member === 'Yes'}
+                        onChange={(e) => personalHandlers.KBN_Member(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">BNI</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.BNI === 'Yes'}
+                        onChange={(e) => personalHandlers.BNI(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Rotary</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.Rotary === 'Yes'}
+                        onChange={(e) => personalHandlers.Rotary(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Lions</label>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={profileData.personal.Lions === 'Yes'}
+                        onChange={(e) => personalHandlers.Lions(e.target.checked ? 'Yes' : 'No')}
+                        disabled={editingSection !== 'personal'}
+                      />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <InputField
+                  label="Other Forum"
+                  value={profileData.personal.Other_forum}
+                  onChange={personalHandlers.Other_forum}
+                  disabled={editingSection !== 'personal'}
+                />
+              </div>
+            </div>
+
             {profileData.personal.hasReferral && (
               <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
                 <h3 className="text-base sm:text-lg font-semibold text-blue-600 mb-4">Referral Information</h3>
@@ -1849,7 +1998,7 @@ const ProfilePage = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="mt-6 flex items-center space-x-4">
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-500 rounded-full flex items-center justify-center overflow-hidden">
                 {profileImage ? (
@@ -1882,7 +2031,7 @@ const ProfilePage = () => {
                 />
               </div>
             </div>
-            
+
             {editingSection === 'personal' && (
               <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                 <button
@@ -1899,7 +2048,7 @@ const ProfilePage = () => {
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={handleChangePassword}
                   className="border-2 border-blue-500 text-blue-500 hover:bg-blue-50 px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
                 >
@@ -1909,7 +2058,7 @@ const ProfilePage = () => {
             )}
           </div>
         </div>
-        
+
         {/* Business Details Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-4 sm:px-6 py-4 border-b border-orange-200">
@@ -1950,7 +2099,7 @@ const ProfilePage = () => {
               </div>
             </div>
           </div>
-          
+
           {businessProfiles.length > 0 && (
             <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -1975,7 +2124,7 @@ const ProfilePage = () => {
               </div>
             </div>
           )}
-          
+
           <div className="p-4 sm:p-6">
             {loadingBusiness ? (
               <div className="flex justify-center items-center h-64">
@@ -1986,7 +2135,7 @@ const ProfilePage = () => {
                 <h3 className="text-base sm:text-lg font-bold text-orange-600 mb-4">
                   {profileData.business.isNew ? 'New Business' : 'Primary Business'}
                 </h3>
-                
+
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2 text-left">Business Type</label>
                   <div className="flex flex-wrap gap-4">
@@ -2008,7 +2157,7 @@ const ProfilePage = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 text-left">
                   <InputField
                     label="Business Name"
@@ -2016,7 +2165,7 @@ const ProfilePage = () => {
                     onChange={businessHandlers.businessName}
                     disabled={editingSection !== 'business'}
                   />
-                  
+
                   <SelectField
                     label="Category"
                     value={profileData.business.category_id}
@@ -2024,7 +2173,7 @@ const ProfilePage = () => {
                     options={categories.map(cat => ({ value: cat.cid, label: cat.category_name }))}
                     disabled={editingSection !== 'business'}
                   />
-                  
+
                   {profileData.business.businessType === 'salary' ? (
                     <>
                       <InputField
@@ -2075,7 +2224,7 @@ const ProfilePage = () => {
                           <option value="Others">Others</option>
                         </select>
                       </div>
-                      
+
                       {profileData.business.registrationNumber === 'Others' && editingSection === 'business' && (
                         <InputField
                           label="Specify Registration Type"
@@ -2084,7 +2233,7 @@ const ProfilePage = () => {
                           disabled={editingSection !== 'business'}
                         />
                       )}
-                      
+
                       <InputField
                         label="Business Starting Year"
                         value={profileData.business.startingYear}
@@ -2112,7 +2261,7 @@ const ProfilePage = () => {
                     </>
                   )}
                 </div>
-                
+
                 <div className="mt-6 space-y-4 text-left">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">
@@ -2127,14 +2276,14 @@ const ProfilePage = () => {
                         }`}
                     />
                   </div>
-                  
+
                   <InputField
                     label={profileData.business.businessType === 'salary' ? 'Office Address' : 'Business Address'}
                     value={profileData.business.businessAddress}
                     onChange={businessHandlers.businessAddress}
                     disabled={editingSection !== 'business'}
                   />
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <InputField
                       label="City"
@@ -2163,7 +2312,7 @@ const ProfilePage = () => {
                       />
                     )}
                   </div>
-                  
+
                   <div className="mt-6">
                     <h4 className="text-base sm:text-lg font-semibold text-blue-600 mb-4 mt-5 text-center">Social Media & Links</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -2206,13 +2355,13 @@ const ProfilePage = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Enhanced Media Section for Images and Videos */}
                 <div className="mt-6">
                   <h4 className="text-sm font-medium text-gray-700 mb-3 text-left">
                     {profileData.business.businessType === 'salary' ? 'Professional Media' : 'Business Media'}
                   </h4>
-                  
+
                   {/* Profile Image Section */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2256,7 +2405,7 @@ const ProfilePage = () => {
                           <span className="text-sm">No {profileData.business.businessType === 'salary' ? 'Profile' : 'Logo'}</span>
                         </div>
                       )}
-                      
+
                       {editingSection === 'business' && (
                         <div className="space-y-2">
                           <button
@@ -2271,7 +2420,7 @@ const ProfilePage = () => {
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Media Gallery Section */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2287,7 +2436,7 @@ const ProfilePage = () => {
                           onClick={() => openMediaPreview(media.url, media.type)}
                         />
                       ))}
-                      
+
                       {editingSection === 'business' && (
                         <div
                           className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-50"
@@ -2301,14 +2450,14 @@ const ProfilePage = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {editingSection === 'business' && profileData.business.mediaGallery.length === 0 && (
                       <p className="text-sm text-gray-500 mt-2 text-center">
                         No media files added. Click "Add Media" to upload images or videos.
                       </p>
                     )}
                   </div>
-                  
+
                   {/* Hidden file inputs */}
                   <input
                     type="file"
@@ -2326,7 +2475,7 @@ const ProfilePage = () => {
                     className="hidden"
                   />
                 </div>
-                
+
                 {editingSection === 'business' && (
                   <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                     <button
@@ -2367,7 +2516,7 @@ const ProfilePage = () => {
             )}
           </div>
         </div>
-        
+
         {/* Family Details Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-purple-50 to-purple-100 px-4 sm:px-6 py-4 border-b border-purple-200">
@@ -2399,7 +2548,7 @@ const ProfilePage = () => {
               </button>
             </div>
           </div>
-          
+
           <div className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-left">
               <InputField
@@ -2464,7 +2613,7 @@ const ProfilePage = () => {
                 disabled={editingSection !== 'family'}
               />
             </div>
-            
+
             <div className="mt-6 text-left">
               <InputField
                 label="Family Address"
@@ -2473,7 +2622,7 @@ const ProfilePage = () => {
                 disabled={editingSection !== 'family'}
               />
             </div>
-            
+
             {editingSection === 'family' && (
               <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                 <button
@@ -2495,7 +2644,7 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Media Preview Modal */}
       {mediaPreview.isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
@@ -2506,7 +2655,7 @@ const ProfilePage = () => {
             >
               <X className="w-8 h-8" />
             </button>
-            
+
             <div className="bg-black rounded-lg overflow-hidden">
               {mediaPreview.type === 'video' ? (
                 <video
@@ -2523,7 +2672,7 @@ const ProfilePage = () => {
                 />
               )}
             </div>
-            
+
             <div className="mt-4 text-center">
               <button
                 onClick={closeMediaPreview}
@@ -2535,7 +2684,7 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
-      
+
       {/* Change Password Modal */}
       {showChangePasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2551,20 +2700,20 @@ const ProfilePage = () => {
                 </svg>
               </button>
             </div>
-            
+
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {passwordError && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                   {passwordError}
                 </div>
               )}
-              
+
               {passwordSuccess && (
                 <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
                   {passwordSuccess}
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Current Password <span className="text-red-500">*</span>
@@ -2577,7 +2726,7 @@ const ProfilePage = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   New Password <span className="text-red-500">*</span>
@@ -2592,7 +2741,7 @@ const ProfilePage = () => {
                 />
                 <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Confirm New Password <span className="text-red-500">*</span>
@@ -2605,7 +2754,7 @@ const ProfilePage = () => {
                   required
                 />
               </div>
-              
+
               <div className="flex space-x-3 pt-4">
                 <button
                   type="submit"
@@ -2626,12 +2775,10 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
-      
+
       <Footer />
       <MobileFooter />
     </div>
   );
 };
-
-
 export default ProfilePage;

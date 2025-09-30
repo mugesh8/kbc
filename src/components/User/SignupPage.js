@@ -1286,7 +1286,7 @@ const SignupForm = () => {
         if (!profile.about) errors[`about_${index}`] = "About is required";
         if (!profile.email) errors[`email_${index}`] = "Email is required";
         if (!profile.company_address) errors[`company_address_${index}`] = "Company address is required";
-        if (!profile.contact_no) errors[`contact_no_${index}`] = "Contact number is required";
+        // if (!profile.contact_no) errors[`contact_no_${index}`] = "Contact number is required";
       }
     });
 
@@ -1760,4 +1760,4 @@ const SignupForm = () => {
   );
 };
 
-export default SignupForm;
+export default SignupForm;  

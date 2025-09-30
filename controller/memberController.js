@@ -80,7 +80,14 @@ const registerMember = async (req, res) => {
             status = 'Pending',
             access_level = 'Basic',
             paid_status = 'Unpaid',        // ✅ new field with default
-            membership_valid_until = null, // ✅ new field
+            membership_valid_until = null,
+            Arakattalai = 'No', // ✅ new field
+            KNS_Member = 'No', // ✅ new forum field
+            KBN_Member = 'No', // ✅ new forum field
+            BNI = 'No', // ✅ new forum field
+            Rotary = 'No', // ✅ new forum field
+            Lions = 'No', // ✅ new forum field
+            Other_forum = null, // ✅ new forum field
         } = req.body;
 
         if (Array.isArray(email)) email = email[0];
@@ -117,6 +124,13 @@ const registerMember = async (req, res) => {
             status, access_level,
             paid_status,                        // ✅ save paid status
             membership_valid_until: membershipValidUntilFinal, // ✅ only if Paid
+            Arakattalai, // ✅ save Arakattalai
+            KNS_Member, // ✅ save forum membership
+            KBN_Member, // ✅ save forum membership
+            BNI, // ✅ save forum membership
+            Rotary, // ✅ save forum membership
+            Lions, // ✅ save forum membership
+            Other_forum, // ✅ save other forum
         }, { transaction: t });
 
         // Handle referral
@@ -200,7 +214,6 @@ const registerMember = async (req, res) => {
                 city: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.city : null,
                 state: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.state : null,
                 zip_code: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.zip_code : null,
-                business_starting_year: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_starting_year : null,
                 business_work_contract: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_work_contract : null,
 
                 // Business-specific fields
@@ -516,7 +529,14 @@ const updateMember = async (req, res) => {
             access_level = member.access_level,
             rejection_reason,
             paid_status = member.paid_status,
-            membership_valid_until
+            membership_valid_until,
+            Arakattalai = member.Arakattalai, // ✅ save Arakattalai
+            KNS_Member = member.KNS_Member, // ✅ forum membership
+            KBN_Member = member.KBN_Member, // ✅ forum membership
+            BNI = member.BNI, // ✅ forum membership
+            Rotary = member.Rotary, // ✅ forum membership
+            Lions = member.Lions, // ✅ forum membership
+            Other_forum = member.Other_forum, // ✅ other forum
         } = req.body;
 
         // Ensure rejection reason only if status = Rejected
@@ -572,6 +592,13 @@ const updateMember = async (req, res) => {
             rejection_reason: status === 'Rejected' ? rejection_reason : null,
             paid_status: finalPaidStatus,
             membership_valid_until: finalMembershipValidUntil,
+            Arakattalai, // ✅ save Arakattalai
+            KNS_Member, // ✅ forum membership
+            KBN_Member, // ✅ forum membership
+            BNI, // ✅ forum membership
+            Rotary, // ✅ forum membership
+            Lions, // ✅ forum membership
+            Other_forum, // ✅ other forum
         }, { transaction: t });
 
         await t.commit();
@@ -804,9 +831,6 @@ const updateBusinessProfile = async (req, res) => {
             zip_code: newBusinessType === 'self-employed'
                 ? (businessData.zip_code || profile.zip_code)
                 : (newBusinessType !== profile.business_type ? null : profile.zip_code),
-            business_starting_year: newBusinessType === 'self-employed'
-                ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
-                : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
             business_work_contract: newBusinessType === 'self-employed'
                 ? (businessData.business_work_contract || profile.business_work_contract)
                 : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),

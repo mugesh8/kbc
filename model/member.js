@@ -209,6 +209,34 @@ const Member = db.define('Member', {
     membership_valid_until: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    Arakattalai: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    KNS_Member: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    KBN_Member: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    BNI: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    Rotary: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    Lions: {
+        type: DataTypes.ENUM("Yes", "No"),
+        allowNull: true
+    },
+    Other_forum: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
     tableName: 'member',
