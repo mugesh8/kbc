@@ -1027,6 +1027,9 @@ const ProfilePage = () => {
         access_level: data.accessLevel,
         status: data.status,
         paid_status: data.paidStatus,
+        // Aadhaar information
+        aadhaar: data.aadhaar,
+        aadhar_no: data.aadhaar || data.aadhar_no, // Map both fields to ensure compatibility
         // Forum membership fields
         Arakattalai: data.Arakattalai,
         KNS_Member: data.KNS_Member,
@@ -1093,7 +1096,22 @@ const ProfilePage = () => {
     city: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, city: value } })),
     state: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, state: value } })),
     pinCode: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, pinCode: value } })),
-    aadhaar: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, aadhaar: value } })),
+    aadhaar: (value) => setProfileData(prev => ({ 
+      ...prev, 
+      personal: { 
+        ...prev.personal, 
+        aadhaar: value,
+        aadhar_no: value // Sync both fields
+      } 
+    })),
+    aadhar_no: (value) => setProfileData(prev => ({ 
+      ...prev, 
+      personal: { 
+        ...prev.personal, 
+        aadhar_no: value,
+        aadhaar: value // Sync both fields
+      } 
+    })),
     bloodGroup: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, bloodGroup: value } })),
     mobileNumber: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, mobileNumber: value } })),
     preferredContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, preferredContact: value } })),
