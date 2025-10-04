@@ -35,11 +35,13 @@ const Sidebar = ({ open, onClose }) => {
   const [showLogout, setShowLogout] = useState(false);
   const [adminName, setAdminName] = useState('Admin User');
   const [adminEmail, setAdminEmail] = useState('admin@businessdir.com');
+  const [adminRole, setAdminRole] = useState('');
 
   useEffect(() => {
     const loadAdminInfo = async () => {
       try {
         const role = localStorage.getItem('adminRole');
+        setAdminRole(role || '');
         const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
 
         if (!storedToken) return;
@@ -104,7 +106,8 @@ const Sidebar = ({ open, onClose }) => {
     { text: 'Family Information', icon: <FamilyRestroomIcon />, path: 'FamilyInformation' },
     { text: 'Referral System', icon: <ShareIcon />, path: 'ReferralSystem' },
     { text: 'Review Testimonials', icon: <RateReviewIcon />, path: 'ReviewTestimonals' },
-    { text: 'Community Admin', icon: <AdminPanelSettingsIcon />, path: 'CommunityAdmin' },
+    // Only show Community Admin option for super admins, not for community admins
+    ...(adminRole !== 'community' ? [{ text: 'Community Admin', icon: <AdminPanelSettingsIcon />, path: 'CommunityAdmin' }] : []),
   ];
 
   const getCurrentRoute = () => {

@@ -15,14 +15,6 @@ const NotificationsPage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
-
-    if (!notificationsEnabled) {
-      setLoading(false);
-      setNotifications([]);
-      return;
-    }
-
     const fetchNotifications = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -177,12 +169,7 @@ const NotificationsPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-4 sm:py-6">
-        {/* Notifications Disabled Info */}
-        {localStorage.getItem('notificationsEnabled') !== 'true' && (
-          <div className="text-center text-gray-600 text-sm sm:text-base mb-4">
-            {t('notificationsAreDisabled') || 'Notifications are disabled. Turn them on from your profile settings.'}
-          </div>
-        )}
+
 
         {/* Error */}
         {error && (
@@ -210,7 +197,6 @@ const NotificationsPage = () => {
               <Mail className="w-7 h-7 text-gray-400" />
             </div>
             <p className="mt-3 text-base font-medium text-gray-900">{t('No Notifications') || 'No Notifications'}</p>
-            <p className="mt-1 text-sm text-gray-500">{t('noNotificationsDesc') || 'You have no notifications at this time.'}</p>
           </div>
         ) : (
           <div className="space-y-3">
