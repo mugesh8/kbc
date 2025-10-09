@@ -218,28 +218,30 @@ const registerMember = async (req, res) => {
                 business_type: profile.business_type,
                 salary: profile.salary,
                 category_id,
-                contact_no: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.contact_no : null,
+                // business_work_contract:Array.isArray(profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.contact_no : null,
 
                 // Self-employed and Business fields
                 business_registration_type: normalizedBusinessRegistrationType,
                 about: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.about : null,
-                company_address: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.company_address : null,
-                city: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.city : null,
-                state: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.state : null,
-                zip_code: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.zip_code : null,
+                branch_name: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.branch_name) : [profile.branch_name],
+                company_address: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.address) : [profile.company_address],
+                city: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.city) : [profile.city],
+                state: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.state) : [profile.state],
+                zip_code: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.zip_code) : [profile.zip_code],
+                email: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.email) : [profile.email],
                 // business_starting_year: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_starting_year : null,
-                business_work_contract: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.business_work_contract : null,
+                business_work_contract: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.business_work_contract) : [profile.business_work_contract],
 
                 // Business-specific fields
                 staff_size: profile.business_type === 'business' ? profile.staff_size : null,
 
                 // Salary fields
                 designation: profile.business_type === 'salary' ? profile.designation : null,
-                location: profile.business_type === 'salary' ? profile.location : null,
+                location: Array.isArray(profile.location) ? profile.location : [profile.location],
                 experience: profile.experience || null,
 
                 // Common fields
-                email: Array.isArray(profile.email) ? profile.email[0] : profile.email,
+                // email: Array.isArray(profile.email) ? profile.email : [profile.email],
                 source: profile.source || null,
                 tags: profile.tags || null,
                 website: profile.website || null,
@@ -459,6 +461,7 @@ const getAllMembers = async (req, res) => {
         });
     }
 };
+
 
 // GET: Member by ID
 const getMemberById = async (req, res) => {
@@ -720,6 +723,8 @@ const scheduleExpirationCheck = () => {
 };
 
 const updateBusinessProfile = async (req, res) => {
+    console.log('Request body:', req.body);
+    console.log('Request files:', req.files);
     const t = await BusinessProfile.sequelize.transaction();
     try {
         const { id } = req.params;
@@ -757,11 +762,13 @@ const updateBusinessProfile = async (req, res) => {
 
         // Handle profile image
         let business_profile_image = profile.business_profile_image;
-        if (req.files?.business_profile_image?.[0]) {
-            business_profile_image = req.files.business_profile_image[0].path.replace(/\\/g, "/");
+        if (req.files?.profile_image?.[0]) {
+            console.log('Received business_profile_image:', req.files.profile_image[0]);
+            business_profile_image = req.files.profile_image[0].path.replace(/\\/g, "/");
 
             // Delete old profile image if it exists and is being replaced
             if (profile.business_profile_image && profile.business_profile_image !== business_profile_image) {
+                console.log('Deleting old profile image:', profile.business_profile_image);
                 try {
                     if (fs.existsSync(profile.business_profile_image)) {
                         fs.unlinkSync(profile.business_profile_image);
@@ -811,13 +818,14 @@ const updateBusinessProfile = async (req, res) => {
 
         // Process new media gallery files
         if (req.files?.media_gallery && req.files.media_gallery.length > 0) {
+            console.log('Received media_gallery:', req.files.media_gallery);
             const newGalleryPaths = req.files.media_gallery.map(file => file.path.replace(/\\/g, "/"));
 
             // Determine media type based on first file
             if (newGalleryPaths.length > 0) {
                 gallery_type = /\.(mp4|mov|avi|mkv|webm|ogg)$/i.test(newGalleryPaths[0]) ? "video" : "image";
             }
-
+            console.log('Gallery type:', gallery_type);
             // Add new files to existing gallery
             const currentGallery = finalMediaGallery ? finalMediaGallery.split(',') : [];
             finalMediaGallery = [...currentGallery, ...newGalleryPaths].join(',');
@@ -833,7 +841,16 @@ const updateBusinessProfile = async (req, res) => {
             business_type: businessData.business_type || profile.business_type,
             salary: businessData.salary || profile.salary,
             category_id: businessData.category_id ? Number(businessData.category_id) : profile.category_id,
-
+            branch_name: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.branch_name) : [profile.branch_name],
+            company_address: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.company_address) : [profile.company_address],
+            city: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.city) : [profile.city],
+            state: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.state) : [profile.state],
+            zip_code: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.zip_code) : [profile.zip_code],
+            email: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.email) : [profile.email],
+            business_starting_year: newBusinessType === 'self-employed'
+                ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
+                : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
+            business_work_contract: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.business_work_contract) : [profile.business_work_contract],
             // Self-employed fields
             business_registration_type: newBusinessType === 'self-employed'
                 ? (businessData.business_registration_type || profile.business_registration_type)
@@ -841,39 +858,41 @@ const updateBusinessProfile = async (req, res) => {
             about: newBusinessType === 'self-employed'
                 ? (businessData.about || businessData.description || profile.about)
                 : (newBusinessType !== profile.business_type ? null : profile.about),
-            company_address: newBusinessType === 'self-employed'
-                ? (businessData.company_address || businessData.businessAddress || profile.company_address)
-                : (newBusinessType !== profile.business_type ? null : profile.company_address),
-            city: newBusinessType === 'self-employed'
-                ? (businessData.city || profile.city)
-                : (newBusinessType !== profile.business_type ? null : profile.city),
-            state: newBusinessType === 'self-employed'
-                ? (businessData.state || profile.state)
-                : (newBusinessType !== profile.business_type ? null : profile.state),
-            zip_code: newBusinessType === 'self-employed'
-                ? (businessData.zip_code || profile.zip_code)
-                : (newBusinessType !== profile.business_type ? null : profile.zip_code),
+            // branch_name: newBusinessType === 'self-employed'
+            //     ? (businessData.branch_name || profile.branch_name)
+            //     : (newBusinessType !== profile.business_type ? null : profile.branch_name),
+            // company_address: newBusinessType === 'self-employed'
+            //     ? (businessData.company_address || businessData.businessAddress || profile.company_address)
+            //     : (newBusinessType !== profile.business_type ? null : profile.company_address),
+            // city: newBusinessType === 'self-employed'
+            //     ? (businessData.city || profile.city)
+            //     : (newBusinessType !== profile.business_type ? null : profile.city),
+            // state: newBusinessType === 'self-employed'
+            //     ? (businessData.state || profile.state)
+            //     : (newBusinessType !== profile.business_type ? null : profile.state),
+            // zip_code: newBusinessType === 'self-employed'
+            //     ? (businessData.zip_code || profile.zip_code)
+            //     : (newBusinessType !== profile.business_type ? null : profile.zip_code),
             business_starting_year: newBusinessType === 'self-employed'
                 ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
                 : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
-            business_work_contract: newBusinessType === 'self-employed'
-                ? (businessData.business_work_contract || profile.business_work_contract)
-                : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),
+            // business_work_contract: newBusinessType === 'self-employed'
+            //     ? (businessData.business_work_contract || profile.business_work_contract)
+            //     : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),
 
             // Salary-specific fields
             designation: newBusinessType === 'salary'
                 ? (businessData.designation || profile.designation)
                 : (newBusinessType !== profile.business_type ? null : profile.designation),
-            location: newBusinessType === 'salary'
-                ? (businessData.location || profile.location)
-                : (newBusinessType !== profile.business_type ? null : profile.location),
-            experience: newBusinessType === 'salary'
-                ? (businessData.experience || profile.experience)
-                : (newBusinessType !== profile.business_type ? null : profile.experience),
-
+            // location: newBusinessType === 'salary'
+            //     ? (businessData.location || profile.location)
+            //     : (newBusinessType !== profile.business_type ? null : profile.location),
+            location: businessData.location || profile.location,
+            experience: businessData.experience || profile.experience,
+            // Common fields
             // Common fields
             staff_size: businessData.staff_size || profile.staff_size,
-            email: businessData.email || businessData.businessEmail || profile.email,
+            // email: businessData.email || businessData.businessEmail || profile.email,
             source: businessData.source || profile.source,
             tags: businessData.tags || profile.tags,
             website: businessData.website || profile.website,
@@ -1197,28 +1216,138 @@ const addBusinessProfileForMember = async (req, res) => {
 };
 
 // GET: All Business Profiles (optionally by member_id via query params)
+// const getAllBusinessProfiles = async (req, res) => {
+//     try {
+//         const { member_id } = req.query;
+//         const whereClause = member_id ? { member_id } : {};
+
+//         const profiles = await BusinessProfile.findAll({
+//             where: whereClause,
+//             include: [{ model: Member, as: 'Member', attributes: ['mid', 'first_name', 'email', 'profile_image'] }],
+//         });
+
+//         res.status(200).json({
+//             success: true,
+//             data: profiles,
+//         });
+//     } catch (err) {
+//         console.error("Error fetching business profiles:", err);
+//         res.status(500).json({
+//             success: false,
+//             msg: 'Failed to retrieve business profiles',
+//             error: err.message,
+//         });
+//     }
+// };
+
 const getAllBusinessProfiles = async (req, res) => {
-    try {
-        const { member_id } = req.query;
-        const whereClause = member_id ? { member_id } : {};
+  try {
+    const { member_id } = req.query;
+    const whereClause = member_id ? { member_id } : {};
 
-        const profiles = await BusinessProfile.findAll({
-            where: whereClause,
-            include: [{ model: Member, as: 'Member', attributes: ['mid', 'first_name', 'email', 'profile_image'] }],
-        });
+    const profiles = await BusinessProfile.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Member,
+          as: 'Member',
+          attributes: ['mid', 'first_name', 'email', 'profile_image'],
+        },
+      ],
+    });
 
-        res.status(200).json({
-            success: true,
-            data: profiles,
-        });
-    } catch (err) {
-        console.error("Error fetching business profiles:", err);
-        res.status(500).json({
-            success: false,
-            msg: 'Failed to retrieve business profiles',
-            error: err.message,
-        });
-    }
+    const transformedProfiles = profiles.map((profile) => {
+      const p = profile.get({ plain: true });
+
+      // Helper to safely parse JSON arrays
+      const parseArray = (val) => {
+        if (!val) return [];
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      };
+
+      const branchNames = parseArray(p.branch_name);
+      const companyAddresses = parseArray(p.company_address);
+      const cities = parseArray(p.city);
+      const states = parseArray(p.state);
+      const zips = parseArray(p.zip_code);
+      const emails = parseArray(p.email);
+      const workContacts = parseArray(p.business_work_contract);
+
+      // Combine all parsed arrays into a clean branches array
+      const branches = branchNames.map((_, i) => ({
+        branch_name: branchNames[i] || '',
+        company_address: companyAddresses[i] || '',
+        city: cities[i] || '',
+        state: states[i] || '',
+        zip_code: zips[i] || '',
+        email: emails[i] || '',
+        business_work_contract: workContacts[i] || '',
+      })).filter(
+        (b) =>
+          b.branch_name ||
+          b.company_address ||
+          b.city ||
+          b.state ||
+          b.zip_code ||
+          b.email ||
+          b.business_work_contract
+      ); // remove empty branches
+
+      // Return cleaned-up profile object
+      return {
+        id: p.id,
+        member_id: p.member_id,
+        company_name: p.company_name,
+        company_address: p.company_address,
+        city: p.city,
+        state: p.state,
+        zip_code: p.zip_code,
+        email: p.email,
+        business_type: p.business_type,
+        category_id: p.category_id,
+        business_registration_type: p.business_registration_type,
+        // business_starting_year: p.business_starting_year,
+        staff_size: p.staff_size,
+        experience: p.experience,
+        business_work_contract: p.business_work_contract,
+        about: p.about,
+        tags: p.tags,
+        website: p.website,
+        google_link: p.google_link,
+        facebook_link: p.facebook_link,
+        instagram_link: p.instagram_link,
+        linkedin_link: p.linkedin_link,
+        designation: p.designation,
+        salary: p.salary,
+        // location: p.location,
+        status: p.status,
+        business_profile_image: p.business_profile_image,
+        media_gallery: p.media_gallery,
+        media_gallery_type: p.media_gallery_type,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        branches,
+        Member: p.Member,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: transformedProfiles,
+    });
+  } catch (err) {
+    console.error("Error fetching business profiles:", err);
+    res.status(500).json({
+      success: false,
+      msg: 'Failed to retrieve business profiles',
+      error: err.message,
+    });
+  }
 };
 
 // GET: One Business Profile by ID

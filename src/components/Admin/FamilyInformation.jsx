@@ -396,7 +396,6 @@ const FamilyInformation = () => {
                                                         >
                                                             <Edit fontSize="small" />
                                                         </IconButton>
-                                                        {adminRole !== 'community' && (
                                                             <IconButton
                                                                 size="small"
                                                                 sx={{ color: '#666' }}
@@ -404,7 +403,6 @@ const FamilyInformation = () => {
                                                             >
                                                                 <Delete fontSize="small" />
                                                             </IconButton>
-                                                        )}
                                                     </Stack>
                                                 </TableCell>
                                             </TableRow>

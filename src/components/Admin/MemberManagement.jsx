@@ -33,7 +33,11 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Badge
 } from '@mui/material';
 import {
   Search,
@@ -54,7 +58,27 @@ import {
   CalendarToday,
   AccessTime,
   Work,
-  FamilyRestroom
+  FamilyRestroom,
+  ExpandMore,
+  Language,
+  Public,
+  Groups,
+  Badge as BadgeIcon,
+  Bloodtype,
+  Home,
+  WorkOutline,
+  Emergency,
+  ContactPhone,
+  Schedule,
+  Cake,
+  Transgender,
+  Favorite,
+  CorporateFare,
+  School,
+  Group,
+  Payment,
+  Paid,
+  MoneyOff
 } from '@mui/icons-material';
 import baseurl from '../Baseurl/baseurl';
 import * as XLSX from 'xlsx';
@@ -70,7 +94,9 @@ const MemberManagement = () => {
   const [stats, setStats] = useState({
     totalMembers: 0,
     pendingApplications: 0,
-    activeMembers: 0
+    activeMembers: 0,
+    paidMembers: 0,
+    unpaidMembers: 0
   });
   const [statusFilter, setStatusFilter] = useState('All');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -117,11 +143,15 @@ const MemberManagement = () => {
         const totalMembers = data.data?.length || 0;
         const pendingApplications = data.data?.filter(m => m.status === 'Pending').length || 0;
         const activeMembers = data.data?.filter(m => m.status === 'Approved').length || 0;
+        const paidMembers = data.data?.filter(m => m.paid_status === 'Paid').length || 0;
+        const unpaidMembers = data.data?.filter(m => m.paid_status === 'Unpaid').length || 0;
 
         setStats({
           totalMembers,
           pendingApplications,
-          activeMembers
+          activeMembers,
+          paidMembers,
+          unpaidMembers
         });
 
       } catch (err) {
@@ -160,6 +190,22 @@ const MemberManagement = () => {
       color: '#4CAF50',
       icon: <Person />,
       positive: true
+    },
+    {
+      title: 'Paid Members',
+      value: stats.paidMembers.toString(),
+      change: 'Members with paid status',
+      color: '#2196F3',
+      icon: <Paid />,
+      positive: true
+    },
+    {
+      title: 'Unpaid Members',
+      value: stats.unpaidMembers.toString(),
+      change: 'Members pending payment',
+      color: '#FF9800',
+      icon: <MoneyOff />,
+      positive: false
     }
   ];
 
@@ -202,12 +248,49 @@ const MemberManagement = () => {
     }
   };
 
+  const getPaidStatusColor = (paidStatus) => {
+    switch (paidStatus) {
+      case 'Paid': return '#2196F3';
+      case 'Unpaid': return '#FF9800';
+      default: return '#757575';
+    }
+  };
+
+  const getPaidStatusIcon = (paidStatus) => {
+    switch (paidStatus) {
+      case 'Paid': return <Paid />;
+      case 'Unpaid': return <MoneyOff />;
+      default: return <Payment />;
+    }
+  };
+
+  const getProMemberColor = (proStatus) => {
+    switch (proStatus) {
+      case 'Pro': return '#FF9800';
+      case 'Unpro': return '#757575';
+      default: return '#757575';
+    }
+  };
+
   const handleEditMember = (member) => {
     navigate(`/admin/EditMember/${member.mid}`);
   };
 
-  const handleViewMember = (member) => {
-    setSelectedMember(member);
+  const handleViewMember = async (member) => {
+    try {
+      // Fetch complete member details
+      const response = await fetch(`${baseurl}/api/member/${member.mid}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setSelectedMember(data.data);
+      } else {
+        setSelectedMember(member); // Fallback to basic data
+      }
+    } catch (err) {
+      console.error('Error fetching member details:', err);
+      setSelectedMember(member); // Fallback to basic data
+    }
     setViewDialogOpen(true);
   };
 
@@ -232,12 +315,10 @@ const MemberManagement = () => {
       setSelectedMember(null);
     } catch (error) {
       console.error('Error deleting member:', error);
-      // You might want to show an error message to the user
     }
   };
 
   const handleExport = () => {
-    // Prepare data for export with all required fields
     const exportData = filteredMembers.map(member => {
       let linkedProfile = 'None';
       if (member.business_profiles?.length > 0) {
@@ -285,19 +366,39 @@ const MemberManagement = () => {
         'Best Time to Contact': member.best_time_to_contact,
         'Access Level': member.access_level,
         'Status': member.status,
+        'Paid Status': member.paid_status || 'Unpaid',
+        'Pro Member': member.pro || 'Unpro',
         'Linked Profile': linkedProfile
       };
     });
 
-    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(exportData);
-
-    // Create workbook
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Members');
-
-    // Generate file and trigger download
     XLSX.writeFile(wb, `members_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not provided';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Get forum memberships
+  const getForumMemberships = (member) => {
+    const forums = [];
+    if (member.Arakattalai === 'Yes') forums.push('Arakattalai');
+    if (member.KNS_Member === 'Yes') forums.push('KNS');
+    if (member.KBN_Member === 'Yes') forums.push('KBN');
+    if (member.BNI === 'Yes') forums.push('BNI');
+    if (member.Rotary === 'Yes') forums.push('Rotary');
+    if (member.Lions === 'Yes') forums.push('Lions');
+    if (member.Other_forum) forums.push(member.Other_forum);
+    return forums.length > 0 ? forums.join(', ') : 'None';
   };
 
   return (
@@ -315,7 +416,7 @@ const MemberManagement = () => {
             sx={{
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'flex-start', // left-align the text
+              alignItems: 'flex-start',
             }}
           >
             <Typography variant="h4" sx={{ fontWeight: 600, color: '#2E7D32', mb: 0.5 }}>
@@ -344,7 +445,7 @@ const MemberManagement = () => {
             <Button
               variant="outlined"
               startIcon={<FileDownload />}
-              onClick={handleExport} // Add this onClick handler
+              onClick={handleExport}
               sx={{
                 borderColor: '#ddd',
                 color: '#666',
@@ -363,14 +464,14 @@ const MemberManagement = () => {
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {statsData.map((stat, index) => (
-          <Grid item xs={12} md={4} key={index}>
+          <Grid item xs={12} sm={6} md={2.4} key={index}>
             <Card sx={{ height: '100%', borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-              <CardContent sx={{ p: 3 }}>
+              <CardContent sx={{ p: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                   <Box
                     sx={{
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       borderRadius: '50%',
                       backgroundColor: stat.color,
                       display: 'flex',
@@ -383,16 +484,16 @@ const MemberManagement = () => {
                     {stat.icon}
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
                       {stat.title}
                     </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                       {stat.value}
                     </Typography>
                   </Box>
                 </Box>
                 <Typography
-                  variant="body2"
+                  variant="caption"
                   sx={{
                     color: stat.positive ? '#4CAF50' : '#f44336',
                     fontWeight: 500
@@ -529,15 +630,56 @@ const MemberManagement = () => {
                             }}
                             src={member.profile_image ? `${baseurl}/${member.profile_image}` : undefined}
                           >
-                            {/* {member.first_name?.[0]}{member.last_name?.[0]} */}
+                            {member.first_name?.[0]}{member.last_name?.[0]}
                           </Avatar>
                           <Box>
                             <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                              {`${member.first_name}`}
+                              {`${member.first_name} ${member.last_name || ''}`}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {member.email}
                             </Typography>
+                            {/* Status Badges in Header Bar */}
+                            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                              <Chip
+                                label={member.status}
+                                size="small"
+                                sx={{
+                                  backgroundColor: getStatusColor(member.status),
+                                  color: 'white',
+                                  fontWeight: 500,
+                                  fontSize: '0.6rem',
+                                  height: '20px'
+                                }}
+                              />
+                              <Chip
+                                label={member.paid_status || 'Unpaid'}
+                                size="small"
+                                icon={getPaidStatusIcon(member.paid_status)}
+                                sx={{
+                                  backgroundColor: getPaidStatusColor(member.paid_status),
+                                  color: 'white',
+                                  fontWeight: 500,
+                                  fontSize: '0.6rem',
+                                  height: '20px',
+                                  '& .MuiChip-icon': {
+                                    color: 'white',
+                                    fontSize: '0.8rem'
+                                  }
+                                }}
+                              />
+                              <Chip
+                                label={member.pro === 'Pro' ? 'Pro' : 'Basic'}
+                                size="small"
+                                sx={{
+                                  backgroundColor: getProMemberColor(member.pro),
+                                  color: 'white',
+                                  fontWeight: 500,
+                                  fontSize: '0.6rem',
+                                  height: '20px'
+                                }}
+                              />
+                            </Box>
                           </Box>
                         </Box>
                       </TableCell>
@@ -609,7 +751,6 @@ const MemberManagement = () => {
                           >
                             <Edit fontSize="small" />
                           </IconButton>
-                          {adminRole !== 'community' && (
                             <IconButton
                               size="small"
                               sx={{ color: '#666' }}
@@ -617,7 +758,6 @@ const MemberManagement = () => {
                             >
                               <Delete fontSize="small" />
                             </IconButton>
-                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -654,12 +794,13 @@ const MemberManagement = () => {
         </CardContent>
       </Card>
 
-      {/* View Member Dialog */}
+      {/* Enhanced View Member Dialog */}
       <Dialog
         open={viewDialogOpen}
         onClose={() => setViewDialogOpen(false)}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
+        fullScreen={isMobile}
       >
         <DialogTitle
           sx={{
@@ -671,10 +812,9 @@ const MemberManagement = () => {
             px: 3,
             py: 2,
           }}
-
         >
           <Typography variant="h6" fontWeight={600}>
-            👤 Member Profile
+            👤 Member Profile - {selectedMember?.first_name} {selectedMember?.last_name}
           </Typography>
           <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ color: 'white' }}>
             <Close />
@@ -691,8 +831,8 @@ const MemberManagement = () => {
                   flexDirection: { xs: 'column', sm: 'row' },
                   alignItems: { xs: 'center', sm: 'flex-start' },
                   gap: 3,
-                  p: 2,
-                  mb: 4,
+                  p: 3,
+                  mb: 3,
                   bgcolor: 'white',
                   borderRadius: 2,
                   boxShadow: 1,
@@ -700,129 +840,481 @@ const MemberManagement = () => {
               >
                 <Avatar
                   src={selectedMember.profile_image ? `${baseurl}/${selectedMember.profile_image}` : undefined}
-                  sx={{ width: 100, height: 100, fontSize: 32 }}
+                  sx={{ width: 120, height: 120, fontSize: 40 }}
                 >
                   {selectedMember.first_name?.[0]}
                   {selectedMember.last_name?.[0]}
                 </Avatar>
-                <Box textAlign={{ xs: 'center', sm: 'left' }}>
-                  <Typography variant="h5" fontWeight={700}>
-                    {selectedMember.first_name}
+                <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'left' } }}>
+                  <Typography variant="h4" fontWeight={700} gutterBottom>
+                    {selectedMember.first_name} {selectedMember.last_name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" mt={0.5}>
-                    Member ID: {selectedMember.mid}
+                  <Typography variant="body1" color="text.secondary" gutterBottom>
+                    Member ID: {selectedMember.mid || selectedMember.id}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Email: {selectedMember.email}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 2, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
                     <Chip
                       label={selectedMember.status}
-                      sx={{ bgcolor: getStatusColor(selectedMember.status), color: 'white' }}
+                      sx={{ bgcolor: getStatusColor(selectedMember.status), color: 'white', fontWeight: 600 }}
                     />
                     <Chip
                       label={selectedMember.access_level}
-                      sx={{ bgcolor: getAccessLevelColor(selectedMember.access_level), color: 'white' }}
+                      sx={{ bgcolor: getAccessLevelColor(selectedMember.access_level), color: 'white', fontWeight: 600 }}
                     />
+                    <Chip
+                      label={selectedMember.paid_status || 'Unpaid'}
+                      icon={getPaidStatusIcon(selectedMember.paid_status)}
+                      sx={{ 
+                        bgcolor: getPaidStatusColor(selectedMember.paid_status), 
+                        color: 'white', 
+                        fontWeight: 600,
+                        '& .MuiChip-icon': {
+                          color: 'white'
+                        }
+                      }}
+                    />
+                    {selectedMember.pro === 'Pro' && (
+                      <Chip 
+                        label="Pro Member" 
+                        sx={{ bgcolor: '#FF9800', color: 'white', fontWeight: 600 }} 
+                      />
+                    )}
                   </Box>
                 </Box>
               </Box>
 
-              {/* Details Grid */}
-              <Grid container spacing={3}>
-                {/* Left Panel - Personal Info */}
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 2, boxShadow: 1 }}>
-                    <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                      📇 Personal Info
-                    </Typography>
-                    <List dense>
-                      <ListItem>
-                        <ListItemIcon><Email color="action" /></ListItemIcon>
-                        <ListItemText primary="Email" secondary={selectedMember.email} />
-                      </ListItem>
-                      <ListItem>
-                        <ListItemIcon><Phone color="action" /></ListItemIcon>
-                        <ListItemText primary="Contact" secondary={selectedMember.contact_no || 'Not provided'} />
-                      </ListItem>
-                      <ListItem>
-                        <ListItemIcon><CalendarToday color="action" /></ListItemIcon>
-                        <ListItemText primary="Join Date" secondary={new Date(selectedMember.createdAt).toLocaleDateString()} />
-                      </ListItem>
-                    </List>
-                  </Box>
-                </Grid>
+              {/* Details Accordions */}
+              <Box sx={{ mt: 3 }}>
+                {/* Personal Information */}
+                <Accordion defaultExpanded>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <BadgeIcon />
+                      <Typography variant="h6" fontWeight={600}>Personal Information</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Cake color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Date of Birth" 
+                            secondary={formatDate(selectedMember.dob)} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Transgender color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Gender" 
+                            secondary={selectedMember.gender || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Bloodtype color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Blood Group" 
+                            secondary={selectedMember.blood_group || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Favorite color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Marital Status" 
+                            secondary={selectedMember.marital_status || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Groups color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Kootam" 
+                            secondary={selectedMember.kootam || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><CorporateFare color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Kovil" 
+                            secondary={selectedMember.kovil || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
 
-                {/* Right Panel - Business / Family Info or Rejection Reason */}
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 2, boxShadow: 1 }}>
-                    {selectedMember.status === 'Rejected' ? (
-                      <>
-                        <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                          ❌ Rejection Details
-                        </Typography>
-                        <List dense>
+                {/* Contact Information */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <ContactPhone />
+                      <Typography variant="h6" fontWeight={600}>Contact Information</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Phone color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Primary Contact" 
+                            secondary={selectedMember.contact_no || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Phone color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Mobile Number" 
+                            secondary={selectedMember.mobile_no || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><WorkOutline color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Work Phone" 
+                            secondary={selectedMember.work_phone || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Email color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Secondary Email" 
+                            secondary={selectedMember.secondary_email || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Schedule color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Best Time to Contact" 
+                            secondary={selectedMember.best_time_to_contact || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><ContactPhone color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Preferred Contact" 
+                            secondary={selectedMember.preferred_contact || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Address Information */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOn />
+                      <Typography variant="h6" fontWeight={600}>Address Information</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <ListItem>
+                          <ListItemIcon><Home color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Full Address" 
+                            secondary={selectedMember.address || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <ListItem>
+                          <ListItemText 
+                            primary="City" 
+                            secondary={selectedMember.city || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <ListItem>
+                          <ListItemText 
+                            primary="State" 
+                            secondary={selectedMember.state || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Zip Code" 
+                            secondary={selectedMember.zip_code || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Professional & Squad Information */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Work />
+                      <Typography variant="h6" fontWeight={600}>Professional & Squad Information</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Business color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Squad" 
+                            secondary={selectedMember.squad || 'Not assigned'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><School color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Specialization" 
+                            secondary={selectedMember.squad_fields || 'Not specified'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Group color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Pro Member" 
+                            secondary={selectedMember.pro === 'Pro' ? 'Yes' : 'No'} 
+                          />
+                        </ListItem>
+                        {selectedMember.pro === 'Unpro' && selectedMember.core_pro && (
                           <ListItem>
-                            <ListItemIcon><Warning color="error" /></ListItemIcon>
+                            <ListItemIcon><Person color="action" /></ListItemIcon>
                             <ListItemText 
-                              primary="Rejection Reason" 
-                              secondary={selectedMember.rejection_reason || 'No reason provided'} 
+                              primary="Core Pro" 
+                              secondary={selectedMember.core_pro} 
                             />
                           </ListItem>
-                        </List>
-                      </>
-                    ) : (
-                      <>
-                        <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                          {selectedMember.business_profiles?.length > 0 ? '🏢 Business Info' : '👨‍👩‍👧 Family Info'}
-                        </Typography>
-                        <List dense>
-                          {selectedMember.business_profiles?.length > 0 ? (
-                            <>
-                              <ListItem>
-                                <ListItemIcon><Business color="action" /></ListItemIcon>
-                                <ListItemText primary="Company" secondary={selectedMember.business_profiles[0]?.company_name || 'Not provided'} />
-                              </ListItem>
-                              <ListItem>
-                                <ListItemIcon><Work color="action" /></ListItemIcon>
-                                <ListItemText primary="Role" secondary={selectedMember.business_profiles[0]?.role || 'Not provided'} />
-                              </ListItem>
-                            </>
-                          ) : (
-                            <ListItem>
-                              <List dense>
-                                <ListItem>
-                                  <ListItemIcon><FamilyRestroom color="action" /></ListItemIcon>
-                                  <ListItemText
-                                    primary="Father's Name"
-                                    secondary={selectedMember.MemberFamily?.father_name || 'Not provided'}
-                                  />
-                                </ListItem>
-                                <ListItem>
-                                  <ListItemIcon><FamilyRestroom color="action" /></ListItemIcon>
-                                  <ListItemText
-                                    primary="Mother's Name"
-                                    secondary={selectedMember.MemberFamily?.mother_name || 'Not provided'}
-                                  />
-                                </ListItem>
-                                <ListItem>
-                                  <ListItemIcon><FamilyRestroom color="action" /></ListItemIcon>
-                                  <ListItemText
-                                    primary="Spouse Name"
-                                    secondary={selectedMember.MemberFamily?.spouse_name || 'Not provided'}
-                                  />
-                                </ListItem>
-                              </List>
-                            </ListItem>
-                          )}
-                        </List>
-                      </>
-                    )}
-                  </Box>
-                </Grid>
-              </Grid>
+                        )}
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Social Media & Websites */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Public />
+                      <Typography variant="h6" fontWeight={600}>Social Media & Websites</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Language color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Personal Website" 
+                            secondary={selectedMember.personal_website || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Work color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="LinkedIn" 
+                            secondary={selectedMember.linkedin_profile || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Facebook" 
+                            secondary={selectedMember.facebook || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Instagram" 
+                            secondary={selectedMember.instagram || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary="Twitter" 
+                            secondary={selectedMember.twitter || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemText 
+                            primary="YouTube" 
+                            secondary={selectedMember.youtube || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Forum Memberships */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Groups />
+                      <Typography variant="h6" fontWeight={600}>Forum Memberships</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <ListItem>
+                      <ListItemText 
+                        primary="Active Memberships" 
+                        secondary={getForumMemberships(selectedMember)} 
+                      />
+                    </ListItem>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Emergency Contact */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Emergency />
+                      <Typography variant="h6" fontWeight={600}>Emergency Contact</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Person color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Emergency Contact Name" 
+                            secondary={selectedMember.emergency_contact || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><Phone color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Emergency Phone" 
+                            secondary={selectedMember.emergency_phone || 'Not provided'} 
+                          />
+                        </ListItem>
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* System Information */}
+                <Accordion>
+                  <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CalendarToday />
+                      <Typography variant="h6" fontWeight={600}>System Information</Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><CalendarToday color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Join Date" 
+                            secondary={formatDate(selectedMember.join_date)} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><CalendarToday color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Last Updated" 
+                            secondary={formatDate(selectedMember.updatedAt)} 
+                          />
+                        </ListItem>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <ListItem>
+                          <ListItemIcon><BadgeIcon color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Application ID" 
+                            secondary={selectedMember.application_id || 'Not provided'} 
+                          />
+                        </ListItem>
+                        <ListItem>
+                          <ListItemIcon><Work color="action" /></ListItemIcon>
+                          <ListItemText 
+                            primary="Paid Status" 
+                            secondary={selectedMember.paid_status || 'Unpaid'} 
+                          />
+                        </ListItem>
+                        {selectedMember.paid_status === 'Paid' && selectedMember.membership_valid_until && (
+                          <ListItem>
+                            <ListItemIcon><CalendarToday color="action" /></ListItemIcon>
+                            <ListItemText 
+                              primary="Membership Valid Until" 
+                              secondary={formatDate(selectedMember.membership_valid_until)} 
+                            />
+                          </ListItem>
+                        )}
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
+
+                {/* Rejection Details (if rejected) */}
+                {selectedMember.status === 'Rejected' && (
+                  <Accordion>
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Warning color="error" />
+                        <Typography variant="h6" fontWeight={600} color="error">Rejection Details</Typography>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <ListItem>
+                        <ListItemIcon><Warning color="error" /></ListItemIcon>
+                        <ListItemText 
+                          primary="Rejection Reason" 
+                          secondary={selectedMember.rejection_reason || 'No reason provided'} 
+                        />
+                      </ListItem>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+              </Box>
             </Box>
           )}
         </DialogContent>
-      </Dialog>
 
+        <DialogActions sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+          <Button
+            onClick={() => setViewDialogOpen(false)}
+            sx={{
+              color: '#666',
+              '&:hover': { backgroundColor: '#f5f5f5' }
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<Edit />}
+            onClick={() => {
+              setViewDialogOpen(false);
+              handleEditMember(selectedMember);
+            }}
+            sx={{
+              backgroundColor: '#4CAF50',
+              '&:hover': { backgroundColor: '#45a049' }
+            }}
+          >
+            Edit Member
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

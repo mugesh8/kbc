@@ -125,7 +125,10 @@ const EditMember = () => {
     bni: false,
     rotary: false,
     lions: false,
-    other_forums: ''
+    other_forums: '',
+    // Paid status fields
+    paid_status: 'Unpaid',
+    membership_valid_until: ''
   });
 
   // Pro members list for Core Pro dropdown
@@ -221,7 +224,10 @@ const EditMember = () => {
             bni: memberData.BNI === 'Yes',
             rotary: memberData.Rotary === 'Yes',
             lions: memberData.Lions === 'Yes',
-            other_forums: memberData.Other_forum || ''
+            other_forums: memberData.Other_forum || '',
+            // Paid status fields
+            paid_status: memberData.paid_status || 'Unpaid',
+            membership_valid_until: memberData.membership_valid_until || ''
           };
 
           // Set forum memberships state
@@ -448,6 +454,11 @@ const EditMember = () => {
       delete formDataToSend.other_forums;
       delete formDataToSend.new_squad_name;
 
+      // Handle paid status - if unpaid, clear membership_valid_until
+      if (formDataToSend.paid_status === 'Unpaid') {
+        formDataToSend.membership_valid_until = '';
+      }
+
       const formDataObj = new FormData();
 
       // Append only non-empty fields to avoid sending null/undefined values
@@ -508,6 +519,11 @@ const EditMember = () => {
   const renderField = (fieldName, config) => {
     // Special handling for rejection_reason - only show when status is Rejected
     if (fieldName === 'rejection_reason' && formData.status !== 'Rejected') {
+      return null;
+    }
+
+    // Special handling for membership_valid_until - only show when paid_status is Paid
+    if (fieldName === 'membership_valid_until' && formData.paid_status !== 'Paid') {
       return null;
     }
 
@@ -636,6 +652,20 @@ const EditMember = () => {
         { value: 'Rejected', label: t('Rejected') }
       ],
       required: true
+    },
+    paid_status: {
+      label: t('Paid Status'),
+      type: 'select',
+      options: [
+        { value: 'Unpaid', label: t('Unpaid') },
+        { value: 'Paid', label: t('Paid') }
+      ],
+      required: true
+    },
+    membership_valid_until: {
+      label: t('Membership Valid Until'),
+      type: 'date',
+      InputLabelProps: { shrink: true }
     },
     access_level: {
       label: t('Access Level'),
@@ -794,6 +824,13 @@ const EditMember = () => {
                   </Grid>
                 ))}
               </Grid>
+              {formData.paid_status === 'Paid' && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="body2">
+                    When status is set to "Paid", membership valid until date is required.
+                  </Typography>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 

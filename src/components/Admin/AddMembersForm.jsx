@@ -51,7 +51,8 @@ import {
   Work,
   Check,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  LocationOn
 } from '@mui/icons-material';
 import baseurl from '../Baseurl/baseurl';
 import { useNavigate } from 'react-router-dom';
@@ -192,7 +193,8 @@ const FamilyModal = ({
   familyData,
   onFamilyDataChange,
   onSubmit,
-  memberSuggestions
+  memberSuggestions,
+  maritalStatus
 }) => {
   return (
     <Dialog
@@ -249,25 +251,29 @@ const FamilyModal = ({
               placeholder="+91 98765 43210"
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <NameAutocompleteField
-              label="Spouse Name (if Married)"
-              nameValue={familyData.spouse_name}
-              contactValue={familyData.spouse_contact}
-              suggestionsSource={memberSuggestions}
-              onNameChange={(val) => onFamilyDataChange('spouse_name', val)}
-              onContactChange={(val) => onFamilyDataChange('spouse_contact', val)}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Spouse Contact"
-              value={familyData.spouse_contact || ''}
-              onChange={(e) => onFamilyDataChange('spouse_contact', e.target.value)}
-              placeholder="+91 98765 43210"
-            />
-          </Grid>
+          {(['married','divorced','widowed'].includes((maritalStatus || '').toLowerCase())) && (
+            <>
+              <Grid item xs={12} sm={6}>
+                <NameAutocompleteField
+                  label="Spouse Name (if Married)"
+                  nameValue={familyData.spouse_name}
+                  contactValue={familyData.spouse_contact}
+                  suggestionsSource={memberSuggestions}
+                  onNameChange={(val) => onFamilyDataChange('spouse_name', val)}
+                  onContactChange={(val) => onFamilyDataChange('spouse_contact', val)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Spouse Contact"
+                  value={familyData.spouse_contact || ''}
+                  onChange={(e) => onFamilyDataChange('spouse_contact', e.target.value)}
+                  placeholder="+91 98765 43210"
+                />
+              </Grid>
+            </>
+          )}
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
@@ -455,11 +461,26 @@ const BusinessProfileModal = ({
   const [customBusinessRegistrationType, setCustomBusinessRegistrationType] = useState('');
   const [categoryInput, setCategoryInput] = useState('');
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [branches, setBranches] = useState([]);
 
   useEffect(() => {
     if (open) {
       setCustomBusinessRegistrationType('');
       setCategoryInput(businessData.category_input || '');
+      // Initialize with main branch if no branches exist
+      if (branches.length === 0) {
+        setBranches([{
+          id: 1,
+          branch_name: 'Main Branch',
+          contact_no: businessData.contact_no || '',
+          email: businessData.email || '',
+          company_address: businessData.company_address || '',
+          city: businessData.city || '',
+          state: businessData.state || '',
+          zip_code: businessData.zip_code || '',
+          is_main: true
+        }]);
+      }
     }
   }, [open, businessData.category_input]);
 
@@ -480,6 +501,35 @@ const BusinessProfileModal = ({
     if (!value || value.trim() === '' || (businessData.category_id && value.trim().toLowerCase() !== (categories.find(c => String(c.cid) === String(businessData.category_id))?.category_name || '').toLowerCase())) {
       onBusinessDataChange("category_id", '');
     }
+  };
+
+  // Add new branch
+  const handleAddBranch = () => {
+    const newBranchId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
+    const newBranch = {
+      id: newBranchId,
+      branch_name: `Branch ${newBranchId}`,
+      contact_no: '',
+      email: '',
+      company_address: '',
+      city: '',
+      state: '',
+      zip_code: '',
+      is_main: false
+    };
+    setBranches(prev => [...prev, newBranch]);
+  };
+
+  // Remove branch
+  const handleRemoveBranch = (branchId) => {
+    setBranches(prev => prev.filter(branch => branch.id !== branchId));
+  };
+
+  // Update branch data
+  const handleBranchChange = (branchId, field, value) => {
+    setBranches(prev => prev.map(branch => 
+      branch.id === branchId ? { ...branch, [field]: value } : branch
+    ));
   };
 
   return (
@@ -687,88 +737,6 @@ const BusinessProfileModal = ({
                   }}
                 />
               </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  placeholder="Enter email"
-                  required
-                  value={businessData.email || ""}
-                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
-                />
-              </Grid>
-
-              {businessData.business_type === 'self-employed' && (
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Business Contact Number"
-                    placeholder="Enter business contact number"
-                    required
-                    value={businessData.contact_no || ''}
-                    onChange={(e) => onBusinessDataChange("contact_no", e.target.value)}
-                  />
-                </Grid>
-              )}
-
-              <Grid item xs={12}>
-                <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
-                  Company Address <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <TextareaAutosize
-                  minRows={4}
-                  placeholder="Enter company address"
-                  value={businessData.company_address || ""}
-                  onChange={(e) => onBusinessDataChange("company_address", e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    resize: 'vertical',
-                    outline: 'none',
-                    fontFamily: 'inherit'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#10b981';
-                    e.target.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  placeholder="Enter city"
-                  value={businessData.city || ""}
-                  onChange={(e) => onBusinessDataChange("city", e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="State"
-                  placeholder="Enter state"
-                  value={businessData.state || ""}
-                  onChange={(e) => onBusinessDataChange("state", e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth
-                  label="Pincode"
-                  placeholder="Enter pincode"
-                  value={businessData.zip_code || ""}
-                  onChange={(e) => onBusinessDataChange("zip_code", e.target.value)}
-                />
-              </Grid>
             </>
           )}
 
@@ -782,27 +750,6 @@ const BusinessProfileModal = ({
                   required
                   value={businessData.designation || ""}
                   onChange={(e) => onBusinessDataChange("designation", e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  placeholder="Enter email"
-                  required
-                  value={businessData.email || ""}
-                  onChange={(e) => onBusinessDataChange("email", e.target.value)}
-                />
-              </Grid>
-
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Location"
-                  placeholder="Enter location"
-                  required
-                  value={businessData.location || ""}
-                  onChange={(e) => onBusinessDataChange("location", e.target.value)}
                 />
               </Grid>
 
@@ -831,6 +778,138 @@ const BusinessProfileModal = ({
               </Grid>
             </>
           )}
+
+          {/* Company Address & Branches Section */}
+          <Grid item xs={12}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Company Address & Branches
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<LocationOn />}
+                onClick={handleAddBranch}
+                color="primary"
+              >
+                Add Branch
+              </Button>
+            </Box>
+
+            {/* Main Branch and Additional Branches */}
+            {branches.map((branch, index) => (
+              <Box key={branch.id} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'grey.300', borderRadius: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {branch.is_main ? 'Main Branch' : `Branch ${index}`}
+                  </Typography>
+                  {!branch.is_main && (
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveBranch(branch.id)}
+                      color="error"
+                    >
+                      <Delete />
+                    </IconButton>
+                  )}
+                </Box>
+
+                <Grid container spacing={2}>
+                  {/* Branch Name, Contact, and Email */}
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="Branch Name"
+                      placeholder="Enter branch name"
+                      value={branch.branch_name || ''}
+                      onChange={(e) => handleBranchChange(branch.id, 'branch_name', e.target.value)}
+                      required={branch.is_main}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="Contact Number"
+                      placeholder="Enter contact number"
+                      value={branch.contact_no || ''}
+                      onChange={(e) => handleBranchChange(branch.id, 'contact_no', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      placeholder="Enter email"
+                      type="email"
+                      value={branch.email || ''}
+                      onChange={(e) => handleBranchChange(branch.id, 'email', e.target.value)}
+                    />
+                  </Grid>
+
+                  {/* Address Fields */}
+                  <Grid item xs={12}>
+                    <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                      Company Address {branch.is_main && <span style={{ color: '#ef4444' }}>*</span>}
+                    </label>
+                    <TextareaAutosize
+                      minRows={3}
+                      placeholder="Enter company address"
+                      value={branch.company_address || ""}
+                      onChange={(e) => handleBranchChange(branch.id, 'company_address', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        resize: 'vertical',
+                        outline: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#10b981';
+                        e.target.style.boxShadow = '0 0 0 2px rgba(16, 185, 129, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#e5e7eb';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="City"
+                      placeholder="Enter city"
+                      value={branch.city || ""}
+                      onChange={(e) => handleBranchChange(branch.id, 'city', e.target.value)}
+                      required={branch.is_main}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="State"
+                      placeholder="Enter state"
+                      value={branch.state || ""}
+                      onChange={(e) => handleBranchChange(branch.id, 'state', e.target.value)}
+                      required={branch.is_main}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      label="Pincode"
+                      placeholder="Enter pincode"
+                      value={branch.zip_code || ""}
+                      onChange={(e) => handleBranchChange(branch.id, 'zip_code', e.target.value)}
+                      required={branch.is_main}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+          </Grid>
 
           {/* Tags Input for all business types */}
           <Grid item xs={12}>
@@ -943,7 +1022,18 @@ const BusinessProfileModal = ({
           <Button
             variant="contained"
             color="success"
-            onClick={onSubmit}
+            onClick={() => {
+              // Include branches data in the business data before submitting
+              const businessDataWithBranches = {
+                ...businessData,
+                branches: branches
+              };
+              // Update the business data with branches
+              Object.keys(businessDataWithBranches).forEach(key => {
+                onBusinessDataChange(key, businessDataWithBranches[key]);
+              });
+              onSubmit();
+            }}
             sx={{ px: 4 }}
           >
             Add Business Profile
@@ -968,8 +1058,7 @@ const AddNewMemberForm = () => {
   const [customValues, setCustomValues] = useState({
     gender: '',
     kootam: '',
-    kovil: '',
-    business_registration_type: []
+    kovil: ''
   });
   const [showFamilyDetails, setShowFamilyDetails] = useState(false);
   const [memberSuggestions, setMemberSuggestions] = useState([]);
@@ -1077,8 +1166,6 @@ const AddNewMemberForm = () => {
     // Step 2 - Contact (all optional)
     work_phone: '',
     extension: '',
-    mobile_no: '',
-    preferred_contact: '',
     secondary_email: '',
     emergency_contact: '',
     emergency_phone: '',
@@ -1094,7 +1181,7 @@ const AddNewMemberForm = () => {
 
     // Step 3 - Access & Links
     access_level: 'Basic',
-    status: 'Approved',
+    status: 'Pending', // Changed to match backend default
     // Pro & Squad
     pro: 'Unpro',
     core_pro: '',
@@ -1106,7 +1193,18 @@ const AddNewMemberForm = () => {
     referral_code: '',
     profile_image: null,
     business_profiles: [],
-    family_details: {}
+    family_details: {},
+
+    // New fields from backend
+    paid_status: 'Unpaid', // New field
+    membership_valid_until: '', // New field
+    Arakattalai: 'No', // New field
+    KNS_Member: 'No', // New field
+    KBN_Member: 'No', // New field
+    BNI: 'No', // New field
+    Rotary: 'No', // New field
+    Lions: 'No', // New field
+    Other_forum: '' // New field
   });
 
   const [familyData, setFamilyData] = useState({
@@ -1147,10 +1245,25 @@ const AddNewMemberForm = () => {
     contact_no: '',
     business_profile_image: null,
     media_gallery: [],
+    branches: [],
+    exclusive_member_benefit: '' // New field
   });
 
   // Add profile image state
   const [profileImage, setProfileImage] = useState(null);
+
+  // Clear spouse fields when marital status is not married/divorced/widowed
+  useEffect(() => {
+    const status = (formData.marital_status || '');
+    const shouldShowSpouse = ['Married', 'Divorced', 'Widowed'].includes(status);
+    if (!shouldShowSpouse && (familyData.spouse_name || familyData.spouse_contact)) {
+      setFamilyData(prev => ({ ...prev, spouse_name: '', spouse_contact: '' }));
+      setFormData(prev => ({
+        ...prev,
+        family_details: { ...(prev.family_details || {}), spouse_name: '', spouse_contact: '' }
+      }));
+    }
+  }, [formData.marital_status]);
 
   // Password visibility
   const [showPassword, setShowPassword] = useState(false);
@@ -1185,10 +1298,16 @@ const AddNewMemberForm = () => {
         return;
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Enhanced email validation to match backend
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(formData.email)) {
-        setError('Please enter a valid email address');
+        setError('Please enter a valid email address (e.g., example@domain.com)');
+        return;
+      }
+
+      // Validate password length
+      if (formData.password.length < 8) {
+        setError('Password must be at least 8 characters long');
         return;
       }
     }
@@ -1199,6 +1318,12 @@ const AddNewMemberForm = () => {
 
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  };
+
+  // Enhanced email validation function
+  const validateEmail = (email) => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
   };
 
   const validateForm = () => {
@@ -1214,9 +1339,9 @@ const AddNewMemberForm = () => {
       }
     });
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
+    // Enhanced email validation
+    if (formData.email && !validateEmail(formData.email)) {
+      newErrors.email = 'Please enter a valid email address (e.g., example@domain.com)';
     }
 
     if (formData.password && formData.password.length < 8) {
@@ -1257,51 +1382,87 @@ const AddNewMemberForm = () => {
     try {
       const formDataToSend = new FormData();
 
-      // Prepare personal info with custom values
-      const personalFields = [
-        'first_name', 'email', 'password', 'dob',
-        'contact_no', 'marital_status', 'address', 'city', 'state', 'zip_code'
+      // Prepare all member fields according to backend - FIXED: Ensure string values
+      const memberFields = [
+        'first_name', 'email', 'password', 'dob', 'join_date', 
+        'aadhar_no', 'blood_group', 'contact_no', 'alternate_contact_no',
+        'marital_status', 'address', 'city', 'state', 'zip_code',
+        'work_phone', 'extension', 'mobile_no', 'preferred_contact',
+        'secondary_email', 'emergency_contact', 'emergency_phone',
+        'personal_website', 'linkedin_profile', 'facebook', 'instagram',
+        'twitter', 'youtube', 'best_time_to_contact',
+        'referral_name', 'referral_code', 'status', 'access_level',
+        'paid_status', 'Arakattalai', 'KNS_Member', 'KBN_Member', 'BNI',
+        'Rotary', 'Lions', 'Other_forum', 'pro', 'core_pro', 'squad', 'squad_fields'
       ];
 
-      personalFields.forEach(field => {
-        if (formData[field] !== null && formData[field] !== undefined) {
-          formDataToSend.append(field, formData[field]);
+      memberFields.forEach(field => {
+        if (formData[field] !== null && formData[field] !== undefined && formData[field] !== '') {
+          let value = formData[field];
+          // Handle email fields
+          if (field === 'email' || field === 'secondary_email') {
+            value = value.trim().toLowerCase();
+          }
+          // Ensure all values are strings, not arrays
+          if (Array.isArray(value)) {
+            value = value[0] || ''; // Take first element if it's an array
+          }
+          formDataToSend.append(field, String(value));
         }
       });
 
-      // Handle gender with custom value
+      // FIXED: Handle gender, kootam, kovil as strings (not arrays)
       const genderValue = formData.gender === 'other' ? customValues.gender : formData.gender;
-      formDataToSend.append('gender', genderValue);
-
-      // Handle kootam with custom value
-      const kootamValue = formData.kootam === 'Others' ? customValues.kootam : formData.kootam;
-      formDataToSend.append('kootam', kootamValue);
-
-      // Handle kovil with custom value
-      const kovilValue = formData.kovil === 'Others' ? customValues.kovil : formData.kovil;
-      formDataToSend.append('kovil', kovilValue);
-
-      // Handle referral (same as Signup)
-      formDataToSend.append('has_referral', formData.has_referral ? 'true' : 'false');
-      if (formData.has_referral) {
-        const refName = (formData.referral_name || '').trim();
-        const refCode = (formData.referral_code || '').trim().toUpperCase();
-        if (refName) formDataToSend.append('referral_name', refName);
-        if (refCode) formDataToSend.append('referral_code', refCode);
+      if (genderValue) {
+        const finalGenderValue = Array.isArray(genderValue) ? genderValue[0] : genderValue;
+        formDataToSend.append('gender', String(finalGenderValue));
       }
 
-      // Add default values for required backend fields
-      formDataToSend.append('status', 'Pending');
-      formDataToSend.append('access_level', 'Basic');
-      formDataToSend.append('join_date', new Date().toISOString().split('T')[0]);
+      const kootamValue = formData.kootam === 'Others' ? customValues.kootam : formData.kootam;
+      if (kootamValue) {
+        const finalKootamValue = Array.isArray(kootamValue) ? kootamValue[0] : kootamValue;
+        formDataToSend.append('kootam', String(finalKootamValue));
+      }
 
+      const kovilValue = formData.kovil === 'Others' ? customValues.kovil : formData.kovil;
+      if (kovilValue) {
+        const finalKovilValue = Array.isArray(kovilValue) ? kovilValue[0] : kovilValue;
+        formDataToSend.append('kovil', String(finalKovilValue));
+      }
+
+      // Handle core_pro based on pro status (same as backend logic)
+      let coreProFinal = null;
+      if (formData.pro === 'Unpro') {
+        coreProFinal = formData.core_pro || null;
+      }
+      if (coreProFinal) {
+        const finalCoreProValue = Array.isArray(coreProFinal) ? coreProFinal[0] : coreProFinal;
+        formDataToSend.append('core_pro', String(finalCoreProValue));
+      }
+
+      // Handle membership_valid_until based on paid_status (same as backend logic)
+      let membershipValidUntilFinal = null;
+      if (formData.paid_status === 'Paid') {
+        membershipValidUntilFinal = formData.membership_valid_until || null;
+      }
+      if (membershipValidUntilFinal) {
+        const finalMembershipValue = Array.isArray(membershipValidUntilFinal) ? membershipValidUntilFinal[0] : membershipValidUntilFinal;
+        formDataToSend.append('membership_valid_until', String(finalMembershipValue));
+      }
+
+      // Add default join_date if not provided
+      if (!formData.join_date) {
+        formDataToSend.append('join_date', new Date().toISOString().split('T')[0]);
+      }
+
+      // Handle profile image
       if (formData.profile_image) {
         formDataToSend.append('profile_image', formData.profile_image);
       }
 
-      // Handle business profiles with custom values
+      // Handle business profiles with branches structure for backend
       const businessProfilesForBackend = formData.business_profiles.map((profile, index) => {
-        const { business_profile_image, media_gallery, category_input, ...profileData } = profile;
+        const { business_profile_image, media_gallery, category_input, branches, ...profileData } = profile;
 
         // If no category_id but category_input present, send as new_category_name
         if ((!profileData.category_id || String(profileData.category_id).trim() === '') && category_input && category_input.trim()) {
@@ -1311,6 +1472,28 @@ const AddNewMemberForm = () => {
         // Pass through business_registration_type_other when Others is chosen
         if (profile.business_registration_type !== 'Others') {
           delete profileData.business_registration_type_other;
+        }
+
+        // Handle branches data - convert to arrays for backend
+        if (branches && branches.length > 0) {
+          // Extract branch names, addresses, cities, states, zip_codes from branches
+          const branch_names = branches.map(branch => branch.branch_name || '');
+          const company_addresses = branches.map(branch => branch.company_address || '');
+          const cities = branches.map(branch => branch.city || '');
+          const states = branches.map(branch => branch.state || '');
+          const zip_codes = branches.map(branch => branch.zip_code || '');
+          
+          // Use contact numbers from branches as business_work_contract
+          const business_work_contract = branches.map(branch => branch.contact_no || '');
+          const emails = branches.map(branch => branch.email || '');
+
+          profileData.branch_name = branch_names;
+          profileData.company_address = company_addresses;
+          profileData.city = cities;
+          profileData.state = states;
+          profileData.zip_code = zip_codes;
+          profileData.business_work_contract = business_work_contract;
+          profileData.email = emails;
         }
 
         // Ensure tags is a TEXT (string) for backend
@@ -1350,20 +1533,17 @@ const AddNewMemberForm = () => {
         formDataToSend.append('family_details', JSON.stringify(familyData));
       }
 
-      // Pro & Squad fields
-      formDataToSend.append('pro', formData.pro || 'Unpro');
-      if (formData.pro === 'Unpro' && formData.core_pro) {
-        formDataToSend.append('core_pro', formData.core_pro);
-      }
-      const finalSquad = (formData.squad === 'add_new' && formData.new_squad_name)
-        ? formData.new_squad_name
-        : formData.squad;
-      if (finalSquad) {
-        formDataToSend.append('squad', finalSquad);
-      }
-      if (formData.squad_fields) {
-        formDataToSend.append('squad_fields', formData.squad_fields);
-      }
+      // Log form data for debugging
+      console.log('Submitting form data:', {
+        email: formData.email,
+        gender: formData.gender,
+        kootam: formData.kootam,
+        kovil: formData.kovil,
+        businessProfilesCount: formData.business_profiles.length,
+        hasFamily: showFamilyDetails,
+        paid_status: formData.paid_status,
+        pro: formData.pro
+      });
 
       const response = await fetch(`${baseurl}/api/member/register`, {
         method: 'POST',
@@ -1384,6 +1564,7 @@ const AddNewMemberForm = () => {
       });
       setTimeout(() => navigate('/admin/MemberManagement'), 2000);
     } catch (error) {
+      console.error('Registration error:', error);
       setSnackbar({
         open: true,
         message: error.message || 'Registration failed',
@@ -1434,6 +1615,7 @@ const AddNewMemberForm = () => {
     setFormData(prev => ({ ...prev, family_details: {} }));
   };
 
+  // FIXED: handleBusinessSubmit function - now adds business profile on first click
   const handleBusinessSubmit = () => {
     // Validate required fields based on business type
     if (!businessData.business_type || !businessData.company_name) {
@@ -1448,17 +1630,27 @@ const AddNewMemberForm = () => {
     }
 
     if (businessData.business_type === 'self-employed' || businessData.business_type === 'business') {
-      if (!businessData.about || !businessData.email) {
-        setError('About and email are required for this business type');
+      if (!businessData.about) {
+        setError('About is required for this business type');
         return;
       }
     }
 
     if (businessData.business_type === 'salary') {
-      if (!businessData.designation || !businessData.location || !businessData.salary || !businessData.experience) {
-        setError('Designation, location, salary, and experience are required for salary type');
+      if (!businessData.designation || !businessData.salary || !businessData.experience) {
+        setError('Designation, salary, and experience are required for salary type');
         return;
       }
+    }
+
+    // Validate at least one branch has address data
+    const hasValidBranch = businessData.branches && businessData.branches.some(branch => 
+      branch.company_address && branch.city && branch.state && branch.zip_code
+    );
+    
+    if (!hasValidBranch) {
+      setError('At least one branch with complete address information is required');
+      return;
     }
 
     // Add computed fields expected by backend
@@ -1467,11 +1659,12 @@ const AddNewMemberForm = () => {
       payloadBusiness.new_category_name = payloadBusiness.category_input.trim();
     }
 
-    // Add the current business data to the profiles array
-    setBusinessProfiles(prev => [...prev, { ...payloadBusiness }]);
-    setFormData(prev => ({ ...prev, business_profiles: [...prev.business_profiles, payloadBusiness] }));
+    // FIX: Add the current business data to the profiles array
+    const newBusinessProfiles = [...businessProfiles, { ...payloadBusiness }];
+    setBusinessProfiles(newBusinessProfiles);
+    setFormData(prev => ({ ...prev, business_profiles: newBusinessProfiles }));
 
-    // Reset the form data for next entry
+    // FIX: Reset the form data for next entry
     setBusinessData({
       company_name: '',
       business_type: '',
@@ -1496,9 +1689,11 @@ const AddNewMemberForm = () => {
       contact_no: '',
       business_profile_image: null,
       media_gallery: [],
+      branches: [],
+      exclusive_member_benefit: ''
     });
 
-    // Close modal
+    // FIX: Close modal immediately after adding
     setBusinessModalOpen(false);
     setError(null);
   };
@@ -1544,11 +1739,6 @@ const AddNewMemberForm = () => {
       ...prev,
       business_profiles: prev.business_profiles.filter((_, i) => i !== index)
     }));
-
-    // Update custom values array
-    const newCustomValues = { ...customValues };
-    newCustomValues.business_registration_type = newCustomValues.business_registration_type.filter((_, i) => i !== index);
-    setCustomValues(newCustomValues);
   };
 
   // Step 1 - Basic Info
@@ -1617,9 +1807,13 @@ const AddNewMemberForm = () => {
               required
               type="email"
               value={formData.email}
-              onChange={handleInputChange('email')}
+              onChange={(e) => {
+                const value = e.target.value.trim();
+                setFormData(prev => ({ ...prev, email: value }));
+              }}
               error={!!errors.email}
-              helperText={errors.email || (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) ? "Please enter a valid email" : "")}
+              helperText={errors.email || (formData.email && !validateEmail(formData.email) ? "Please enter a valid email address (e.g., example@domain.com)" : "")}
+              placeholder="example@domain.com"
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -1861,48 +2055,82 @@ const AddNewMemberForm = () => {
   // Step 2 - Contact
   const renderContact = () => (
     <Box>
-      {/* Primary Contact Information */}
+      {/* Additional Information */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-          Primary Contact Information
+          Additional Information
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
-              label="Mobile Phone"
-              value={formData.mobile_no}
-              onChange={handleInputChange('mobile_no')}
+              label="Alternate Contact Number"
+              value={formData.alternate_contact_no}
+              onChange={handleInputChange('alternate_contact_no')}
+              placeholder="+91 98765 43210"
             />
           </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
-              label="Preferred Contact"
-              value={formData.preferred_contact}
-              onChange={handleInputChange('preferred_contact')}
+              label="Aadhar Number"
+              value={formData.aadhar_no}
+              onChange={handleInputChange('aadhar_no')}
+              placeholder="1234 5678 9012"
             />
           </Grid>
           <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="Secondary Email"
-              value={formData.secondary_email}
-              onChange={handleInputChange('secondary_email')}
-              error={formData.secondary_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.secondary_email)}
-              helperText={formData.secondary_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.secondary_email) ? "Please enter a valid email" : ""}
-            />
+            <FormControl fullWidth>
+              <InputLabel>Blood Group</InputLabel>
+              <Select
+                value={formData.blood_group}
+                onChange={handleInputChange('blood_group')}
+                label="Blood Group"
+              >
+                <MenuItem value="">Select</MenuItem>
+                <MenuItem value="A+">A+</MenuItem>
+                <MenuItem value="A-">A-</MenuItem>
+                <MenuItem value="B+">B+</MenuItem>
+                <MenuItem value="B-">B-</MenuItem>
+                <MenuItem value="AB+">AB+</MenuItem>
+                <MenuItem value="AB-">AB-</MenuItem>
+                <MenuItem value="O+">O+</MenuItem>
+                <MenuItem value="O-">O-</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <TextField
               fullWidth
               label="Emergency Contact Name"
               value={formData.emergency_contact}
               onChange={handleInputChange('emergency_contact')}
-              placeholder="Contact name"
+              placeholder="Emergency contact person name"
             />
           </Grid>
-
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Emergency Contact Phone"
+              value={formData.emergency_phone}
+              onChange={handleInputChange('emergency_phone')}
+              placeholder="+91 98765 43210"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Secondary Email"
+              value={formData.secondary_email}
+              onChange={(e) => {
+                const value = e.target.value.trim();
+                setFormData(prev => ({ ...prev, secondary_email: value }));
+              }}
+              error={formData.secondary_email && !validateEmail(formData.secondary_email)}
+              helperText={formData.secondary_email && !validateEmail(formData.secondary_email) ? "Please enter a valid email address" : ""}
+              placeholder="secondary@example.com"
+            />
+          </Grid>
         </Grid>
       </Box>
 
@@ -1994,6 +2222,47 @@ const AddNewMemberForm = () => {
   // Step 3 - Access & Links
   const renderAccessLinks = () => (
     <Box>
+      {/* Paid Status Section - NEW */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          Membership Status
+        </Typography>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Paid Status</InputLabel>
+              <Select
+                value={formData.paid_status}
+                onChange={handleInputChange('paid_status')}
+                label="Paid Status"
+              >
+                <MenuItem value="Unpaid">Unpaid</MenuItem>
+                <MenuItem value="Paid">Paid</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          {formData.paid_status === 'Paid' && (
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Membership Valid Until"
+                type="date"
+                value={formData.membership_valid_until}
+                onChange={handleInputChange('membership_valid_until')}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          )}
+        </Grid>
+        {formData.paid_status === 'Paid' && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              When status is set to "Paid", membership valid until date is required.
+            </Typography>
+          </Alert>
+        )}
+      </Box>
+
       {/* Pro Member */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
@@ -2235,7 +2504,7 @@ const AddNewMemberForm = () => {
                       {profile.company_name} - {profile.business_type}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {profile.category_id} • {profile.tags?.length || 0} tags
+                      {profile.category_id} • {profile.tags?.length || 0} tags • {profile.branches?.length || 0} branches
                     </Typography>
                   </Box>
                 </Box>
@@ -2487,6 +2756,7 @@ const AddNewMemberForm = () => {
         onFamilyDataChange={handleFamilyInputChange}
         onSubmit={handleFamilySubmit}
         memberSuggestions={memberSuggestions}
+        maritalStatus={formData.marital_status}
       />
 
       {/* BusinessProfileModal */}
@@ -2519,7 +2789,8 @@ const AddNewMemberForm = () => {
             contact_no: '',
             business_profile_image: null,
             media_gallery: [],
-    
+            branches: [],
+            exclusive_member_benefit: ''
           });
         }}
         businessData={businessData}

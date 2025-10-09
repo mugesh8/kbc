@@ -3,7 +3,8 @@ import {
   User, Building2, Users, Edit3,
   Phone, Camera, Save, Plus,
   Eye, ExternalLink, Shield, CheckCircle,
-  Trash2, ChevronDown, Video, File, X, CreditCard, Calendar
+  Trash2, ChevronDown, Video, File, X, CreditCard, Calendar,
+  XCircle, MapPin
 } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
@@ -11,9 +12,187 @@ import MobileFooter from './MobileFooter';
 import baseurl from '../Baseurl/baseurl';
 import { useParams } from 'react-router-dom';
 
+// BranchLocation component for managing multiple branches
+const BranchLocation = ({ 
+  branch, 
+  index, 
+  onUpdate, 
+  onRemove,
+  disabled
+}) => {
+  const handleChange = (field, value) => {
+    onUpdate(index, field, value);
+  };
+
+  const handleNumericChange = (field, value) => {
+    const digitsOnly = value.replace(/\D+/g, '');
+    onUpdate(index, field, digitsOnly);
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-xl p-6 bg-white relative mb-6">
+      {index > 0 && !disabled && (
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="absolute top-4 right-4 text-red-500 hover:text-red-600"
+          aria-label="Remove branch"
+        >
+          <XCircle className="w-6 h-6" />
+        </button>
+      )}
+      
+      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+        <MapPin className="w-5 h-5 mr-2 text-orange-600" />
+        Branch {index + 1} {index === 0 && <span className="text-sm text-gray-500 ml-2">(Main Branch)</span>}
+      </h4>
+
+      <div className="space-y-6">
+        {/* Branch Basic Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Branch Name</label>
+            <input
+              placeholder="e.g., Head Office, Downtown Branch"
+              value={branch.branchName || branch.branch_name || ''}
+              onChange={(e) => handleChange('branch_name', e.target.value)}
+              disabled={disabled}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+            <input
+              placeholder="Enter branch contact number"
+              value={branch.workContact || branch.business_work_contract || ''}
+              onChange={(e) => handleNumericChange('business_work_contract', e.target.value)}
+              disabled={disabled}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Email</label>
+          <input
+            placeholder="Enter branch email"
+            type="email"
+            value={branch.email || branch.businessEmail || ''}
+            onChange={(e) => handleChange('email', e.target.value)}
+            disabled={disabled}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+          />
+        </div>
+
+        {/* Branch Address */}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Complete Address</label>
+          <textarea
+            rows={3}
+            placeholder="Enter complete branch address"
+            value={branch.address || branch.company_address || ''}
+            onChange={(e) => handleChange('company_address', e.target.value)}
+            disabled={disabled}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            style={{ resize: "vertical" }}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">City</label>
+            <input
+              placeholder="City"
+              value={branch.city || ''}
+              onChange={(e) => handleChange('city', e.target.value)}
+              disabled={disabled}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">State</label>
+            <input
+              placeholder="State"
+              value={branch.state || ''}
+              onChange={(e) => handleChange('state', e.target.value)}
+              disabled={disabled}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Pin Code</label>
+            <input
+              placeholder="Pin Code"
+              value={branch.zip_code || ''}
+              onChange={(e) => handleNumericChange('zip_code', e.target.value)}
+              disabled={disabled}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${disabled ? 'bg-gray-50 text-gray-600' : 'bg-white'}`}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProfilePage = () => {
   const { id } = useParams();
   const [editingSection, setEditingSection] = useState(null);
+
+  // Branch management handlers
+  const handleAddBranch = () => {
+    setProfileData((prevData) => ({
+      ...prevData,
+      business: {
+        ...prevData.business,
+        branches: [
+          ...(prevData.business.branches || []),
+          {
+            branch_name: "",
+            business_work_contract: "",
+            email: "",
+            company_address: "",
+            city: "",
+            state: "",
+            zip_code: ""
+          }
+        ]
+      }
+    }));
+  };
+
+  const handleUpdateBranch = (index, field, value) => {
+    setProfileData((prevData) => {
+      const updatedBranches = [...(prevData.business.branches || [])];
+      updatedBranches[index] = {
+        ...updatedBranches[index],
+        [field]: value
+      };
+      
+      return {
+        ...prevData,
+        business: {
+          ...prevData.business,
+          branches: updatedBranches
+        }
+      };
+    });
+  };
+
+  const handleRemoveBranch = (index) => {
+    setProfileData((prevData) => {
+      const updatedBranches = [...(prevData.business.branches || [])];
+      updatedBranches.splice(index, 1);
+      
+      return {
+        ...prevData,
+        business: {
+          ...prevData.business,
+          branches: updatedBranches
+        }
+      };
+    });
+  };
 
   const [profileData, setProfileData] = useState({
     personal: {
@@ -74,6 +253,17 @@ const ProfilePage = () => {
       businessType: 'self-employed',
       registrationNumber: '',
       registrationNumberOther: '',
+      // branches: [
+      //   {
+      //     branch_name: "Main Branch",
+      //     business_work_contract: "",
+      //     email: "",
+      //     address: "",
+      //     city: "",
+      //     state: "",
+      //     zip_code: ""
+      //   }
+      // ],
       startingYear: '',
       experience: '',
       businessAddress: '',
@@ -88,6 +278,8 @@ const ProfilePage = () => {
       mediaGalleryFiles: [],
       isNew: false,
       category_id: '',
+      branchName: '',
+      email: '',  
       city: '',
       state: '',
       zip_code: '',
@@ -97,6 +289,16 @@ const ProfilePage = () => {
       website: '',
       google_link: '',
       facebook_link: '',
+      // Add branches array for multiple locations
+      branches: [{
+        branch_name: 'Main Branch',
+        business_work_contract: '',
+        email: '',
+        company_address: '',
+        city: '',
+        state: '',
+        zip_code: ''
+      }],
       instagram_link: '',
       linkedin_link: '',
       designation: '',
@@ -352,6 +554,20 @@ const ProfilePage = () => {
       if (data.success) {
         const memberData = data.data.find(member => member.mid === parseInt(memberId));
         if (memberData && memberData.MemberFamily) {
+          // Normalize children names: handle raw string, JSON string, or array
+          const rawChildren = memberData.MemberFamily.children_names;
+          let childrenNames = '';
+          if (Array.isArray(rawChildren)) {
+            childrenNames = rawChildren.join(', ');
+          } else if (typeof rawChildren === 'string') {
+            try {
+              const parsed = JSON.parse(rawChildren);
+              childrenNames = Array.isArray(parsed) ? parsed.join(', ') : rawChildren;
+            } catch {
+              childrenNames = rawChildren;
+            }
+          }
+
           setProfileData(prev => ({
             ...prev,
             family: {
@@ -364,7 +580,7 @@ const ProfilePage = () => {
               numberOfChildren: memberData.MemberFamily.number_of_children || '',
               anniversaryDate: '',
               emergencyContact: '',
-              childrenNames: memberData.MemberFamily.children_names || '',
+              childrenNames,
               familyAddress: memberData.MemberFamily.address || ''
             }
           }));
@@ -389,6 +605,19 @@ const ProfilePage = () => {
 
         const fallbackData = await fallbackResponse.json();
         if (fallbackData.success && fallbackData.data.MemberFamily) {
+          const rawChildren = fallbackData.data.MemberFamily.children_names;
+          let childrenNames = '';
+          if (Array.isArray(rawChildren)) {
+            childrenNames = rawChildren.join(', ');
+          } else if (typeof rawChildren === 'string') {
+            try {
+              const parsed = JSON.parse(rawChildren);
+              childrenNames = Array.isArray(parsed) ? parsed.join(', ') : rawChildren;
+            } catch {
+              childrenNames = rawChildren;
+            }
+          }
+
           setProfileData(prev => ({
             ...prev,
             family: {
@@ -401,7 +630,7 @@ const ProfilePage = () => {
               numberOfChildren: fallbackData.data.MemberFamily.number_of_children || '',
               anniversaryDate: '',
               emergencyContact: '',
-              childrenNames: fallbackData.data.MemberFamily.children_names || '',
+              childrenNames,
               familyAddress: fallbackData.data.MemberFamily.address || ''
             }
           }));
@@ -495,7 +724,7 @@ const ProfilePage = () => {
     const hasReferral = !!apiData.Referral;
     const referralName = apiData.Referral?.referral_name || '';
     const referralCode = apiData.Referral?.referral_code || '';
-
+   
     return {
       fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
       email: apiData.email || '',
@@ -546,9 +775,168 @@ const ProfilePage = () => {
       paidStatus: apiData.paid_status || 'Unpaid',
       joinDate: apiData.join_date || apiData.createdAt || '',
       createdAt: apiData.createdAt || '',
-      updatedAt: apiData.updatedAt || ''
+      updatedAt: apiData.updatedAt || '',
     };
   };
+
+
+// const transformPersonalApiData = (apiData) => {
+//   // Helper function to safely parse stringified arrays like ["value"]
+//   const parseIfArrayString = (value) => {
+//     try {
+//       if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+//         const parsed = JSON.parse(value);
+//         return Array.isArray(parsed) ? parsed : [parsed];
+//       }
+//       if (value === '[null]') return [];
+//       return value ? [value] : [];
+//     } catch (e) {
+//       return value ? [value] : [];
+//     }
+//   };
+
+//   // ✅ Parse array-like fields first
+//   const parsedBranchName = parseIfArrayString(apiData.branch_name);
+//   const parsedCity = parseIfArrayString(apiData.city);
+//   const parsedState = parseIfArrayString(apiData.state);
+//   const parsedZip = parseIfArrayString(apiData.zip_code);
+//   const parsedEmail = parseIfArrayString(apiData.email);
+//   const parsedContract = parseIfArrayString(apiData.business_work_contract);
+//   const parsedLocation = parseIfArrayString(apiData.location);
+//   const parsedCompanyAddress = parseIfArrayString(apiData.company_address);
+
+//   // Address handling
+//   let streetAddress = '';
+//   let city = '';
+//   let state = '';
+//   let pinCode = '';
+
+//   if (apiData.address) {
+//     streetAddress = apiData.address;
+//   }
+//   if (parsedCity.length > 0) {
+//     city = parsedCity[0];
+//   } else if (apiData.city) {
+//     city = apiData.city;
+//   }
+//   if (parsedState.length > 0) {
+//     state = parsedState[0];
+//   } else if (apiData.state) {
+//     state = apiData.state;
+//   }
+//   if (parsedZip.length > 0) {
+//     pinCode = parsedZip[0];
+//   } else if (apiData.zip_code) {
+//     pinCode = apiData.zip_code;
+//   }
+
+//   if (!city && !state && !pinCode && apiData.address) {
+//     const addressParts = apiData.address.split(', ');
+//     if (addressParts.length >= 1) {
+//       streetAddress = addressParts[0];
+//     }
+//     if (addressParts.length >= 2) {
+//       city = addressParts[1];
+//     }
+//     if (addressParts.length >= 3) {
+//       const stateAndPin = addressParts[2].split(' ');
+//       if (stateAndPin.length >= 1) {
+//         state = stateAndPin[0];
+//       }
+//       if (stateAndPin.length >= 2) {
+//         pinCode = stateAndPin[1];
+//       }
+//     }
+//   }
+
+//   // Predefined lists
+//   const predefinedGenders = ['Male', 'Female', 'Other'];
+//   const predefinedKootams = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai'];
+//   const predefinedKovils = ['Madurai Meenakshi Amman', 'Thanjavur Brihadeeswarar', 'Palani Murugan', 'Srirangam Ranganathar', 'Kanchipuram Kamakshi Amman'];
+
+//   let gender = apiData.gender || '';
+//   let genderOther = '';
+//   if (gender && !predefinedGenders.includes(gender)) {
+//     genderOther = gender;
+//     gender = 'Other';
+//   }
+
+//   let kootam = apiData.kootam || '';
+//   let kootamOther = '';
+//   if (kootam && !predefinedKootams.includes(kootam)) {
+//     kootamOther = kootam;
+//     kootam = 'Others';
+//   }
+
+//   let kovil = apiData.kovil || '';
+//   let kovilOther = '';
+//   if (kovil && !predefinedKovils.includes(kovil)) {
+//     kovilOther = kovil;
+//     kovil = 'Others';
+//   }
+
+//   const hasReferral = !!apiData.Referral;
+//   const referralName = apiData.Referral?.referral_name || '';
+//   const referralCode = apiData.Referral?.referral_code || '';
+
+//   // ✅ Final transformed object
+//   return {
+//     fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
+//     email: parsedEmail.length ? parsedEmail : (apiData.email ? [apiData.email] : []),
+//     phone: apiData.contact_no || '',
+//     dateOfBirth: apiData.dob || '',
+//     gender: gender,
+//     genderOther: genderOther,
+//     maritalStatus: apiData.marital_status || '',
+//     aadhaar: apiData.aadhar_no || '',
+//     bloodGroup: apiData.blood_group || '',
+//     alternativeContact: apiData.alternate_contact_no || '',
+//     streetAddress: streetAddress,
+//     city: parsedCity.length ? parsedCity : city,
+//     state: parsedState.length ? parsedState : state,
+//     pinCode: parsedZip.length ? parsedZip : pinCode,
+//     branch_name: parsedBranchName,
+//     company_address: parsedCompanyAddress,
+//     business_work_contract: parsedContract,
+//     location: parsedLocation,
+//     website: apiData.personal_website || '',
+//     linkedin: apiData.linkedin_profile || '',
+//     workPhone: apiData.work_phone || '',
+//     extension: apiData.extension || '',
+//     mobileNumber: apiData.mobile_no || '',
+//     preferredContact: apiData.preferred_contact || '',
+//     secondaryEmail: apiData.secondary_email || '',
+//     emergencyContact: apiData.emergency_contact || '',
+//     emergencyPhone: apiData.emergency_phone || '',
+//     bestTimeToContact: apiData.best_time_to_contact || '',
+//     personalWebsite: apiData.personal_website || '',
+//     linkedinProfile: apiData.linkedin_profile || '',
+//     facebook: apiData.facebook || '',
+//     instagram: apiData.instagram || '',
+//     twitter: apiData.twitter || '',
+//     youtube: apiData.youtube || '',
+//     kootam: kootam,
+//     kootamOther: kootamOther,
+//     kovil: kovil,
+//     kovilOther: kovilOther,
+//     Arakattalai: apiData.Arakattalai || 'No',
+//     KNS_Member: apiData.KNS_Member || 'No',
+//     KBN_Member: apiData.KBN_Member || 'No',
+//     BNI: apiData.BNI || 'No',
+//     Rotary: apiData.Rotary || 'No',
+//     Lions: apiData.Lions || 'No',
+//     Other_forum: apiData.Other_forum || '',
+//     hasReferral: hasReferral,
+//     referralName: referralName,
+//     referralCode: referralCode,
+//     accessLevel: apiData.access_level || '',
+//     status: apiData.status || '',
+//     paidStatus: apiData.paid_status || 'Unpaid',
+//     joinDate: apiData.join_date || apiData.createdAt || '',
+//     createdAt: apiData.createdAt || '',
+//     updatedAt: apiData.updatedAt || '',
+//   };
+// };
 
   const fetchBusinessProfiles = async () => {
     try {
@@ -572,12 +960,34 @@ const ProfilePage = () => {
         const predefinedRegistrationTypes = ['proprietor', 'partnership', 'Others'];
 
         const transformedBusinesses = memberBusinessProfiles.map(business => {
-          let registrationNumber = business.business_registration_type || '';
+          // Normalize registration type from backend → UI values
+          const rawReg = (business.business_registration_type || '').toString().trim();
+          let registrationNumber = '';
           let registrationNumberOther = '';
 
-          if (registrationNumber && !predefinedRegistrationTypes.includes(registrationNumber)) {
-            registrationNumberOther = registrationNumber;
-            registrationNumber = 'Others';
+          if (rawReg) {
+            const lower = rawReg.toLowerCase();
+            if (lower === 'proprietor') {
+              registrationNumber = 'proprietor';
+            } else if (lower === 'partnership') {
+              registrationNumber = 'partnership';
+            } else if (
+              lower === 'private limited' ||
+              lower === 'private_limited' ||
+              lower === 'private-limited' ||
+              lower === 'pvt ltd' ||
+              lower === 'pvt. ltd' ||
+              lower === 'pvt. ltd.' ||
+              lower === 'pvtltd'
+            ) {
+              registrationNumber = 'private_limited';
+            } else if (lower === 'others' || lower === 'other') {
+              registrationNumber = 'Others';
+            } else {
+              // Custom value → treat as Others with an additional field
+              registrationNumber = 'Others';
+              registrationNumberOther = rawReg;
+            }
           }
 
           // Parse media gallery - handle both images and videos
@@ -617,6 +1027,15 @@ const ProfilePage = () => {
             profileImageFile: null,
             mediaGallery: mediaGallery,
             mediaGalleryFiles: [],
+            branches: business.branches || [{
+              branchName: business.branch_name || "Main Branch",
+              workContact: business.business_work_contract || '',
+              email: business.email || '',
+              address: business.company_address || '',
+              city: business.city || '',
+              state: business.state || '',
+              zip_code: business.zip_code || ''
+            }],
             isNew: false,
             category_id: business.category_id || '',
             city: business.city || '',
@@ -868,18 +1287,26 @@ const ProfilePage = () => {
   
       if (section === 'business') {
         const businessData = profileData.business;
-        const apiData = {
+          const apiData = {
           business_type: businessData.businessType,
           company_name: businessData.businessName,
-          business_registration_type: businessData.registrationNumber === 'Others'
-            ? businessData.registrationNumberOther
-            : businessData.registrationNumber,
+          // Persist registration type per backend rules:
+          // - For known types keep normalized string
+          // - For Others, send the custom text from registrationNumberOther
+          business_registration_type:
+            businessData.registrationNumber === 'Others'
+              ? (businessData.registrationNumberOther || 'Others')
+              : (businessData.registrationNumber === 'private_limited'
+                  ? 'Private Limited'
+                  : (businessData.registrationNumber || '')),
           business_starting_year: businessData.startingYear,
           experience: businessData.experience,
+          branch_name: businessData.branchName,
           company_address: businessData.businessAddress,
           email: businessData.businessEmail,
           staff_size: businessData.staffSize,
-          about: businessData.description,
+            // Only include about for non-salary types
+            ...(businessData.businessType !== 'salary' ? { about: businessData.description } : {}),
           category_id: businessData.category_id,
           city: businessData.city,
           state: businessData.state,
@@ -894,13 +1321,24 @@ const ProfilePage = () => {
           linkedin_link: businessData.linkedin_link,
           designation: businessData.designation,
           salary: businessData.salary,
-          location: businessData.location,
+            // location intentionally omitted from UI for salary; keep if preexisting
+            location: businessData.location,
+          // Add branches data to API payload
+          branches: businessData.branches || [{
+            branch_name: businessData.branchName || "",
+            business_work_contract: businessData.business_work_contract || "",
+            email: businessData.businessEmail || "",
+            company_address: businessData.businessAddress || "",
+            city: businessData.city || "",
+            state: businessData.state || "",
+            zip_code: businessData.zip_code || ""
+          }]
         };
         const formData = new FormData();
         formData.append('business_profile', JSON.stringify(apiData));
   
         if (businessData.profileImageFile) {
-          formData.append('business_profile_image', businessData.profileImageFile);
+          formData.append('profile_image', businessData.profileImageFile);
         }
         businessData.mediaGallery.forEach((media) => {
           if (media.isNew && media.file) {
@@ -968,12 +1406,69 @@ const ProfilePage = () => {
           throw new Error(result.message || 'Update failed');
         }
       } else if (section === 'family') {
-          // NOTE: You will need to implement this part next.
-          // It requires a specific API endpoint to update family details.
-          console.log("Saving family details is not yet implemented.");
-          setError("Family details save functionality is not available yet.");
-          setTimeout(() => setError(''), 3000);
-          setEditingSection(null); // Temporarily close the section
+        const family = profileData.family;
+        const maritalStatus = (profileData.personal.maritalStatus || '').toLowerCase();
+
+        const numberOfChildrenParsed = parseInt(family.numberOfChildren, 10);
+        // Convert UI string → array (handles both raw arrays and string)
+        let childrenArray = [];
+        if (Array.isArray(family.childrenNames)) {
+          childrenArray = family.childrenNames.map((n) => `${n}`.trim()).filter((n) => n.length > 0);
+        } else if (typeof family.childrenNames === 'string') {
+          try {
+            const parsed = JSON.parse(family.childrenNames);
+            if (Array.isArray(parsed)) {
+              childrenArray = parsed.map((n) => `${n}`.trim()).filter((n) => n.length > 0);
+            } else {
+              childrenArray = family.childrenNames.split(',').map((n) => n.trim()).filter((n) => n.length > 0);
+            }
+          } catch {
+            childrenArray = family.childrenNames.split(',').map((n) => n.trim()).filter((n) => n.length > 0);
+          }
+        }
+
+        const payload = {
+          member_id: parseInt(memberId, 10),
+          father_name: family.fatherName || null,
+          father_contact: family.fatherContact || null,
+          mother_name: family.motherName || null,
+          mother_contact: family.motherContact || null,
+          address: family.familyAddress || null,
+          marital_status: maritalStatus,
+        };
+
+        if (maritalStatus === 'married') {
+          payload.spouse_name = family.spouseName || null;
+          payload.spouse_contact = family.spouseContact || null;
+          payload.number_of_children = isNaN(numberOfChildrenParsed) ? 0 : numberOfChildrenParsed;
+          if (payload.number_of_children > 0) {
+            payload.children_names = childrenArray;
+          }
+        }
+
+        const response = await fetch(`${baseurl}/api/family-details/update/${memberId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData?.message || `Server returned ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          setSuccess('Family details updated successfully');
+          setEditingSection(null);
+          await fetchFamilyDetails();
+          setTimeout(() => setSuccess(''), 3000);
+        } else {
+          throw new Error(result.message || 'Update failed');
+        }
       }
   
     } catch (err) {
@@ -1096,6 +1591,7 @@ const ProfilePage = () => {
     city: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, city: value } })),
     state: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, state: value } })),
     pinCode: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, pinCode: value } })),
+    alternativeContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, alternativeContact: value } })),
     aadhaar: (value) => setProfileData(prev => ({ 
       ...prev, 
       personal: { 
@@ -1117,6 +1613,7 @@ const ProfilePage = () => {
     preferredContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, preferredContact: value } })),
     secondaryEmail: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, secondaryEmail: value } })),
     emergencyContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, emergencyContact: value } })),
+    emergencyPhone: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, emergencyPhone: value } })),
     bestTimeToContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, bestTimeToContact: value } })),
     website: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, website: value } })),
     linkedin: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, linkedin: value } })),
@@ -1862,15 +2359,9 @@ const ProfilePage = () => {
                   disabled={editingSection !== 'personal'}
                 />
                 <InputField
-                  label="Mobile Number"
-                  value={profileData.personal.mobileNumber}
-                  onChange={personalHandlers.mobileNumber}
-                  disabled={editingSection !== 'personal'}
-                />
-                <InputField
-                  label="Prefered Contact"
-                  value={profileData.personal.preferredContact}
-                  onChange={personalHandlers.preferredContact}
+                  label="Alternative Contact"
+                  value={profileData.personal.alternativeContact}
+                  onChange={personalHandlers.alternativeContact}
                   disabled={editingSection !== 'personal'}
                 />
                 <InputField
@@ -1884,6 +2375,12 @@ const ProfilePage = () => {
                   label="Emergency Contact Name"
                   value={profileData.personal.emergencyContact}
                   onChange={personalHandlers.emergencyContact}
+                  disabled={editingSection !== 'personal'}
+                />
+                <InputField
+                  label="Emergency Contact Number"
+                  value={profileData.personal.emergencyPhone}
+                  onChange={personalHandlers.emergencyPhone}
                   disabled={editingSection !== 'personal'}
                 />
                 <SelectField
@@ -2257,12 +2754,12 @@ const ProfilePage = () => {
                         onChange={businessHandlers.designation}
                         disabled={editingSection !== 'business'}
                       />
-                      <InputField
+                      {/* <InputField
                         label="Business Email"
                         value={profileData.business.businessEmail}
                         onChange={businessHandlers.businessEmail}
                         disabled={editingSection !== 'business'}
-                      />
+                      /> */}
                       <InputField
                         label="Salary"
                         value={profileData.business.salary}
@@ -2275,20 +2772,24 @@ const ProfilePage = () => {
                         onChange={businessHandlers.experience}
                         disabled={editingSection !== 'business'}
                       />
-                      <InputField
-                        label="Location"
-                        value={profileData.business.location}
-                        onChange={businessHandlers.location}
-                        disabled={editingSection !== 'business'}
-                      />
                     </>
                   ) : (
                     <>
                       <div className="space-y-1">
                         <label className="block text-sm font-medium text-gray-700">Business Registration Type</label>
                         <select
-                          value={profileData.business.registrationNumber}
-                          onChange={(e) => businessHandlers.registrationNumber(e.target.value)}
+                          value={profileData.business.registrationNumber === 'Others'
+                            ? 'Others'
+                            : (profileData.business.registrationNumber || '').toString().toLowerCase()}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Keep exact options for select; store normalized in state
+                            if (value === 'Others') {
+                              businessHandlers.registrationNumber('Others');
+                            } else {
+                              businessHandlers.registrationNumber(value); // 'proprietor' | 'partnership'
+                            }
+                          }}
                           disabled={editingSection !== 'business'}
                           className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${editingSection !== 'business' ? 'bg-gray-50 text-gray-600' : 'bg-white'
                             }`}
@@ -2296,6 +2797,7 @@ const ProfilePage = () => {
                           <option value="">Select Registration Type</option>
                           <option value="proprietor">Proprietor</option>
                           <option value="partnership">Partnership</option>
+                          <option value="private_limited">Private Limited</option>
                           <option value="Others">Others</option>
                         </select>
                       </div>
@@ -2310,12 +2812,12 @@ const ProfilePage = () => {
                       )}
 
 
-                      <InputField
+                      {/* <InputField
                         label="Business Email"
                         value={profileData.business.businessEmail}
                         onChange={businessHandlers.businessEmail}
                         disabled={editingSection !== 'business'}
-                      />
+                      /> */}
                       <InputField
                         label="Staff Size"
                         value={profileData.business.staffSize}
@@ -2333,28 +2835,30 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="mt-6 space-y-4 text-left">
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      {profileData.business.businessType === 'salary' ? 'Job Description' : 'About Business'}
-                    </label>
-                    <textarea
-                      value={profileData.business.description}
-                      onChange={(e) => businessHandlers.description(e.target.value)}
-                      disabled={editingSection !== 'business'}
-                      rows={3}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${editingSection !== 'business' ? 'bg-gray-50 text-gray-600' : 'bg-white'
-                        }`}
-                    />
-                  </div>
+                  {profileData.business.businessType !== 'salary' && (
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        About Business
+                      </label>
+                      <textarea
+                        value={profileData.business.description}
+                        onChange={(e) => businessHandlers.description(e.target.value)}
+                        disabled={editingSection !== 'business'}
+                        rows={3}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${editingSection !== 'business' ? 'bg-gray-50 text-gray-600' : 'bg-white'
+                          }`}
+                      />
+                    </div>
+                  )}
 
-                  <InputField
+                  {/* <InputField
                     label={profileData.business.businessType === 'salary' ? 'Office Address' : 'Business Address'}
                     value={profileData.business.businessAddress}
                     onChange={businessHandlers.businessAddress}
                     disabled={editingSection !== 'business'}
-                  />
+                  /> */}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <InputField
                       label="City"
                       value={profileData.business.city}
@@ -2380,6 +2884,35 @@ const ProfilePage = () => {
                         onChange={businessHandlers.business_work_contract}
                         disabled={editingSection !== 'business'}
                       />
+                    )}
+                  </div> */}
+
+                  {/* Branch Locations Section */}
+                  <div className="mt-8">
+                    <h4 className="text-base sm:text-lg font-semibold text-orange-600 mb-4">Branch Locations</h4>
+                    
+                    {/* Branch List */}
+                    {profileData.business.branches && profileData.business.branches.map((branch, index) => (
+                      <BranchLocation
+                        key={index}
+                        branch={branch}
+                        index={index}
+                        onUpdate={handleUpdateBranch}
+                        onRemove={handleRemoveBranch}
+                        disabled={editingSection !== 'business'}
+                      />
+                    ))}
+                    
+                    {/* Add Branch Button */}
+                    {editingSection === 'business' && (
+                      <button
+                        type="button"
+                        onClick={handleAddBranch}
+                        className="mt-4 flex items-center space-x-2 text-orange-600 hover:text-orange-700 font-medium"
+                      >
+                        <Plus className="w-5 h-5" />
+                        <span>Add Another Branch</span>
+                      </button>
                     )}
                   </div>
 
@@ -2663,19 +3196,8 @@ const ProfilePage = () => {
                 onChange={familyHandlers.numberOfChildren}
                 disabled={editingSection !== 'family'}
               />
-              <InputField
-                label="Anniversary Date"
-                value={profileData.family.anniversaryDate}
-                onChange={familyHandlers.anniversaryDate}
-                disabled={editingSection !== 'family'}
-                type="date"
-              />
-              <InputField
-                label="Emergency Contact"
-                value={profileData.family.emergencyContact}
-                onChange={familyHandlers.emergencyContact}
-                disabled={editingSection !== 'family'}
-              />
+              
+              
               <InputField
                 label="Children Names"
                 value={profileData.family.childrenNames}

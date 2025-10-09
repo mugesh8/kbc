@@ -67,6 +67,74 @@ const BusinessManagement = () => {
     const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
     const [currentMedia, setCurrentMedia] = useState(null);
     const [activeTab, setActiveTab] = useState('all');
+    // Detailed businesses fetched per member (uses business-profile/all like UserProfilePage)
+    const [memberBusinessesDetailed, setMemberBusinessesDetailed] = useState({});
+
+    // Normalize branches helper: fixes nested arrays like [["a","b"]]
+    const normalizeBranchesArray = (branches) => {
+        if (!Array.isArray(branches) || branches.length === 0) return [];
+
+        const fields = ['branch_name', 'company_address', 'city', 'state', 'zip_code', 'email', 'business_work_contract'];
+
+        // If a single branch object contains arrays, expand them into multiple branches
+        if (branches.length === 1) {
+            const b = branches[0] || {};
+            const toFlatArray = (val) => {
+                if (Array.isArray(val)) {
+                    return (val.length === 1 && Array.isArray(val[0])) ? val[0] : val;
+                }
+                return (val === undefined || val === null) ? [] : [String(val)];
+            };
+
+            const arrays = fields.map((f) => toFlatArray(b[f]));
+            const maxLen = Math.max(0, ...arrays.map((a) => a.length));
+            if (maxLen > 1) {
+                return Array.from({ length: maxLen }, (_, i) => ({
+                    branch_name: arrays[0][i] || '',
+                    company_address: arrays[1][i] || '',
+                    city: arrays[2][i] || '',
+                    state: arrays[3][i] || '',
+                    zip_code: arrays[4][i] || '',
+                    email: arrays[5][i] || '',
+                    business_work_contract: arrays[6][i] || ''
+                }));
+            }
+        }
+
+        // Otherwise, flatten any single-element arrays inside each branch object
+        return branches.map((b) => {
+            const result = { ...b };
+            fields.forEach((f) => {
+                const v = result[f];
+                if (Array.isArray(v)) {
+                    result[f] = (v.length === 1) ? (Array.isArray(v[0]) ? (v[0][0] || '') : (v[0] || '')) : String(v[0] || '');
+                }
+            });
+            return result;
+        });
+    };
+    // Helpers to normalize API fields that may be JSON-encoded arrays
+    const parseArrayString = (value) => {
+        try {
+            if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+                const parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) {
+                    if (parsed.length === 1 && typeof parsed[0] === 'string' && parsed[0].startsWith('[') && parsed[0].endsWith(']')) {
+                        const inner = JSON.parse(parsed[0]);
+                        return Array.isArray(inner) ? inner : [String(inner ?? '')];
+                    }
+                    return parsed.map((v) => String(v ?? ''));
+                }
+                return [String(parsed ?? '')];
+            }
+        } catch (_) {}
+        if (value === undefined || value === null || value === '') return [];
+        return [String(value)];
+    };
+    const firstFromArrayish = (value) => {
+        const arr = parseArrayString(value);
+        return arr.length > 0 ? arr[0] : '';
+    };
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
@@ -180,9 +248,30 @@ const BusinessManagement = () => {
         navigate(`/admin/AddBusinessDirectory/${memberId}`);
     };
 
-    const handleViewMember = (member) => {
+    const handleViewMember = async (member) => {
         setSelectedMember(member);
-        setViewDialogOpen(true);
+        // Fetch detailed business profiles with branches array for this member
+        try {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            const response = await fetch(`${baseurl}/api/business-profile/all?member_id=${member.mid}`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            const data = await response.json();
+            if (response.ok && data.success && Array.isArray(data.data)) {
+                const normalized = data.data.map((p) => ({
+                    ...p,
+                    branches: normalizeBranchesArray(p.branches)
+                }));
+                setMemberBusinessesDetailed(prev => ({ ...prev, [member.mid]: normalized }));
+            } else {
+                setMemberBusinessesDetailed(prev => ({ ...prev, [member.mid]: [] }));
+            }
+        } catch (err) {
+            console.error('Failed to load detailed businesses:', err);
+            setMemberBusinessesDetailed(prev => ({ ...prev, [member.mid]: [] }));
+        } finally {
+            setViewDialogOpen(true);
+        }
     };
 
     const handleDeleteClick = (business) => {
@@ -455,7 +544,7 @@ const BusinessManagement = () => {
                                                         </Avatar>
                                                         <Box>
                                                             <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                                                                {`${group.member.first_name} ${group.member.last_name}`}
+                                                                {`${group.member.first_name}`}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">
                                                                 {group.member.email}
@@ -482,7 +571,7 @@ const BusinessManagement = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Stack direction="row" spacing={0.5}>
-                                                        <IconButton
+                                                        {/* <IconButton
                                                             size="small"
                                                             sx={{ color: '#666' }}
                                                             onClick={(e) => {
@@ -491,7 +580,7 @@ const BusinessManagement = () => {
                                                             }}
                                                         >
                                                             <BusinessIcon fontSize="small" />
-                                                        </IconButton>
+                                                        </IconButton> */}
                                                         <IconButton
                                                             size="small"
                                                             sx={{ color: '#666' }}
@@ -581,7 +670,7 @@ const BusinessManagement = () => {
                                                                                     >
                                                                                         <Edit fontSize="small" />
                                                                                     </IconButton>
-                                                                                    {adminRole !== 'community' && (
+                                    
                                                                                         <IconButton
                                                                                             size="small"
                                                                                             sx={{ 
@@ -596,7 +685,6 @@ const BusinessManagement = () => {
                                                                                         >
                                                                                             <Delete fontSize="small" />
                                                                                         </IconButton>
-                                                                                    )}
                                                                                 </Box>
 
                                                                                 <Typography
@@ -647,21 +735,88 @@ const BusinessManagement = () => {
                                                                                     </Grid>
                                                                                     <Grid item xs={6}>
                                                                                         <Typography variant="body2" color="text.secondary">
-                                                                                            Role
+                                                                                            Experience
                                                                                         </Typography>
                                                                                         <Typography variant="body2">
-                                                                                            {business.role || 'N/A'}
+                                                                                            {business.experience || 'N/A'}
                                                                                         </Typography>
                                                                                     </Grid>
-                                                                                    <Grid item xs={12}>
+                                                                                    <Grid item xs={6}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Category ID
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2">
+                                                                                            {business.category_id || 'N/A'}
+                                                                                        </Typography>
+                                                                                    </Grid>
+                                                                                    <Grid item xs={6}>
                                                                                         <Typography variant="body2" color="text.secondary">
                                                                                             Contact
                                                                                         </Typography>
                                                                                         <Typography variant="body2">
-                                                                                            {business.contact || group.member.contact_no || 'N/A'}
+                                                                                            {(() => {
+                                                                                                if (Array.isArray(business.business_work_contract)) {
+                                                                                                    return business.business_work_contract.join(', ');
+                                                                                                }
+                                                                                                return firstFromArrayish(business.business_work_contract) || 'N/A';
+                                                                                            })()}
+                                                                                        </Typography>
+                                                                                    </Grid>
+                                                                                    <Grid item xs={6}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Tags
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2">
+                                                                                            {business.tags || 'N/A'}
                                                                                         </Typography>
                                                                                     </Grid>
                                                                                 </Grid>
+                                                                                {/* Branches (detailed view) */}
+                                                                                {(() => {
+                                                                                    const detailedList = memberBusinessesDetailed[group.member.mid] || [];
+                                                                                    const detailed = detailedList.find(b => b.id === business.id);
+                                                                                    const branches = detailed?.branches;
+                                                                                    if (!branches || branches.length === 0) return null;
+                                                                                    return (
+                                                                                        <Box sx={{ mt: 1.5, p: 1.5, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid #eee' }}>
+                                                                                            <Typography variant="subtitle2" sx={{ mb: 1, color: '#2E7D32', fontWeight: 600 }}>
+                                                                                                Branches ({branches.length})
+                                                                                            </Typography>
+                                                                                            <Grid container spacing={1.5}>
+                                                                                                {branches.map((br, idx) => (
+                                                                                                    <Grid item xs={12} key={idx}>
+                                                                                                        <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1.25 }}>
+                                                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                                                                                                <Typography variant="body2" fontWeight={600}>
+                                                                                                                    {idx === 0 ? 'Main Branch' : `Branch ${idx + 1}`}
+                                                                                                                </Typography>
+                                                                                                                {br.branch_name && (
+                                                                                                                    <Chip label={br.branch_name} size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32' }} />
+                                                                                                                )}
+                                                                                                            </Box>
+                                                                                                            <Grid container spacing={1}>
+                                                                                                                <Grid item xs={12} sm={6}>
+                                                                                                                    <Typography variant="caption" color="text.secondary">Email</Typography>
+                                                                                                                    <Typography variant="body2">{br.email || 'N/A'}</Typography>
+                                                                                                                </Grid>
+                                                                                                                <Grid item xs={12} sm={6}>
+                                                                                                                    <Typography variant="caption" color="text.secondary">Contact</Typography>
+                                                                                                                    <Typography variant="body2">{br.business_work_contract || 'N/A'}</Typography>
+                                                                                                                </Grid>
+                                                                                                                <Grid item xs={12}>
+                                                                                                                    <Typography variant="caption" color="text.secondary">Address</Typography>
+                                                                                                                    <Typography variant="body2">
+                                                                                                                        {br.company_address || br.address ? `${br.company_address || br.address}${(br.city || br.state || br.zip_code) ? ', ' : ''}${[br.city, br.state, br.zip_code].filter(Boolean).join(' ')}` : 'N/A'}
+                                                                                                                    </Typography>
+                                                                                                                </Grid>
+                                                                                                            </Grid>
+                                                                                                        </Box>
+                                                                                                    </Grid>
+                                                                                                ))}
+                                                                                            </Grid>
+                                                                                        </Box>
+                                                                                    );
+                                                                                })()}
                                                                             </Paper>
                                                                         </Grid>
                                                                     );
@@ -889,7 +1044,10 @@ const BusinessManagement = () => {
                                 </Typography>
 
                                 <Grid container spacing={2}>
-                                    {groupedBusinesses[selectedMember.mid].businesses.map((business, index) => (
+                                    {(memberBusinessesDetailed[selectedMember.mid] && memberBusinessesDetailed[selectedMember.mid].length > 0
+                                        ? memberBusinessesDetailed[selectedMember.mid]
+                                        : groupedBusinesses[selectedMember.mid].businesses
+                                    ).map((business, index) => (
                                         <Grid item xs={12} key={index}>
                                             <Card
                                                 elevation={0}
@@ -1020,9 +1178,35 @@ const BusinessManagement = () => {
                                                         </Box>
                                                     )}
 
+                                                    {/* Common Fields for All Business Types */}
                                                     <Grid container spacing={2}>
                                                         <Grid item xs={12} md={6}>
-                                                            {/* Business Type Specific Fields */}
+                                                            <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                <Box sx={{ minWidth: 140 }}>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        Experience
+                                                                    </Typography>
+                                                                </Box>
+                                                                <Typography variant="body1" fontWeight={500}>
+                                                                    {business.experience || 'N/A'}
+                                                                </Typography>
+                                                            </Box>
+
+
+                                                            <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                <Box sx={{ minWidth: 140 }}>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        Tags
+                                                                    </Typography>
+                                                                </Box>
+                                                                <Typography variant="body1" fontWeight={500}>
+                                                                    {business.tags || 'N/A'}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
+
+
+                                                        <Grid item xs={12} md={6}>
                                                             {business.business_type === 'salary' ? (
                                                                 <>
                                                                     <Box sx={{ display: 'flex', mb: 1.5 }}>
@@ -1044,28 +1228,6 @@ const BusinessManagement = () => {
                                                                         </Box>
                                                                         <Typography variant="body1" fontWeight={500}>
                                                                             {business.salary ? `₹${business.salary}` : 'N/A'}
-                                                                        </Typography>
-                                                                    </Box>
-
-                                                                    <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                        <Box sx={{ minWidth: 140 }}>
-                                                                            <Typography variant="body2" color="text.secondary">
-                                                                                Experience
-                                                                            </Typography>
-                                                                        </Box>
-                                                                        <Typography variant="body1" fontWeight={500}>
-                                                                            {business.experience || 'N/A'}
-                                                                        </Typography>
-                                                                    </Box>
-
-                                                                    <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                        <Box sx={{ minWidth: 140 }}>
-                                                                            <Typography variant="body2" color="text.secondary">
-                                                                                Location
-                                                                            </Typography>
-                                                                        </Box>
-                                                                        <Typography variant="body1" fontWeight={500}>
-                                                                            {business.location || 'N/A'}
                                                                         </Typography>
                                                                     </Box>
                                                                 </>
@@ -1093,98 +1255,23 @@ const BusinessManagement = () => {
                                                                         </Typography>
                                                                     </Box>
 
-                                                                    <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                        <Box sx={{ minWidth: 140 }}>
-                                                                            <Typography variant="body2" color="text.secondary">
-                                                                                Work Contract
+                                                                    {business.business_type === 'self-employed' && business.business_registration_type && (
+                                                                        <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                            <Box sx={{ minWidth: 140 }}>
+                                                                                <Typography variant="body2" color="text.secondary">
+                                                                                    Registration Type
+                                                                                </Typography>
+                                                                            </Box>
+                                                                            <Typography variant="body1" fontWeight={500}>
+                                                                                {business.business_registration_type || 'N/A'}
                                                                             </Typography>
                                                                         </Box>
-                                                                        <Typography variant="body1" fontWeight={500}>
-                                                                            {business.business_work_contract || 'N/A'}
-                                                                        </Typography>
-                                                                    </Box>
+                                                                    )}
                                                                 </>
                                                             )}
                                                         </Grid>
 
-                                                        <Grid item xs={12} md={6}>
-                                                            <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                <Box sx={{ minWidth: 140 }}>
-                                                                    <Typography variant="body2" color="text.secondary">
-                                                                        Business Email
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Typography variant="body1" fontWeight={500}>
-                                                                    {business.email || 'N/A'}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                <Box sx={{ minWidth: 140 }}>
-                                                                    <Typography variant="body2" color="text.secondary">
-                                                                        Tags
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Typography variant="body1" fontWeight={500}>
-                                                                    {business.tags || 'N/A'}
-                                                                </Typography>
-                                                            </Box>
-
-                                                            {/* Social Media Links */}
-                                                            {(business.facebook_link || business.instagram_link || business.twitter_link || business.youtube_link) && (
-                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                    <Box sx={{ minWidth: 140 }}>
-                                                                        <Typography variant="body2" color="text.secondary">
-                                                                            Social Media
-                                                                        </Typography>
-                                                                    </Box>
-                                                                    <Box sx={{ display: 'flex', gap: 1 }}>
-                                                                        {business.facebook_link && (
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                href={business.facebook_link}
-                                                                                target="_blank"
-                                                                                sx={{ color: '#1877F2' }}
-                                                                            >
-                                                                                <Facebook />
-                                                                            </IconButton>
-                                                                        )}
-                                                                        {business.instagram_link && (
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                href={business.instagram_link}
-                                                                                target="_blank"
-                                                                                sx={{ color: '#E4405F' }}
-                                                                            >
-                                                                                <Instagram />
-                                                                            </IconButton>
-                                                                        )}
-                                                                        {business.twitter_link && (
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                href={business.twitter_link}
-                                                                                target="_blank"
-                                                                                sx={{ color: '#1DA1F2' }}
-                                                                            >
-                                                                                <Twitter />
-                                                                            </IconButton>
-                                                                        )}
-                                                                        {business.youtube_link && (
-                                                                            <IconButton
-                                                                                size="small"
-                                                                                href={business.youtube_link}
-                                                                                target="_blank"
-                                                                                sx={{ color: '#FF0000' }}
-                                                                            >
-                                                                                <YouTube />
-                                                                            </IconButton>
-                                                                        )}
-                                                                    </Box>
-                                                                </Box>
-                                                            )}
-                                                        </Grid>
-
-                                                        <Grid item xs={12}>
+                                                        {/* <Grid item xs={12}>
                                                             <Box sx={{ display: 'flex' }}>
                                                                 <Box sx={{ minWidth: 140 }}>
                                                                     <Typography variant="body2" color="text.secondary">
@@ -1192,12 +1279,248 @@ const BusinessManagement = () => {
                                                                     </Typography>
                                                                 </Box>
                                                                 <Typography variant="body1" fontWeight={500}>
-                                                                    {business.company_address ?
-                                                                        `${business.company_address}, ${business.city}, ${business.state} ${business.zip_code}` :
-                                                                        'Not provided'}
+                                                                    {(() => {
+                                                                        // Handle array addresses from API response
+                                                                        if (Array.isArray(business.company_address) && Array.isArray(business.city) && Array.isArray(business.state) && Array.isArray(business.zip_code)) {
+                                                                            const addresses = [];
+                                                                            const maxLength = Math.max(business.company_address.length, business.city.length, business.state.length, business.zip_code.length);
+                                                                            for (let i = 0; i < maxLength; i++) {
+                                                                                const parts = [
+                                                                                    business.company_address[i] || '',
+                                                                                    business.city[i] || '',
+                                                                                    business.state[i] || '',
+                                                                                    business.zip_code[i] || ''
+                                                                                ].filter(Boolean);
+                                                                                if (parts.length > 0) {
+                                                                                    addresses.push(parts.join(', '));
+                                                                                }
+                                                                            }
+                                                                            return addresses.length > 0 ? addresses.join(' | ') : 'Not provided';
+                                                                        }
+                                                                        
+                                                                        const branches = normalizeBranchesArray(business.branches || []);
+                                                                        if (branches.length > 0) {
+                                                                            const b0 = branches[0];
+                                                                            const address = b0.company_address || firstFromArrayish(b0.company_address);
+                                                                            const city = b0.city || firstFromArrayish(b0.city);
+                                                                            const state = b0.state || firstFromArrayish(b0.state);
+                                                                            const zip = b0.zip_code || firstFromArrayish(b0.zip_code);
+                                                                            const parts = [address, city, state, zip].filter(Boolean);
+                                                                            return parts.length ? parts.join(', ') : 'Not provided';
+                                                                        }
+                                                                        const addr = firstFromArrayish(business.company_address);
+                                                                        const city = firstFromArrayish(business.city);
+                                                                        const state = firstFromArrayish(business.state);
+                                                                        const zip = firstFromArrayish(business.zip_code);
+                                                                        const parts = [addr, city, state, zip].filter(Boolean);
+                                                                        return parts.length ? parts.join(', ') : 'Not provided';
+                                                                    })()}
                                                                 </Typography>
                                                             </Box>
-                                                        </Grid>
+                                                        </Grid> */}
+
+
+                                                        {/* Social Media & Links Section */}
+                                                        {(business.website || business.google_link || business.facebook_link || business.instagram_link || business.linkedin_link) && (
+                                                            <Grid item xs={12}>
+                                                                <Box sx={{ mt: 2, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                                                                    <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#2c387e' }}>
+                                                                        Social Media & Links
+                                                                    </Typography>
+                                                                    <Grid container spacing={2}>
+                                                                        {business.website && (
+                                                                            <Grid item xs={12} sm={6} md={4}>
+                                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                                    <Box sx={{ minWidth: 100 }}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Website
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                                        <a href={business.website} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                                                                                            {business.website}
+                                                                                        </a>
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                            </Grid>
+                                                                        )}
+                                                                        {business.google_link && (
+                                                                            <Grid item xs={12} sm={6} md={4}>
+                                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                                    <Box sx={{ minWidth: 100 }}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Google
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                                        <a href={business.google_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                                                                                            {business.google_link}
+                                                                                        </a>
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                            </Grid>
+                                                                        )}
+                                                                        {business.facebook_link && (
+                                                                            <Grid item xs={12} sm={6} md={4}>
+                                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                                    <Box sx={{ minWidth: 100 }}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Facebook
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                                        <a href={business.facebook_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                                                                                            {business.facebook_link}
+                                                                                        </a>
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                            </Grid>
+                                                                        )}
+                                                                        {business.instagram_link && (
+                                                                            <Grid item xs={12} sm={6} md={4}>
+                                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                                    <Box sx={{ minWidth: 100 }}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            Instagram
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                                        <a href={business.instagram_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                                                                                            {business.instagram_link}
+                                                                                        </a>
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                            </Grid>
+                                                                        )}
+                                                                        {business.linkedin_link && (
+                                                                            <Grid item xs={12} sm={6} md={4}>
+                                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                                    <Box sx={{ minWidth: 100 }}>
+                                                                                        <Typography variant="body2" color="text.secondary">
+                                                                                            LinkedIn
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                                        <a href={business.linkedin_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                                                                                            {business.linkedin_link}
+                                                                                        </a>
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                            </Grid>
+                                                                        )}
+                                                                    </Grid>
+                                                                </Box>
+                                                            </Grid>
+                                                        )}
+
+                                                        {/* Branches Section */}
+                                                        {business.branches && business.branches.length > 0 && (
+                                                            <Grid item xs={12}>
+                                                                <Box sx={{ mt: 2 }}>
+                                                                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#2c387e' }}>
+                                                                        Branches ({business.branches.length})
+                                                                    </Typography>
+                                                                    <Grid container spacing={2}>
+                                                                        {business.branches.map((branch, branchIndex) => (
+                                                                            <Grid item xs={12} sm={6} md={4} key={branchIndex}>
+                                                                                <Card sx={{
+                                                                                    border: '1px solid #e0e0e0',
+                                                                                    borderRadius: 2,
+                                                                                    p: 2,
+                                                                                    bgcolor: '#fafafa',
+                                                                                    '&:hover': { boxShadow: 2 }
+                                                                                }}>
+                                                                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: '#5a6ac9' }}>
+                                                                                        {branch.branch_name || `Branch ${branchIndex + 1}`}
+                                                                                    </Typography>
+                                                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>Address:</strong> {branch.company_address || 'Not provided'}
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>City:</strong> {branch.city || 'Not provided'}
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>State:</strong> {branch.state || 'Not provided'}
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>Zip:</strong> {branch.zip_code || 'Not provided'}
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>Email:</strong> {branch.email || 'Not provided'}
+                                                                                        </Typography>
+                                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                            <strong>Contact:</strong> {branch.business_work_contract || 'Not provided'}
+                                                                                        </Typography>
+                                                                                    </Box>
+                                                                                </Card>
+                                                                            </Grid>
+                                                                        ))}
+                                                                    </Grid>
+                                                                </Box>
+                                                            </Grid>
+                                                        )}
+
+                                                        {/* Additional Business Information
+                                                        <Grid item xs={12}>
+                                                            <Box sx={{ mt: 2, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                                                                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#2c387e' }}>
+                                                                    Additional Information
+                                                                </Typography>
+                                                                <Grid container spacing={2}>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Business ID:</strong> {business.id}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Member ID:</strong> {business.member_id}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Category ID:</strong> {business.category_id}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Media Type:</strong> {business.media_gallery_type || 'Not specified'}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Created:</strong> {business.createdAt ? new Date(business.createdAt).toLocaleDateString() : 'Not available'}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    <Grid item xs={12} sm={6} md={3}>
+                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                            <strong>Updated:</strong> {business.updatedAt ? new Date(business.updatedAt).toLocaleDateString() : 'Not available'}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                    {business.website && (
+                                                                        <Grid item xs={12} sm={6} md={3}>
+                                                                            <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                <strong>Website:</strong> 
+                                                                                <a href={business.website} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', marginLeft: 4 }}>
+                                                                                    Visit Website
+                                                                                </a>
+                                                                            </Typography>
+                                                                        </Grid>
+                                                                    )}
+                                                                    {business.google_link && (
+                                                                        <Grid item xs={12} sm={6} md={3}>
+                                                                            <Typography variant="body2" sx={{ color: '#666' }}>
+                                                                                <strong>Google:</strong> 
+                                                                                <a href={business.google_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', marginLeft: 4 }}>
+                                                                                    View on Google
+                                                                                </a>
+                                                                            </Typography>
+                                                                        </Grid>
+                                                                    )}
+                                                                </Grid>
+                                                            </Box>
+                                                        </Grid> */}
 
                                                         {/* Media Gallery Section */}
                                                         {business.media_gallery && business.media_gallery.trim() !== '' && (
@@ -1214,7 +1537,7 @@ const BusinessManagement = () => {
                                                                         gap: 1.5,
                                                                         flex: 1
                                                                     }}>
-                                                                        {business.media_gallery.split(',').map((media, idx) => {
+                                                                                {business.media_gallery.split(',').map((media, idx) => {
                                                                             const isImage = /\.(jpeg|jpg|png|gif|webp)$/i.test(media);
                                                                             const isVideo = /\.(mp4|mov|avi|mkv|webm)$/i.test(media);
 

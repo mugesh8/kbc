@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronDown, Calendar, Upload, ArrowLeft, ArrowRight, Plus, Check, LogIn, Eye, EyeOff, XCircle } from 'lucide-react';
+import { ChevronDown, Calendar, Upload, ArrowLeft, ArrowRight, Plus, Check, LogIn, Eye, EyeOff, XCircle, MapPin } from 'lucide-react';
 import TextareaAutosize from '@mui/material/TextareaAutosize';
 import baseurl from '../Baseurl/baseurl';
 
@@ -325,6 +325,125 @@ const StepContainer = React.memo(({ children }) => (
   <>{children}</>
 ));
 
+// Simplified Branch Location Component with only essential fields
+const BranchLocation = React.memo(({ 
+  branch, 
+  index, 
+  profileIndex, 
+  onUpdate, 
+  onRemove,
+  validationErrors 
+}) => {
+  const handleChange = (field, value) => {
+    onUpdate(profileIndex, index, field, value);
+  };
+
+  const handleNumericChange = (field, value) => {
+    const digitsOnly = value.replace(/\D+/g, '');
+    onUpdate(profileIndex, index, field, digitsOnly);
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-xl p-6 bg-white relative mb-6">
+      {index > 0 && (
+        <button
+          type="button"
+          onClick={() => onRemove(profileIndex, index)}
+          className="absolute top-4 right-4 text-red-500 hover:text-red-600"
+          aria-label="Remove branch"
+        >
+          <XCircle className="w-6 h-6" />
+        </button>
+      )}
+      
+      <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+        <MapPin className="w-5 h-5 mr-2 text-green-600" />
+        Branch {index + 1} {index === 0 && <span className="text-sm text-gray-500 ml-2">(Main Branch)</span>}
+      </h4>
+
+      <div className="space-y-6">
+        {/* Branch Basic Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <InputField
+            label="Branch Name"
+            placeholder="e.g., Head Office, Downtown Branch"
+            required
+            value={branch.branch_name || ''}
+            onChange={(e) => handleChange('branch_name', e.target.value)}
+            error={validationErrors[`branch_name_${profileIndex}_${index}`]}
+          />
+          <InputField
+            label="Contact Number"
+            placeholder="Enter branch contact number"
+            required
+            value={branch.business_work_contract || ''}
+            onChange={(e) => handleNumericChange('business_work_contract', e.target.value)}
+            error={validationErrors[`business_work_contract_${profileIndex}_${index}`]}
+          />
+        </div>
+
+        <InputField
+          label="Email"
+          placeholder="Enter branch email"
+          type="email"
+          required
+          value={branch.email || ''}
+          onChange={(e) => handleChange('email', e.target.value)}
+          error={validationErrors[`email_${profileIndex}_${index}`]}
+        />
+
+        {/* Branch Address */}
+        <div className="flex flex-col w-full">
+          <label className="text-sm font-bold">
+            Complete Address <span className="text-red-500">*</span>
+          </label>
+          <TextareaAutosize
+            minRows={3}
+            placeholder="Enter complete branch address"
+            required
+            value={branch.address || ''}
+            onChange={(e) => handleChange('address', e.target.value)}
+            className={`w-full p-3 border rounded-lg focus:ring focus:ring-green-300 focus:outline-none ${
+              validationErrors[`address_${profileIndex}_${index}`] ? 'border-red-500' : 'border-gray-200'
+            }`}
+            style={{ resize: "vertical" }}
+          />
+          {validationErrors[`address_${profileIndex}_${index}`] && (
+            <p className="mt-1 text-red-500 text-sm">{validationErrors[`address_${profileIndex}_${index}`]}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <InputField
+            label="City"
+            placeholder="Enter city"
+            required
+            value={branch.city || ''}
+            onChange={(e) => handleChange('city', e.target.value)}
+            error={validationErrors[`city_${profileIndex}_${index}`]}
+          />
+          <InputField
+            label="State"
+            placeholder="Enter state"
+            required
+            value={branch.state || ''}
+            onChange={(e) => handleChange('state', e.target.value)}
+            error={validationErrors[`state_${profileIndex}_${index}`]}
+          />
+          <InputField
+            label="Pincode"
+            placeholder="Enter pincode"
+            required
+            value={branch.zip_code || ''}
+            onChange={(e) => handleNumericChange('zip_code', e.target.value)}
+            error={validationErrors[`zip_code_${profileIndex}_${index}`]}
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
+
 const PersonalInformation = React.memo(({ formData, validationErrors, createInputChangeHandler, createNumericInputChangeHandler, handleInputChange, nextStep, onRemoveProfileImage }) => (
   <StepContainer>
     <div className="max-w-4xl mx-auto">
@@ -532,14 +651,54 @@ const BusinessProfile = React.memo(({
   handleCategoryInputChange,
   handleSelectExistingCategory,
   handleTagAdd,
-  handleTagRemove
+  handleTagRemove,
+  // New handlers for branches
+  handleAddBranch,
+  handleUpdateBranch,
+  handleRemoveBranch
 }) => (
   <StepContainer>
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Business Profile</h2>
-        <p className="text-gray-600">Please provide your business information</p>
+        <p className="text-gray-600">Please provide your business information and branch locations</p>
       </div>
+
+      {/* Validation Errors Summary */}
+      {Object.keys(validationErrors).filter(key => 
+        key.startsWith('business_type_') || 
+        key.startsWith('branch_') || 
+        key.startsWith('company_name_') ||
+        key.startsWith('about_') ||
+        key.startsWith('business_email_') ||
+        key.startsWith('business_address_') ||
+        key.includes('_0_') || 
+        key.includes('_1_') ||
+        key.includes('_2_')
+      ).length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <h3 className="text-red-800 font-semibold mb-2">Please fix the following errors before continuing:</h3>
+          <ul className="list-disc list-inside text-red-700 text-sm space-y-1">
+            {Object.entries(validationErrors)
+              .filter(([key]) => 
+                key.startsWith('business_type_') || 
+                key.startsWith('branch_') || 
+                key.startsWith('company_name_') ||
+                key.startsWith('about_') ||
+                key.startsWith('business_email_') ||
+                key.startsWith('business_address_') ||
+                key.includes('_0_') || 
+                key.includes('_1_') ||
+                key.includes('_2_')
+              )
+              .map(([key, error]) => (
+                <li key={key}>{error}</li>
+              ))
+            }
+          </ul>
+        </div>
+      )}
+
       <div className="space-y-8">
         {formData.businessProfiles.map((profile, index) => (
           <div
@@ -563,242 +722,232 @@ const BusinessProfile = React.memo(({
                 <XCircle className="w-6 h-6" />
               </button>
             )}
-            <div className="space-y-4 text-left">
-              <SelectField
-                label="Business Type"
-                placeholder="Select business type"
-                options={[
-                  { value: 'self-employed', label: 'Self Employed' },
-                  { value: 'business', label: 'Business' },
-                  { value: 'salary', label: 'Salary' }
-                ]}
-                value={profile.business_type}
-                onChange={(e) => handleBusinessProfileChange(index, 'business_type', e.target.value)}
-                required
-                error={validationErrors[`business_type_${index}`]}
-              />
-              
-              {/* Common fields for all business types */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <InputField
-                  label="Company Name"
-                  placeholder="Enter company name"
+            <div className="space-y-6 text-left">
+              {/* Basic Business Information */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Basic Business Information</h4>
+                <SelectField
+                  label="Business Type"
+                  placeholder="Select business type"
+                  options={[
+                    { value: 'self-employed', label: 'Self Employed' },
+                    { value: 'business', label: 'Business' },
+                    { value: 'salary', label: 'Salary' }
+                  ]}
+                  value={profile.business_type}
+                  onChange={(e) => handleBusinessProfileChange(index, 'business_type', e.target.value)}
                   required
-                  value={profile.company_name}
-                  onChange={createBusinessInputChangeHandler(index, 'company_name')}
-                  error={validationErrors[`company_name_${index}`]}
+                  error={validationErrors[`business_type_${index}`]}
                 />
-                <div className="mb-4 relative">
-                  <label className="block text-gray-800 text-sm font-semibold mb-2">Category</label>
-                  <input
-                    type="text"
-                    value={profile.category_input || ''}
-                    onChange={(e) => handleCategoryInputChange(index, e.target.value)}
-                    placeholder="Type to search or add category"
-                    className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <InputField
+                    label="Company Name"
+                    placeholder="Enter company name"
+                    required
+                    value={profile.company_name}
+                    onChange={createBusinessInputChangeHandler(index, 'company_name')}
+                    error={validationErrors[`company_name_${index}`]}
                   />
-                  {(categoriesOptions || []).length > 0 && (profile.category_input || '').length > 0 && profile.show_category_suggestions && (
-                    <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-auto">
-                      {(categoriesOptions || [])
-                        .filter(c => c.category_name.toLowerCase().includes((profile.category_input||'').toLowerCase()))
-                        .slice(0, 8)
-                        .map(c => (
-                          <button
-                            type="button"
-                            key={c.cid}
-                            className="w-full text-left px-4 py-2 hover:bg-green-50"
-                            onClick={() => handleSelectExistingCategory(index, c.cid, c.category_name)}
-                          >
-                            {c.category_name}
-                          </button>
-                        ))}
-                    </div>
-                  )}
+                  <div className="mb-4 relative">
+                    <label className="block text-gray-800 text-sm font-semibold mb-2">Category</label>
+                    <input
+                      type="text"
+                      value={profile.category_input || ''}
+                      onChange={(e) => handleCategoryInputChange(index, e.target.value)}
+                      placeholder="Type to search or add category"
+                      className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
+                    />
+                    {(categoriesOptions || []).length > 0 && (profile.category_input || '').length > 0 && profile.show_category_suggestions && (
+                      <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-auto">
+                        {(categoriesOptions || [])
+                          .filter(c => c.category_name.toLowerCase().includes((profile.category_input||'').toLowerCase()))
+                          .slice(0, 8)
+                          .map(c => (
+                            <button
+                              type="button"
+                              key={c.cid}
+                              className="w-full text-left px-4 py-2 hover:bg-green-50"
+                              onClick={() => handleSelectExistingCategory(index, c.cid, c.category_name)}
+                            >
+                              {c.category_name}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+
+
+
+
+                {/* Business Type Specific Fields */}
+                {profile.business_type === "salary" && (
+                  <>
+                    <InputField
+                      label="Designation"
+                      placeholder="Enter designation"
+                      required
+                      value={profile.designation}
+                      onChange={createBusinessInputChangeHandler(index, 'designation')}
+                      error={validationErrors[`designation_${index}`]}
+                    />
+                    <InputField
+                      label="Salary"
+                      placeholder="Enter salary"
+                      required
+                      value={profile.salary}
+                      onChange={createBusinessInputChangeHandler(index, 'salary')}
+                      error={validationErrors[`salary_${index}`]}
+                    />
+                    <InputField
+                      label="Experience"
+                      placeholder="Enter experience in years"
+                      required
+                      value={profile.experience}
+                      onChange={createBusinessInputChangeHandler(index, 'experience')}
+                      error={validationErrors[`experience_${index}`]}
+                    />
+                  </>
+                )}
+
+                {(profile.business_type === "self-employed" || profile.business_type === "business") && (
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <SelectField
+                        label="Business Registration Type"
+                        placeholder="Select business registration type"
+                        options={['Proprietor', 'Partnership', 'Private Limited', 'Others']}
+                        value={profile.business_registration_type}
+                        onChange={(e) => handleBusinessProfileChange(index, 'business_registration_type', e.target.value)}
+                        required
+                      />
+                      {profile.business_registration_type === 'Others' && (
+                        <InputField
+                          label="Specify Business Registration Type"
+                          placeholder="Enter registration type"
+                          value={profile.business_registration_type_other || ''}
+                          onChange={createBusinessInputChangeHandler(index, 'business_registration_type_other')}
+                        />
+                      )}
+                      {profile.business_type === 'self-employed' && (
+                        <InputField
+                          label="Work Experience (years)"
+                          placeholder="Enter years of experience"
+                          type="number"
+                          value={profile.experience || ''}
+                          onChange={createBusinessNumericInputChangeHandler(index, 'experience')}
+                          error={validationErrors[`experience_${index}`]}
+                        />
+                      )}
+                    </div>
+                    <div className="flex flex-col w-full">
+                      <label className="text-sm font-bold">
+                        About Business <span className="text-red-500">*</span>
+                      </label>
+                      <TextareaAutosize
+                        minRows={4}
+                        placeholder="Tell us about your business, services, products, and what makes you unique..."
+                        required
+                        value={profile.about}
+                        onChange={createBusinessInputChangeHandler(index, 'about')}
+                        className={`w-full p-3 border rounded-lg focus:ring focus:ring-green-300 focus:outline-none ${
+                          validationErrors[`about_${index}`] ? 'border-red-500' : 'border-gray-200'
+                        }`}
+                        style={{ resize: "vertical" }}
+                      />
+                      {validationErrors[`about_${index}`] && (
+                        <p className="mt-1 text-red-500 text-sm">{validationErrors[`about_${index}`]}</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
-              {profile.business_type === "salary" && (
-                <>
-                  <InputField
-                    label="Designation"
-                    placeholder="Enter designation"
-                    required
-                    value={profile.designation}
-                    onChange={createBusinessInputChangeHandler(index, 'designation')}
-                    error={validationErrors[`designation_${index}`]}
-                  />
-                  <InputField
-                    label="Salary"
-                    placeholder="Enter salary"
-                    required
-                    value={profile.salary}
-                    onChange={createBusinessInputChangeHandler(index, 'salary')}
-                    error={validationErrors[`salary_${index}`]}
-                  />
-                  <InputField
-                    label="Experience"
-                    placeholder="Enter experience in years"
-                    required
-                    value={profile.experience}
-                    onChange={createBusinessInputChangeHandler(index, 'experience')}
-                    error={validationErrors[`experience_${index}`]}
-                  />
-                  <div className="flex flex-col w-full">
-                    <label className="text-sm font-bold">
-                      Location <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
-                    <TextareaAutosize
-                      minRows={3}
-                      placeholder="Enter location"
-                      required
-                      value={profile.location}
-                      onChange={createBusinessInputChangeHandler(index, 'location')}
-                      className={`w-full p-3 border rounded-lg focus:ring focus:ring-green-300 focus:outline-none ${validationErrors[`location_${index}`] ? 'border-red-500' : 'border-gray-200'}`}
-                      style={{ resize: "vertical" }}
+              {/* Branch Locations Section */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 flex items-center">
+                    <MapPin className="w-5 h-5 mr-2 text-green-600" />
+                    Branch Locations
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({profile.branches ? profile.branches.length : 1} branch{profile.branches && profile.branches.length !== 1 ? 'es' : ''})
+                    </span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddBranch(index)}
+                    className="flex items-center space-x-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200 shadow-md"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Branch</span>
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {profile.branches && profile.branches.map((branch, branchIndex) => (
+                    <BranchLocation
+                      key={branchIndex}
+                      branch={branch}
+                      index={branchIndex}
+                      profileIndex={index}
+                      onUpdate={handleUpdateBranch}
+                      onRemove={handleRemoveBranch}
+                      validationErrors={validationErrors}
                     />
-                    {validationErrors[`location_${index}`] && <p className="mt-1 text-red-500 text-sm">{validationErrors[`location_${index}`]}</p>}
-                  </div>
-                  <InputField
-                    label="Email"
-                    placeholder="Enter email"
-                    required
-                    value={profile.email}
-                    onChange={createBusinessInputChangeHandler(index, 'email')}
-                    error={validationErrors[`email_${index}`]}
-                  />
-                </>
-              )}
+                  ))}
+                </div>
 
-              {(profile.business_type === "self-employed" || profile.business_type === "business") && (
-                <>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <SelectField
-                      label="Business Registration Type"
-                      placeholder="Select business registration type"
-                      options={['Proprietor', 'Partnership', 'Private Limited', 'Others']}
-                      value={profile.business_registration_type}
-                      onChange={(e) => handleBusinessProfileChange(index, 'business_registration_type', e.target.value)}
-                      required
-                    />
-                    {profile.business_registration_type === 'Others' && (
-                      <InputField
-                        label="Specify Business Registration Type"
-                        placeholder="Enter registration type"
-                        value={profile.business_registration_type_other || ''}
-                        onChange={createBusinessInputChangeHandler(index, 'business_registration_type_other')}
-                      />
-                    )}
-                    {profile.business_type === 'self-employed' && (
-                      <InputField
-                        label="Work Experience (years)"
-                        placeholder="Enter years of experience"
-                        type="number"
-                        value={profile.experience || ''}
-                        onChange={createBusinessNumericInputChangeHandler(index, 'experience')}
-                        error={validationErrors[`experience_${index}`]}
-                      />
-                    )}
+                {(!profile.branches || profile.branches.length === 0) && (
+                  <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-300 rounded-xl">
+                    <MapPin className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg mb-2">No branches added yet</p>
+                    <p className="text-sm mb-4">Add your first branch location to get started</p>
+                    <button
+                      type="button"
+                      onClick={() => handleAddBranch(index)}
+                      className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors duration-200"
+                    >
+                      Add First Branch
+                    </button>
                   </div>
-                  <div className="flex flex-col w-full">
-                    <label className="text-sm font-bold">
-                      About <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
-                    <TextareaAutosize
-                      minRows={4}
-                      placeholder="Enter company about"
-                      required
-                      value={profile.about}
-                      onChange={createBusinessInputChangeHandler(index, 'about')}
-                      className={`w-full p-3 border rounded-lg focus:ring focus:ring-green-300 focus:outline-none ${validationErrors[`about_${index}`] ? 'border-red-500' : 'border-gray-200'}`}
-                      style={{ resize: "vertical" }}
-                    />
-                    {validationErrors[`about_${index}`] && <p className="mt-1 text-red-500 text-sm">{validationErrors[`about_${index}`]}</p>}
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <InputField
-                      label="Email"
-                      placeholder="Enter email"
-                      required
-                      value={profile.email}
-                      onChange={createBusinessInputChangeHandler(index, 'email')}
-                      error={validationErrors[`email_${index}`]}
-                    />
-                    {profile.business_type === 'self-employed' && (
-                      <InputField
-                        label="Business Contact Number"
-                        placeholder="Enter business contact number"
-                        required
-                        value={profile.contact_no || ''}
-                        onChange={createBusinessNumericInputChangeHandler(index, 'contact_no')}
-                        error={validationErrors[`contact_no_${index}`]}
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-col w-full">
-                    <label className="text-sm font-bold">
-                      Company Address <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
-                    <TextareaAutosize
-                      minRows={4}
-                      placeholder="Enter company address"
-                      value={profile.company_address}
-                      onChange={createBusinessInputChangeHandler(index, 'company_address')}
-                      className={`w-full p-3 border rounded-lg focus:ring focus:ring-green-300 focus:outline-none ${validationErrors[`company_address_${index}`] ? 'border-red-500' : 'border-gray-200'}`}
-                      style={{ resize: "vertical" }}
-                    />
-                    {validationErrors[`company_address_${index}`] && <p className="mt-1 text-red-500 text-sm">{validationErrors[`company_address_${index}`]}</p>}
-                  </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <InputField
-                      label="City"
-                      placeholder="Enter city"
-                      value={profile.city}
-                      onChange={createBusinessInputChangeHandler(index, 'city')}
-                    />
-                    <InputField
-                      label="State"
-                      placeholder="Enter state"
-                      value={profile.state}
-                      onChange={createBusinessInputChangeHandler(index, 'state')}
-                    />
-                    <InputField
-                      label="Pincode"
-                      placeholder="Enter pincode"
-                      value={profile.zip_code}
-                      onChange={createBusinessInputChangeHandler(index, 'zip_code')}
-                    />
-                  </div>
-                </>
-              )}
+                )}
+              </div>
 
-              {/* Tags Input for all business types */}
-              <TagsInput
-                label="Tags"
-                placeholder="Add tags to describe your business"
-                tags={profile.tags || []}
-                onAdd={(tag) => handleTagAdd && handleTagAdd(index, tag)}
-                onRemove={(tagIndex) => handleTagRemove && handleTagRemove(index, tagIndex)}
-              />
-
-              {/* Common file uploads for all business types */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <FileUpload
-                  label="Business Profile Image"
-                  name={`business_profile_image_${index}`}
-                  acceptedFormats="image/*"
-                  onChange={(e) => handleBusinessFileUpload(index, 'business_profile_image', e.target.files[0])}
-                  value={profile.business_profile_image}
-                  onRemove={() => onRemoveBusinessProfileImage(index)}
+              {/* Tags Input */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <TagsInput
+                  label="Business Tags"
+                  placeholder="Add tags to describe your business (e.g., restaurant, delivery, luxury, affordable)"
+                  tags={profile.tags || []}
+                  onAdd={(tag) => handleTagAdd && handleTagAdd(index, tag)}
+                  onRemove={(tagIndex) => handleTagRemove && handleTagRemove(index, tagIndex)}
                 />
-                <FileUpload
-                  label={`Media Gallery (${profile.media_gallery.length}/5)`}
-                  name={`media_gallery_${index}`}
-                  acceptedFormats="image/*,video/*"
-                  multiple
-                  onChange={(e) => handleBusinessFileUpload(index, 'media_gallery', e.target.files)}
-                  value={profile.media_gallery}
-                  onRemove={(mediaIndex) => onRemoveBusinessMedia(index, mediaIndex)}
-                />
+              </div>
+
+              {/* File Uploads */}
+              <div className="bg-white rounded-xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Business Media</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <FileUpload
+                    label="Business Logo/Profile Image"
+                    name={`business_profile_image_${index}`}
+                    acceptedFormats="image/*"
+                    onChange={(e) => handleBusinessFileUpload(index, 'business_profile_image', e.target.files[0])}
+                    value={profile.business_profile_image}
+                    onRemove={() => onRemoveBusinessProfileImage(index)}
+                  />
+                  <FileUpload
+                    label={`Media Gallery (${profile.media_gallery.length}/10)`}
+                    name={`media_gallery_${index}`}
+                    acceptedFormats="image/*,video/*"
+                    multiple
+                    onChange={(e) => handleBusinessFileUpload(index, 'media_gallery', e.target.files)}
+                    value={profile.media_gallery}
+                    onRemove={(mediaIndex) => onRemoveBusinessMedia(index, mediaIndex)}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -808,7 +957,7 @@ const BusinessProfile = React.memo(({
           onClick={addBusinessProfile}
           className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 flex items-center justify-center font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-1"
         >
-          <Plus className="mr-2 w-5 h-5" /> Add Business Profile
+          <Plus className="mr-2 w-5 h-5" /> Add Another Business Profile
         </button>
       </div>
       <ActionButtons onNext={nextStep} onBack={prevStep} />
@@ -1064,7 +1213,7 @@ const SignupForm = () => {
   const [categories, setCategories] = useState([]);
   const [memberSuggestions, setMemberSuggestions] = useState([]);
 
-  // Form state
+  // Form state - Updated with new business fields
   const [formData, setFormData] = useState({
     // Personal Information
     first_name: '',
@@ -1090,7 +1239,7 @@ const SignupForm = () => {
     has_referral: false,
     referral_name: '',
     referral_code: '',
-    // Business Profiles
+    // Business Profiles - Updated with new business contact and address fields
     businessProfiles: [{
       business_type: '',
       category_id: '',
@@ -1099,20 +1248,33 @@ const SignupForm = () => {
       business_registration_type: '',
       business_registration_type_other: '',
       about: '',
-      company_address: '',
-      city: '',
-      state: '',
-      zip_code: '',
+      // NEW BUSINESS CONTACT FIELDS
+      business_email: '',
+      business_work_contact: '',
+      // NEW BUSINESS ADDRESS FIELDS
+      business_address: '',
+      business_city: '',
+      business_state: '',
+      business_zip_code: '',
+      // Existing fields
       business_starting_year: '',
-      email: '',
       designation: '',
       salary: '',
       location: '',
       experience: '',
       business_profile_image: null,
       media_gallery: [],
-      contact_no: '',
-      tags: []
+      tags: [],
+      // Simplified branches array with only essential fields
+      branches: [{
+        branch_name: 'Main Branch',
+        business_work_contract: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        zip_code: ''
+      }]
     }],
     // Family Details
     father_name: '',
@@ -1145,7 +1307,7 @@ const SignupForm = () => {
     fetchCategories();
   }, []);
 
-  // Fetch family entries for autocomplete suggestions (name + contact_no) from member-family API
+  // Fetch family entries for autocomplete suggestions
   useEffect(() => {
     const fetchMembersForSuggestions = async () => {
       try {
@@ -1196,21 +1358,86 @@ const SignupForm = () => {
     }, 150);
   };
 
+  // Simplified handlers for branch management
+  const handleAddBranch = useCallback((profileIndex) => {
+    setFormData(prev => {
+      const updatedProfiles = [...prev.businessProfiles];
+      const newBranch = {
+        branch_name: `Branch ${(updatedProfiles[profileIndex].branches?.length || 0) + 1}`,
+        business_work_contract: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        zip_code: ''
+      };
+      
+      updatedProfiles[profileIndex] = {
+        ...updatedProfiles[profileIndex],
+        branches: [...(updatedProfiles[profileIndex].branches || []), newBranch]
+      };
+      
+      return { ...prev, businessProfiles: updatedProfiles };
+    });
+  }, []);
+
+  const handleUpdateBranch = useCallback((profileIndex, branchIndex, field, value) => {
+    setFormData(prev => {
+      const updatedProfiles = [...prev.businessProfiles];
+      const updatedBranches = [...(updatedProfiles[profileIndex].branches || [])];
+      
+      updatedBranches[branchIndex] = {
+        ...updatedBranches[branchIndex],
+        [field]: value
+      };
+
+      updatedProfiles[profileIndex] = {
+        ...updatedProfiles[profileIndex],
+        branches: updatedBranches
+      };
+      
+      return { ...prev, businessProfiles: updatedProfiles };
+    });
+  }, []);
+
+  const handleRemoveBranch = useCallback((profileIndex, branchIndex) => {
+    setFormData(prev => {
+      const updatedProfiles = [...prev.businessProfiles];
+      const updatedBranches = [...(updatedProfiles[profileIndex].branches || [])];
+      
+      // Don't remove the first branch
+      if (branchIndex === 0) return prev;
+      
+      updatedBranches.splice(branchIndex, 1);
+      
+      updatedProfiles[profileIndex] = {
+        ...updatedProfiles[profileIndex],
+        branches: updatedBranches
+      };
+      
+      return { ...prev, businessProfiles: updatedProfiles };
+    });
+  }, []);
+
+  // FIXED VALIDATION FUNCTION - Added validation for new business fields
   const validateStep = (step) => {
     const errors = {};
+    console.log(`Validating step ${step}`, formData);
 
     if (step === 1) {
-      if (!formData.first_name) errors.first_name = "Full name is required";
-      if (!formData.email) errors.email = "Email is required";
-      if (!formData.password) errors.password = "Password is required";
-      if (!formData.contact_no) errors.contact_no = "Contact number is required";
+      if (!formData.first_name?.trim()) errors.first_name = "Full name is required";
+      if (!formData.email?.trim()) errors.email = "Email is required";
+      if (!formData.password?.trim()) errors.password = "Password is required";
+      if (!formData.contact_no?.trim()) errors.contact_no = "Contact number is required";
+      if (!formData.dob?.trim()) errors.dob = "Date of birth is required";
+      if (!formData.gender?.trim()) errors.gender = "Gender is required";
     }
 
     if (step === 2) {
-      if (!formData.address) errors.address = "Address is required";
-      if (!formData.city) errors.city = "City is required";
-      if (!formData.state) errors.state = "State is required";
-      if (!formData.zip_code) errors.zip_code = "Pincode is required";
+      if (!formData.address?.trim()) errors.address = "Address is required";
+      if (!formData.city?.trim()) errors.city = "City is required";
+      if (!formData.state?.trim()) errors.state = "State is required";
+      if (!formData.zip_code?.trim()) errors.zip_code = "Pincode is required";
       if (formData.has_referral) {
         const code = (formData.referral_code || '').trim();
         if (!code) errors.referral_code = "Referral code is required";
@@ -1218,24 +1445,86 @@ const SignupForm = () => {
     }
 
     if (step === 3) {
+      console.log('Validating business profiles:', formData.businessProfiles);
+      
       formData.businessProfiles.forEach((profile, index) => {
-        if (!profile.business_type) errors[`business_type_${index}`] = "Business type is required";
+        // Basic business type validation
+        if (!profile.business_type?.trim()) {
+          errors[`business_type_${index}`] = "Business type is required";
+        }
 
+        // Validate main business contact information
+        // if (!profile.business_email?.trim()) {
+        //   errors[`business_email_${index}`] = "Business email is required";
+        // }
+        // if (!profile.business_work_contact?.trim()) {
+        //   errors[`business_work_contact_${index}`] = "Business work contact is required";
+        // }
+        // if (!profile.business_address?.trim()) {
+        //   errors[`business_address_${index}`] = "Business address is required";
+        // }
+        // if (!profile.business_city?.trim()) {
+        //   errors[`business_city_${index}`] = "Business city is required";
+        // }
+        // if (!profile.business_state?.trim()) {
+        //   errors[`business_state_${index}`] = "Business state is required";
+        // }
+        // if (!profile.business_zip_code?.trim()) {
+        //   errors[`business_zip_code_${index}`] = "Business pincode is required";
+        // }
+
+        // Validate branches for ALL business types
+        if (profile.branches && profile.branches.length > 0) {
+          profile.branches.forEach((branch, branchIndex) => {
+            if (!branch.branch_name?.trim()) {
+              errors[`branch_name_${index}_${branchIndex}`] = "Branch name is required";
+            }
+            if (!branch.business_work_contract?.trim()) {
+              errors[`business_work_contract_${index}_${branchIndex}`] = "Branch contact number is required";
+            }
+            if (!branch.email?.trim()) {
+              errors[`email_${index}_${branchIndex}`] = "Branch email is required";
+            }
+            if (!branch.address?.trim()) {
+              errors[`address_${index}_${branchIndex}`] = "Branch address is required";
+            }
+            if (!branch.city?.trim()) {
+              errors[`city_${index}_${branchIndex}`] = "Branch city is required";
+            }
+            if (!branch.state?.trim()) {
+              errors[`state_${index}_${branchIndex}`] = "Branch state is required";
+            }
+            if (!branch.zip_code?.trim()) {
+              errors[`zip_code_${index}_${branchIndex}`] = "Branch pincode is required";
+            }
+          });
+        } else {
+          errors[`branches_${index}`] = "At least one branch is required";
+        }
+
+        // Business type specific validations
         if (profile.business_type === "salary") {
-          if (!profile.company_name) errors[`company_name_${index}`] = "Company name is required";
-          if (!profile.email) errors[`email_${index}`] = "Email is required";
-          if (!profile.designation) errors[`designation_${index}`] = "Designation is required";
-          if (!profile.salary) errors[`salary_${index}`] = "Salary is required";
-          if (!profile.experience) errors[`experience_${index}`] = "Experience is required";
-          if (!profile.location) errors[`location_${index}`] = "Location is required";
+          if (!profile.company_name?.trim()) {
+            errors[`company_name_${index}`] = "Company name is required";
+          }
+          if (!profile.designation?.trim()) {
+            errors[`designation_${index}`] = "Designation is required";
+          }
+          if (!profile.salary?.trim()) {
+            errors[`salary_${index}`] = "Salary is required";
+          }
+          if (!profile.experience?.trim()) {
+            errors[`experience_${index}`] = "Experience is required";
+          }
         }
 
         if (profile.business_type === "self-employed" || profile.business_type === "business") {
-          if (!profile.company_name) errors[`company_name_${index}`] = "Company name is required";
-          if (!profile.about) errors[`about_${index}`] = "About is required";
-          if (!profile.email) errors[`email_${index}`] = "Email is required";
-          if (!profile.company_address) errors[`company_address_${index}`] = "Company address is required";
-          // if (!profile.contact_no) errors[`contact_no_${index}`] = "Contact number is required";
+          if (!profile.company_name?.trim()) {
+            errors[`company_name_${index}`] = "Company name is required";
+          }
+          if (!profile.about?.trim()) {
+            errors[`about_${index}`] = "About business is required";
+          }
         }
       });
     }
@@ -1244,25 +1533,31 @@ const SignupForm = () => {
       if (!formData.accepted_terms) errors.accepted_terms = "You must accept the Terms & Conditions";
     }
 
+    console.log(`Step ${step} validation errors:`, errors);
     setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    
+    const isValid = Object.keys(errors).length === 0;
+    console.log(`Step ${step} is valid:`, isValid);
+    
+    return isValid;
   };
 
   const validateAllSteps = () => {
     const errors = {};
 
     // Validate step 1 - Personal Information
-    if (!formData.first_name) errors.first_name = "Full name is required";
-    if (!formData.email) errors.email = "Email is required";
-    if (!formData.password) errors.password = "Password is required";
-    if (!formData.contact_no) errors.contact_no = "Contact number is required";
-    if (!formData.accepted_terms) errors.accepted_terms = "You must accept the Terms & Conditions";
+    if (!formData.first_name?.trim()) errors.first_name = "Full name is required";
+    if (!formData.email?.trim()) errors.email = "Email is required";
+    if (!formData.password?.trim()) errors.password = "Password is required";
+    if (!formData.contact_no?.trim()) errors.contact_no = "Contact number is required";
+    if (!formData.dob?.trim()) errors.dob = "Date of birth is required";
+    if (!formData.gender?.trim()) errors.gender = "Gender is required";
 
     // Validate step 2 - Address Information
-    if (!formData.address) errors.address = "Address is required";
-    if (!formData.city) errors.city = "City is required";
-    if (!formData.state) errors.state = "State is required";
-    if (!formData.zip_code) errors.zip_code = "Pincode is required";
+    if (!formData.address?.trim()) errors.address = "Address is required";
+    if (!formData.city?.trim()) errors.city = "City is required";
+    if (!formData.state?.trim()) errors.state = "State is required";
+    if (!formData.zip_code?.trim()) errors.zip_code = "Pincode is required";
     if (formData.has_referral) {
       const code = (formData.referral_code || '').trim();
       if (!code) errors.referral_code = "Referral code is required";
@@ -1270,37 +1565,66 @@ const SignupForm = () => {
 
     // Validate step 3 - Business Profiles
     formData.businessProfiles.forEach((profile, index) => {
-      if (!profile.business_type) errors[`business_type_${index}`] = "Business type is required";
+      if (!profile.business_type?.trim()) errors[`business_type_${index}`] = "Business type is required";
+
+      // Validate main business fields
+      // if (!profile.business_email?.trim()) errors[`business_email_${index}`] = "Business email is required";
+      // if (!profile.business_work_contact?.trim()) errors[`business_work_contact_${index}`] = "Business work contact is required";
+      // if (!profile.business_address?.trim()) errors[`business_address_${index}`] = "Business address is required";
+      // if (!profile.business_city?.trim()) errors[`business_city_${index}`] = "Business city is required";
+      // if (!profile.business_state?.trim()) errors[`business_state_${index}`] = "Business state is required";
+      // if (!profile.business_zip_code?.trim()) errors[`business_zip_code_${index}`] = "Business pincode is required";
+
+      // Validate branches
+      if (profile.branches && profile.branches.length > 0) {
+        profile.branches.forEach((branch, branchIndex) => {
+          if (!branch.branch_name?.trim()) errors[`branch_name_${index}_${branchIndex}`] = "Branch name is required";
+          if (!branch.business_work_contract?.trim()) errors[`business_work_contract_${index}_${branchIndex}`] = "Branch contact number is required";
+          if (!branch.email?.trim()) errors[`email_${index}_${branchIndex}`] = "Branch email is required";
+          if (!branch.address?.trim()) errors[`address_${index}_${branchIndex}`] = "Branch address is required";
+          if (!branch.city?.trim()) errors[`city_${index}_${branchIndex}`] = "Branch city is required";
+          if (!branch.state?.trim()) errors[`state_${index}_${branchIndex}`] = "Branch state is required";
+          if (!branch.zip_code?.trim()) errors[`zip_code_${index}_${branchIndex}`] = "Branch pincode is required";
+        });
+      } else {
+        errors[`branches_${index}`] = "At least one branch is required";
+      }
 
       if (profile.business_type === "salary") {
-        if (!profile.company_name) errors[`company_name_${index}`] = "Company name is required";
-        if (!profile.email) errors[`email_${index}`] = "Email is required";
-        if (!profile.designation) errors[`designation_${index}`] = "Designation is required";
-        if (!profile.salary) errors[`salary_${index}`] = "Salary is required";
-        if (!profile.experience) errors[`experience_${index}`] = "Experience is required";
-        if (!profile.location) errors[`location_${index}`] = "Location is required";
+        if (!profile.company_name?.trim()) errors[`company_name_${index}`] = "Company name is required";
+        if (!profile.designation?.trim()) errors[`designation_${index}`] = "Designation is required";
+        if (!profile.salary?.trim()) errors[`salary_${index}`] = "Salary is required";
+        if (!profile.experience?.trim()) errors[`experience_${index}`] = "Experience is required";
       }
 
       if (profile.business_type === "self-employed" || profile.business_type === "business") {
-        if (!profile.company_name) errors[`company_name_${index}`] = "Company name is required";
-        if (!profile.about) errors[`about_${index}`] = "About is required";
-        if (!profile.email) errors[`email_${index}`] = "Email is required";
-        if (!profile.company_address) errors[`company_address_${index}`] = "Company address is required";
-        // if (!profile.contact_no) errors[`contact_no_${index}`] = "Contact number is required";
+        if (!profile.company_name?.trim()) errors[`company_name_${index}`] = "Company name is required";
+        if (!profile.about?.trim()) errors[`about_${index}`] = "About business is required";
       }
     });
+
+    // Validate step 4 - Family Details
+    if (!formData.accepted_terms) errors.accepted_terms = "You must accept the Terms & Conditions";
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  // FIXED NEXT STEP FUNCTION
   const nextStep = () => {
+    console.log('Next step clicked, current step:', currentStep);
+    
     if (validateStep(currentStep)) {
+      console.log('Validation passed, moving to step:', currentStep + 1);
       if (currentStep < 4) {
         handleStepChange(currentStep + 1, 'forward');
       } else if (currentStep === 4) {
         handleSubmit();
       }
+    } else {
+      console.log('Validation failed, showing errors');
+      // Scroll to top to show validation errors
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -1432,6 +1756,7 @@ const SignupForm = () => {
     });
   }, []);
 
+  // UPDATED addBusinessProfile function to include new fields
   const addBusinessProfile = useCallback(() => {
     setFormData(prev => ({
       ...prev,
@@ -1443,21 +1768,34 @@ const SignupForm = () => {
           show_category_suggestions: false,
           company_name: '',
           business_registration_type: '',
+          business_registration_type_other: '',
           about: '',
-          company_address: '',
-          city: '',
-          state: '',
-          zip_code: '',
+          // NEW BUSINESS CONTACT FIELDS
+          business_email: '',
+          business_work_contact: '',
+          // NEW BUSINESS ADDRESS FIELDS
+          business_address: '',
+          business_city: '',
+          business_state: '',
+          business_zip_code: '',
+          // Existing fields
           business_starting_year: '',
-          email: '',
           designation: '',
           salary: '',
           location: '',
           experience: '',
           business_profile_image: null,
           media_gallery: [],
-          contact_no: '',
-          tags: []
+          tags: [],
+          branches: [{
+            branch_name: 'Main Branch',
+            business_work_contract: '',
+            email: '',
+            address: '',
+            city: '',
+            state: '',
+            zip_code: ''
+          }]
         }
       ]
     }));
@@ -1531,9 +1869,13 @@ const SignupForm = () => {
     }));
   }, []);
 
+  // UPDATED handleSubmit function to include new business fields
   const handleSubmit = async () => {
     // Validate all steps before submission
-    if (!validateAllSteps()) return;
+    if (!validateAllSteps()) {
+      console.log('Final validation failed, not submitting');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -1572,32 +1914,63 @@ const SignupForm = () => {
         submitData.append('referral_code', normalizedReferralCode);
       }
 
-      // Process business profiles - send as JSON string
+      // Process business profiles with NEW business fields
       const businessProfilesForBackend = formData.businessProfiles.map((profile, index) => {
-        // Create a copy of the profile without the file objects
-        const { business_profile_image, media_gallery, category_input, business_registration_type_other, ...profileData } = profile;
-        // Ensure tags is a TEXT (string) for backend
+        const { 
+          business_profile_image, 
+          media_gallery, 
+          category_input, 
+          business_registration_type_other, 
+          branches,
+          // Include the new business fields
+          business_email,
+          business_work_contact,
+          business_address,
+          business_city,
+          business_state,
+          business_zip_code,
+          ...profileData 
+        } = profile;
+
+        // Normalize tags
         const normalizedTags = Array.isArray(profile.tags)
           ? profile.tags.join(',')
           : (typeof profile.tags === 'string' ? profile.tags : '');
-        // If a valid category_id is set, use it. Else, if category_input provided, flag creation on server
+
+        // Handle category
         const validCategoryIds = new Set((categories || []).map(c => String(c.cid)));
         const normalizedCategoryId = profileData.category_id && validCategoryIds.has(String(profileData.category_id))
           ? String(profileData.category_id)
           : '';
-        // If Others selected, replace with the user-specified value
+
+        // Handle registration type
         const normalizedRegistrationType = (profileData.business_registration_type === 'Others'
           ? (business_registration_type_other || '').trim()
           : profileData.business_registration_type) || '';
 
-        const payload = { ...profileData, business_registration_type: normalizedRegistrationType, category_id: normalizedCategoryId, tags: normalizedTags };
+        const payload = { 
+          ...profileData, 
+          business_registration_type: normalizedRegistrationType, 
+          category_id: normalizedCategoryId, 
+          tags: normalizedTags,
+          // Include the new business fields in the payload
+          business_email: business_email || '',
+          business_work_contact: business_work_contact || '',
+          business_address: business_address || '',
+          business_city: business_city || '',
+          business_state: business_state || '',
+          business_zip_code: business_zip_code || '',
+          // Include simplified branch data in the payload
+          branches: branches || []
+        };
+
         if (!normalizedCategoryId && (category_input || '').trim()) {
           payload.new_category_name = (category_input || '').trim();
         }
+
         return payload;
       });
 
-      // FIXED: Use 'business_profiles' instead of 'businessProfiles' to match server expectation
       submitData.append('business_profiles', JSON.stringify(businessProfilesForBackend));
 
       // Handle business profile images and media gallery files separately
@@ -1615,7 +1988,6 @@ const SignupForm = () => {
       });
 
       // Append family details
-      // Backend expects family_details JSON for creating member_family
       const isMarried = (formData.marital_status || '').toLowerCase().trim() === 'married';
       const childrenArray = (formData.children_names || '')
         .split(',')
@@ -1640,7 +2012,7 @@ const SignupForm = () => {
       submitData.append('family_details', JSON.stringify(familyDetails));
 
       // Log the FormData for debugging (note: this won't show file contents)
-      console.log('Submitting form data:');
+      console.log('Submitting form data with business fields:', businessProfilesForBackend);
       for (let pair of submitData.entries()) {
         console.log(pair[0] + ': ' + (pair[1] instanceof File ? '[File]' : pair[1]));
       }
@@ -1711,6 +2083,10 @@ const SignupForm = () => {
           handleSelectExistingCategory={handleSelectExistingCategory}
           handleTagAdd={handleTagAdd}
           handleTagRemove={handleTagRemove}
+          // Simplified branch handlers
+          handleAddBranch={handleAddBranch}
+          handleUpdateBranch={handleUpdateBranch}
+          handleRemoveBranch={handleRemoveBranch}
         />;
       case 4:
         return <FamilyDetails 
@@ -1760,4 +2136,4 @@ const SignupForm = () => {
   );
 };
 
-export default SignupForm;  
+export default SignupForm;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Star, Phone, Globe, MapPin, Clock, Mail, Users, ChevronDown, Briefcase, Building2, User as UserIcon, Tag, X, Award, TrendingUp, Shield, Heart } from 'lucide-react';
+import { Star, Phone, Globe, MapPin, Clock, Mail, Users, ChevronDown, Briefcase, Building2, User as UserIcon, Tag, X, Award, TrendingUp, Shield, Heart, Linkedin, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
 import Header from './Header';
 import Footer from './Footer';
 import MobileFooter from './MobileFooter'; // Adjust the path as needed
@@ -26,6 +26,7 @@ const BusinessListing = () => {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [memberDetails, setMemberDetails] = useState(null);
+  const [branch, setBranch] = useState([]);
   const [memberDetailsLoading, setMemberDetailsLoading] = useState(false);
 
   // New state for collapsible sections and popup
@@ -154,8 +155,16 @@ const BusinessListing = () => {
 
   const getCategoryName = (categoryId) => {
     if (!categoryId || categoriesLoading) return 'N/A';
-    const category = categories.find(cat => cat.cid === parseInt(categoryId));
-    return category ? category.category_name : 'Not specified';
+    // If an ID-like value is provided, try numeric match first
+    const numeric = parseInt(categoryId, 10);
+    if (!isNaN(numeric)) {
+      const byId = categories.find(cat => parseInt(cat.cid, 10) === numeric);
+      if (byId) return byId.category_name;
+    }
+    // Otherwise try name match (case-insensitive)
+    const valueStr = String(categoryId).trim().toLowerCase();
+    const byName = categories.find(cat => String(cat.category_name).trim().toLowerCase() === valueStr);
+    return byName ? byName.category_name : 'Not specified';
   };
 
   const toggleSection = (section) => {
@@ -164,6 +173,42 @@ const BusinessListing = () => {
       [section]: !prev[section]
     }));
   };
+  function convertToBranchObjects(data) {
+    const parsed = {};
+
+    // Parse each field safely
+    for (const [key, value] of Object.entries(data)) {
+      try {
+        const arr = JSON.parse(value);
+        parsed[key] = Array.isArray(arr) ? arr : [value];
+      } catch {
+        parsed[key] = [value];
+      }
+    }
+
+    // Find the maximum array length
+    const maxLength = Math.max(...Object.values(parsed).map(v => v.length));
+
+    // Build array of branch objects
+    const result = [];
+    for (let i = 0; i < maxLength; i++) {
+      const obj = {};
+      for (const [key, arr] of Object.entries(parsed)) {
+        obj[key] = arr[i] !== undefined ? arr[i] : arr[0] ?? null;
+      }
+      result.push(obj);
+    }
+
+    return result;
+  }
+  function getFirstItem(value) {
+    try {
+      const arr = JSON.parse(value);
+      return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+    } catch {
+      return null; // Return null if JSON is invalid or empty
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -205,9 +250,25 @@ const BusinessListing = () => {
         if (isMounted.current) {
           // Fixed: Check for the correct data structure - data.data is a single object, not an array
           if (data.data) {
+            const businessdata = {
+              company_address: data.data.company_address,
+              city: data.data.city,
+              state: data.data.state,
+              zip_code: data.data.zip_code,
+              branch_name: data.data.branch_name,
+              email: data.data.email,
+              business_work_contact: data.data.business_work_contract,
+            }
+            setBranch(convertToBranchObjects(businessdata));
             // Check if the ID matches
             if (parseInt(data.data.id) === parseInt(id)) {
-              setBusinessProfile(data.data);
+              setBusinessProfile({
+                ...data.data,
+                company_address: getFirstItem(data.data.company_address),
+                city: getFirstItem(data.data.city),
+                state: getFirstItem(data.data.state),
+                zip_code: getFirstItem(data.data.zip_code)
+              });
               console.log("Found business profile:", data.data);
               // Fetch full member details to mirror profile page data
               const memberId = data.data.member_id || data.data.Member?.mid;
@@ -816,7 +877,18 @@ const BusinessListing = () => {
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-800 text-sm sm:text-base">Website</p>
-                <p className="text-xs sm:text-sm text-gray-600">{socialLinks.website || 'Website not available'}</p>
+                {socialLinks.website ? (
+                  <a
+                    href={socialLinks.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs sm:text-sm text-green-700 hover:text-green-800 underline-offset-2 hover:underline break-all"
+                  >
+                    {socialLinks.website}
+                  </a>
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-600">Website not available</p>
+                )}
               </div>
             </div>
           </div>
@@ -825,29 +897,31 @@ const BusinessListing = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* About This Business Card */}
-        <CollapsibleCard
-          title="About This Business"
-          isExpanded={aboutExpanded}
-          onToggle={() => setAboutExpanded(prev => !prev)}
-          icon={Building2}
-          gradient={true}
-        >
-          <div className="prose prose-gray max-w-none text-left">
-            <p className="text-gray-700 text-sm sm:text-base leading-7 sm:leading-8 break-words whitespace-pre-wrap md:max-w-3xl lg:max-w-4xl mx-auto">
-              {businessProfile.about || `${businessProfile.company_name} is a ${businessProfile.business_type || 'business'} established in ${businessProfile.business_starting_year || 'recently'}.`}
-            </p>
-            {businessProfile.tags && (
-              <div className="mt-6 flex flex-wrap gap-2">
-                {businessProfile.tags.split(',').map((tag, index) => (
-                  <span key={index} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 rounded-xl text-xs sm:text-sm font-medium hover:from-green-200 hover:to-emerald-200 transition-all duration-200">
-                    #{tag.trim()}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </CollapsibleCard>
+        {/* About This Business Card - hidden for salary type */}
+        {((businessProfile?.business_type || '').toLowerCase() !== 'salary') && (
+          <CollapsibleCard
+            title="About This Business"
+            isExpanded={aboutExpanded}
+            onToggle={() => setAboutExpanded(prev => !prev)}
+            icon={Building2}
+            gradient={true}
+          >
+            <div className="prose prose-gray max-w-none text-left">
+              <p className="text-gray-700 text-sm sm:text-base leading-7 sm:leading-8 break-words whitespace-pre-wrap md:max-w-3xl lg:max-w-4xl mx-auto">
+                {businessProfile.about || `${businessProfile.company_name} is a ${businessProfile.business_type || 'business'} established in ${businessProfile.business_starting_year || 'recently'}.`}
+              </p>
+              {businessProfile.tags && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {businessProfile.tags.split(',').map((tag, index) => (
+                    <span key={index} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 rounded-xl text-xs sm:text-sm font-medium hover:from-green-200 hover:to-emerald-200 transition-all duration-200">
+                      #{tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CollapsibleCard>
+        )}
 
         {/* Member Information Card */}
         <CollapsibleCard
@@ -986,39 +1060,6 @@ const BusinessListing = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <div className="text-left">
-                  <span className="font-semibold text-gray-800 block">Mobile Number</span>
-                  {resolvedMember?.mobile_no ? (
-                    <a href={buildTelHref(resolvedMember.mobile_no)} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">{resolvedMember.mobile_no}</a>
-                  ) : (
-                    <p className="text-gray-600">Not available</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Briefcase className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <div className="text-left">
-                  <span className="font-semibold text-gray-800 block">Work Phone</span>
-                  {resolvedMember?.work_phone ? (
-                    <a href={buildTelHref(resolvedMember.work_phone)} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">{resolvedMember.work_phone}</a>
-                  ) : (
-                    <p className="text-gray-600">Not available</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <div className="text-left">
-                  <span className="font-semibold text-gray-800 block">Extension</span>
-                  {resolvedMember?.extension ? (
-                    <a href={buildTelHref(resolvedMember.extension)} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">{resolvedMember.extension}</a>
-                  ) : (
-                    <p className="text-gray-600">Not available</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-green-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Secondary Email</span>
@@ -1030,13 +1071,6 @@ const BusinessListing = () => {
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Best Time to Contact</span>
                   <p className="text-gray-600">{resolvedMember?.best_time_to_contact || 'Not available'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Star className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <div className="text-left">
-                  <span className="font-semibold text-gray-800 block">Preferred Contact</span>
-                  <p className="text-gray-600">{resolvedMember?.preferred_contact || 'Not available'}</p>
                 </div>
               </div>
             </div>
@@ -1089,8 +1123,8 @@ const BusinessListing = () => {
                   <span className="font-semibold text-gray-800 block">Access Level</span>
                   <p className="text-gray-600">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${resolvedMember?.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
-                        resolvedMember?.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
-                          'bg-blue-100 text-blue-800'
+                      resolvedMember?.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
+                        'bg-blue-100 text-blue-800'
                       }`}>
                       {resolvedMember?.access_level || 'Basic'}
                     </span>
@@ -1103,9 +1137,9 @@ const BusinessListing = () => {
                   <span className="font-semibold text-gray-800 block">Status</span>
                   <p className="text-gray-600">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${resolvedMember?.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
-                        resolvedMember?.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          resolvedMember?.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
+                      resolvedMember?.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        resolvedMember?.status?.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
                       }`}>
                       {resolvedMember?.status || 'Unknown'}
                     </span>
@@ -1180,42 +1214,108 @@ const BusinessListing = () => {
                 <Globe className="w-4 h-4 text-green-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Personal Website</span>
-                  <p className="text-gray-600">{resolvedMember?.personal_website || 'Not available'}</p>
+                  {resolvedMember?.personal_website ? (
+                    <a
+                      href={resolvedMember.personal_website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.personal_website}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Briefcase className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <Linkedin className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">LinkedIn Profile</span>
-                  <p className="text-gray-600">{resolvedMember?.linkedin_profile || 'Not available'}</p>
+                  {resolvedMember?.linkedin_profile ? (
+                    <a
+                      href={resolvedMember.linkedin_profile}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.linkedin_profile}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <Facebook className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Facebook</span>
-                  <p className="text-gray-600">{resolvedMember?.facebook || 'Not available'}</p>
+                  {resolvedMember?.facebook ? (
+                    <a
+                      href={resolvedMember.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.facebook}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <Instagram className="w-4 h-4 text-pink-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Instagram</span>
-                  <p className="text-gray-600">{resolvedMember?.instagram || 'Not available'}</p>
+                  {resolvedMember?.instagram ? (
+                    <a
+                      href={resolvedMember.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.instagram}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <Twitter className="w-4 h-4 text-sky-500 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">Twitter</span>
-                  <p className="text-gray-600">{resolvedMember?.twitter || 'Not available'}</p>
+                  {resolvedMember?.twitter ? (
+                    <a
+                      href={resolvedMember.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.twitter}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <Youtube className="w-4 h-4 text-red-600 flex-shrink-0" />
                 <div className="text-left">
                   <span className="font-semibold text-gray-800 block">YouTube</span>
-                  <p className="text-gray-600">{resolvedMember?.youtube || 'Not available'}</p>
+                  {resolvedMember?.youtube ? (
+                    <a
+                      href={resolvedMember.youtube}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-700 hover:text-green-800 underline underline-offset-2 break-all"
+                    >
+                      {resolvedMember.youtube}
+                    </a>
+                  ) : (
+                    <p className="text-gray-600">Not available</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1285,13 +1385,6 @@ const BusinessListing = () => {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Clock className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <span className="font-semibold text-gray-800 block mb-1">Business Started</span>
-                      <p className="text-gray-700">{businessProfile.business_starting_year || 'Not specified'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
                     <Award className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
                     <div>
                       <span className="font-semibold text-gray-800 block mb-1">Experience</span>
@@ -1309,13 +1402,13 @@ const BusinessListing = () => {
                     <Tag className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
                     <div>
                       <span className="font-semibold text-gray-800 block mb-1">Category</span>
-                      <p className="text-gray-700">{getCategoryName(businessProfile.category_id)}</p>
+                      <p className="text-gray-700">{getCategoryName(businessProfile.category_id || businessProfile.category || businessProfile.category_name)}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-white rounded-2xl border border-green-100 text-left">
+              {/* <div className="p-6 bg-white rounded-2xl border border-green-100 text-left">
                 <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-green-600" />
                   Location & Contact
@@ -1382,7 +1475,8 @@ const BusinessListing = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
+
             </div>
 
             {/* Right Column */}
@@ -1396,36 +1490,36 @@ const BusinessListing = () => {
                   {businessProfile.website && (
                     <a href={businessProfile.website} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
-                      <Globe className="w-5 h-5 text-blue-500" />
-                      <span className="text-gray-700 group-hover:text-blue-600 break-all">{businessProfile.website}</span>
+                      <Globe className="w-5 h-5 text-purple-600" />
+                      <span className="text-purple-700 underline underline-offset-2 break-all">{businessProfile.website}</span>
                     </a>
                   )}
                   {businessProfile.google_link && (
                     <a href={businessProfile.google_link} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
                       <Globe className="w-5 h-5 text-red-500" />
-                      <span className="text-gray-700 group-hover:text-red-600">Google Link</span>
+                      <span className="text-red-600 underline underline-offset-2 break-all">{businessProfile.google_link}</span>
                     </a>
                   )}
                   {businessProfile.facebook_link && (
                     <a href={businessProfile.facebook_link} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
-                      <div className="w-5 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">f</div>
-                      <span className="text-gray-700 group-hover:text-blue-600">Facebook</span>
+                      <Facebook className="w-5 h-5 text-blue-600" />
+                      <span className="text-blue-700 underline underline-offset-2 break-all">{businessProfile.facebook_link}</span>
                     </a>
                   )}
                   {businessProfile.instagram_link && (
                     <a href={businessProfile.instagram_link} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
-                      <div className="w-5 h-5 bg-gradient-to-br from-purple-500 to-pink-500 rounded text-white text-xs flex items-center justify-center font-bold">ig</div>
-                      <span className="text-gray-700 group-hover:text-purple-600">Instagram</span>
+                      <Instagram className="w-5 h-5 text-pink-600" />
+                      <span className="text-pink-600 underline underline-offset-2 break-all">{businessProfile.instagram_link}</span>
                     </a>
                   )}
                   {businessProfile.linkedin_link && (
                     <a href={businessProfile.linkedin_link} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-white rounded-xl hover:bg-gray-50 transition-colors group">
-                      <div className="w-5 h-5 bg-blue-700 rounded text-white text-xs flex items-center justify-center font-bold">in</div>
-                      <span className="text-gray-700 group-hover:text-blue-600">LinkedIn</span>
+                      <Linkedin className="w-5 h-5 text-blue-700" />
+                      <span className="text-blue-800 underline underline-offset-2 break-all">{businessProfile.linkedin_link}</span>
                     </a>
                   )}
                 </div>
@@ -1483,7 +1577,105 @@ const BusinessListing = () => {
                 </div>
               </div>
             </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mt-8">
+            <div className='space-y-12 text-sm'>
+              <div className="p-6 bg-white rounded-2xl border border-green-100 text-left">
+                <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  Location & Contact
+                </h4>
+
+                {branch.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {branch.map((branch, index) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-xl border border-green-50 bg-green-50/30 shadow-sm"
+                      >
+                        <h5 className="font-semibold text-green-700 mb-2">
+                          {branch.branch_name || `Branch ${index + 1}`}
+                        </h5>
+
+                        <div className="space-y-3 text-sm text-left">
+                          {/* Email */}
+                          <div className="flex items-start gap-3">
+                            <Mail className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-800 block mb-1">
+                                Work Contact
+                              </span>
+                              <p className="text-gray-700">
+                                {branch.business_work_contact || "Not specified"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Address */}
+                          <div className="flex items-start gap-3">
+                            <MapPin className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-800 block mb-1">
+                                Address
+                              </span>
+                              {branch.company_address ? (
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(branch.company_address)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline"
+                                >
+                                  {branch.company_address}
+                                </a>
+                              ) : (
+                                <p className="text-gray-700">Not specified</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* City */}
+                          <div className="flex items-start gap-3">
+                            <MapPin className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-800 block mb-1">
+                                City
+                              </span>
+                              <p className="text-gray-700">{branch.city || "Not specified"}</p>
+                            </div>
+                          </div>
+
+                          {/* State */}
+                          <div className="flex items-start gap-3">
+                            <MapPin className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-800 block mb-1">
+                                State
+                              </span>
+                              <p className="text-gray-700">{branch.state || "Not specified"}</p>
+                            </div>
+                          </div>
+
+                          {/* Zipcode */}
+                          <div className="flex items-start gap-3">
+                            <Tag className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-800 block mb-1">
+                                Pincode
+                              </span>
+                              <p className="text-gray-700">{branch.zip_code || "Not specified"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-700 text-sm">No branches available.</p>
+                )}
+              </div>
           </div>
+</div>
+          
         </CollapsibleCard>
 
         {/* Business Images Card */}

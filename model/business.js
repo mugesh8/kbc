@@ -47,20 +47,24 @@ const BusinessProfile = db.define('BusinessProfile', {
         type: DataTypes.TEXT, // Longer text allowed
         allowNull: true,
     },
+    branch_name:{
+        type: DataTypes.JSON,
+        allowNull: true,
+    },
     company_address: {
-        type: DataTypes.TEXT,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     city: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     state: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     zip_code: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     business_starting_year: {
@@ -72,15 +76,12 @@ const BusinessProfile = db.define('BusinessProfile', {
         allowNull: true,
     },
     business_work_contract: {
-        type: DataTypes.TEXT,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     email: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
-        validate: {
-            isEmail: true,
-        },
     },
     source: {
         type: DataTypes.STRING,
@@ -132,7 +133,7 @@ const BusinessProfile = db.define('BusinessProfile', {
         allowNull: true,
     },
     location: {
-        type: DataTypes.STRING,
+        type: DataTypes.JSON,
         allowNull: true,
     },
     experience: {

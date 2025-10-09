@@ -393,7 +393,6 @@ const ReferralSystemComponent = () => {
   };
 
   const handleDelete = async (member) => {
-    if (adminRole === 'community') return; // guard
     if (window.confirm(`Are you sure you want to delete ${member.first_name} ${member.last_name}?`)) {
       try {
         const response = await fetch(`${baseurl}/api/member/delete/${member.mid}`, {
@@ -717,7 +716,6 @@ const ReferralSystemComponent = () => {
                           >
                             <InfoIcon sx={{ fontSize: 16 }} />
                           </IconButton>
-                          {adminRole !== 'community' && (
                             <IconButton
                               size="small"
                               onClick={() => handleDelete(member)}
@@ -731,7 +729,6 @@ const ReferralSystemComponent = () => {
                             >
                               <DeleteIcon sx={{ fontSize: 16 }} />
                             </IconButton>
-                          )}
                         </Box>
                       </TableCell>
                     </TableRow>

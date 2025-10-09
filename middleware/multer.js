@@ -95,6 +95,7 @@ const uploadBusinessProfileMedia = (req, res, next) => {
     const maxProfiles = 5;
     const fields = [
       { name: "profile_image", maxCount: 1 },
+      { name: "media_gallery", maxCount: 5 },
     ];
 
     for (let i = 0; i < maxProfiles; i++) {

@@ -208,24 +208,13 @@ const BusinessDetailView = () => {
             ) : (
                 <Box sx={{ textAlign: "left" }}>
                     {member.BusinessProfiles.map((profile, index) => {
-                        const details = [
-                            { label: 'About', value: profile.about, fullWidth: true },
+                        // Common fields for all business types
+                        const commonDetails = [
                             { label: 'Business Name', value: profile.company_name },
                             { label: 'Business Type', value: profile.business_type },
                             { label: 'Category', value: categories[profile.category_id] || 'Loading...' },
-                            { label: 'Registration Type', value: profile.business_registration_type },
-                            { label: 'Company Address', value: `${profile.company_address},\n${profile.city}, ${profile.state} ${profile.zip_code}` },
-                            { label: 'Your Role', value: profile.role },
-                            { label: 'Designation', value: profile.designation },
                             { label: 'Experience', value: profile.experience },
-                            { label: 'Staff Size', value: profile.staff_size },
-                            { label: 'Business Starting Year', value: profile.business_starting_year },
                             { label: 'Business Work Contract', value: profile.business_work_contract },
-                            { label: 'Contact', value: profile.contact },
-                            { label: 'Email', value: profile.email },
-                            { label: 'Salary', value: profile.salary },
-                            { label: 'Location', value: profile.location },
-                            { label: 'Source', value: profile.source },
                             { label: 'Tags', value: profile.tags },
                             { label: 'Website', value: profile.website },
                             { label: 'Google Link', value: profile.google_link },
@@ -233,6 +222,35 @@ const BusinessDetailView = () => {
                             { label: 'Instagram Link', value: profile.instagram_link },
                             { label: 'LinkedIn Link', value: profile.linkedin_link }
                         ];
+
+                        // Business type specific fields
+                        const businessTypeSpecificDetails = [];
+                        
+                        if (profile.business_type === 'salary') {
+                            businessTypeSpecificDetails.push(
+                                { label: 'Designation', value: profile.designation },
+                                { label: 'Salary', value: profile.salary },
+                                { label: 'Location', value: profile.location }
+                            );
+                        } else {
+                            businessTypeSpecificDetails.push(
+                                { label: 'Registration Type', value: profile.business_registration_type },
+                                { label: 'Staff Size', value: profile.staff_size },
+                                { label: 'Business Starting Year', value: profile.business_starting_year },
+                                { label: 'Company Address', value: `${profile.company_address},\n${profile.city}, ${profile.state} ${profile.zip_code}` }
+                            );
+                        }
+
+                        // Additional fields
+                        const additionalDetails = [
+                            { label: 'About', value: profile.about, fullWidth: true },
+                            { label: 'Your Role', value: profile.role },
+                            { label: 'Contact', value: profile.contact },
+                            { label: 'Email', value: profile.email },
+                            { label: 'Source', value: profile.source }
+                        ];
+
+                        const details = [...commonDetails, ...businessTypeSpecificDetails, ...additionalDetails];
 
                         const mediaGallery = profile.media_gallery
                             ? profile.media_gallery.split(',').map((item) => item.trim())
