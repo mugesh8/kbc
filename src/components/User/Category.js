@@ -51,15 +51,17 @@ const BusinessCategories = () => {
 
   // Function to calculate average rating for a business (matching HomePage)
   const getBusinessRatings = (businessId) => {
-    const businessRatings = ratings.filter(rating => 
-      rating.business_id === businessId && rating.status === 'approved'
-    );
+    const businessRatings = ratings.filter((rating) => {
+      const rBid = parseInt(rating.business_id, 10);
+      const bId = parseInt(businessId, 10);
+      return !Number.isNaN(rBid) && !Number.isNaN(bId) && rBid === bId;
+    });
     
     if (businessRatings.length === 0) {
       return { averageRating: 0, reviewCount: 0 };
     }
     
-    const totalRating = businessRatings.reduce((sum, rating) => sum + rating.rating, 0);
+    const totalRating = businessRatings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0);
     const averageRating = totalRating / businessRatings.length;
     
     return {
@@ -442,22 +444,6 @@ const BusinessCategories = () => {
                                 {reviewsCount > 0 && `(${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'})`}
                               </span>
                             </div>
-                          </div>
-
-                          {/* Business info - Updated to match HomePage style */}
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {business?.city && (
-                              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                                <MapPin className="w-3 h-3" />
-                                {business.city}
-                              </span>
-                            )}
-                            {business?.business_type && (
-                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
-                                <Briefcase className="w-3 h-3" />
-                                {business.business_type}
-                              </span>
-                            )}
                           </div>
                           
                           {/* Best time to contact - Added from HomePage */}

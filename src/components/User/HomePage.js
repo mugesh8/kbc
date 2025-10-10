@@ -274,15 +274,17 @@ const HomePage = () => {
 
   // Calculate ratings for a specific business
   const getBusinessRatings = (businessId) => {
-    const businessRatings = ratings.filter(rating =>
-      rating.business_id === businessId && rating.status === 'approved'
-    );
+    const businessRatings = ratings.filter((rating) => {
+      const rBid = parseInt(rating.business_id, 10);
+      const bId = parseInt(businessId, 10);
+      return !Number.isNaN(rBid) && !Number.isNaN(bId) && rBid === bId;
+    });
 
     if (businessRatings.length === 0) {
       return { averageRating: 0, reviewCount: 0 };
     }
 
-    const totalRating = businessRatings.reduce((sum, rating) => sum + rating.rating, 0);
+    const totalRating = businessRatings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0);
     const averageRating = totalRating / businessRatings.length;
 
     return {

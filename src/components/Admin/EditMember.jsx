@@ -92,8 +92,6 @@ const EditMember = () => {
     marital_status: '',
     work_phone: '',
     extension: '',
-    mobile_no: '',
-    preferred_contact: '',
     secondary_email: '',
     emergency_contact: '',
     emergency_phone: '',
@@ -106,6 +104,7 @@ const EditMember = () => {
     youtube: '',
     kootam: '',
     kovil: '',
+    aadhar_no: '',
     // New fields
     status: 'Pending',
     access_level: 'Basic',
@@ -187,6 +186,7 @@ const EditMember = () => {
             zip_code: memberData.zip_code || '',
             // Advanced Details
             blood_group: memberData.blood_group || '',
+            aadhar_no: memberData.aadhaar || memberData.aadhar_no || '',
             alternate_contact_no: memberData.alternate_contact_no || '',
             marital_status: memberData.marital_status || '',
             work_phone: memberData.work_phone || '',
@@ -242,7 +242,7 @@ const EditMember = () => {
           });
 
           // Initialize custom values if existing value is not in predefined options
-          const genderOptions = ['male', 'female', 'Others'];
+          const genderOptions = ['Male', 'Female', 'Others'];
           const kootamOptions = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai', 'Others'];
           const kovilOptions = [
             'Madurai Meenakshi Amman',
@@ -672,7 +672,8 @@ const EditMember = () => {
       type: 'select',
       options: [
         { value: 'Basic', label: t('Basic') },
-        { value: 'Advanced', label: t('Advanced') }
+        { value: 'Premium', label: 'Premium' },
+        { value: 'Admin', label: 'Admin' }
       ],
       required: true
     },
@@ -687,15 +688,15 @@ const EditMember = () => {
 
   const personalInfoConfig = {
     first_name: { label: t('First Name'), type: 'text', required: true },
-    // last_name: { label: t('Last Name'), type: 'text' },
+    contact_no: { label: t('Contact Number'), type: 'text', required: true },
     email: { label: t('Email'), type: 'email', required: true },
     dob: { label: t('Date of Birth'), type: 'date', InputLabelProps: { shrink: true } },
     gender: {
       label: t('Gender'),
       type: 'select',
       options: [
-        { value: 'male', label: t('Male') },
-        { value: 'female', label: t('Female') },
+        { value: 'Male', label: t('Male') },
+        { value: 'Female', label: t('Female') },
         { value: 'Others', label: t('Others') }
       ]
     },
@@ -723,7 +724,6 @@ const EditMember = () => {
         { value: 'Others', label: t('Others') }
       ]
     },
-    blood_group: { label: t('Blood Group'), type: 'text' },
     marital_status: {
       label: t('Marital Status'),
       type: 'select',
@@ -743,21 +743,23 @@ const EditMember = () => {
   };
 
   const contactInfoConfig = {
-    contact_no: { label: t('Contact Number'), type: 'text', required: true },
-    mobile_no: { label: t('Mobile Number'), type: 'text' },
-    preferred_contact: { label: t('Preferred Contact Method'), type: 'text' },
+    alternate_contact_no: { label: t('Alternate Contact Number'), type: 'text' },
     secondary_email: { label: t('Secondary Email'), type: 'email' },
     emergency_contact: { label: t('Emergency Contact Name'), type: 'text' },
+    emergency_phone: { label: t('Emergency Contact Number'), type: 'text' },
     best_time_to_contact: {
       label: t('Best Time to Contact'),
       type: 'select',
       options: [
-        { value: 'morning', label: t('Morning') },
-        { value: 'afternoon', label: t('Afternoon') },
-        { value: 'evening', label: t('Evening') },
-        { value: 'weekend', label: t('Weekend') }
+        { value: 'Business Hours (9 AM - 5 PM)', label: 'Business Hours (9 AM - 5 PM)' },
+        { value: 'Morning (6 AM - 12 PM)', label: 'Morning (6 AM - 12 PM)' },
+        { value: 'Afternoon (12 PM - 6 PM)', label: 'Afternoon (12 PM - 6 PM)' },
+        { value: 'Evening (6 PM - 10 PM)', label: 'Evening (6 PM - 10 PM)' },
+        { value: 'Anytime', label: 'Anytime' }
       ]
     },
+    aadhar_no: { label: 'Aadhaar Number', type: 'text' },
+    blood_group: { label: t('Blood Group'), type: 'text' },
   };
 
   const additionalInfoConfig = {
@@ -803,38 +805,8 @@ const EditMember = () => {
       )}
 
       <Box p={2} component="form" onSubmit={handleSubmit}>
-        {/* Access Control Section */}
+        {/* Profile Image & Media Gallery Card */}
         <Box display="flex" gap={3} sx={{ flexDirection: { xs: 'column', md: 'row' } }}>
-          {/* Access Control Card */}
-          <Card sx={{ mb: 3, flex: 1 }}>
-            <CardHeader
-              title="Access Control"
-              titleTypographyProps={{
-                variant: "h6",
-                color: "green",
-                borderBottom: '2px solid #e0e0e0',
-              }}
-            />
-
-            <CardContent>
-              <Grid container spacing={2}>
-                {Object.entries(accessControlConfig).map(([fieldName, config]) => (
-                  <Grid item xs={12} sm={fieldName === 'rejection_reason' ? 12 : 6} key={fieldName}>
-                    {renderField(fieldName, config)}
-                  </Grid>
-                ))}
-              </Grid>
-              {formData.paid_status === 'Paid' && (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  <Typography variant="body2">
-                    When status is set to "Paid", membership valid until date is required.
-                  </Typography>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Profile Image & Media Gallery Card */}
           <Card sx={{ mb: 3, flex: 1 }}>
             <CardHeader
               title="Profile Image & Media Gallery"
@@ -844,6 +816,7 @@ const EditMember = () => {
                 borderBottom: '2px solid #e0e0e0',
               }}
             />
+
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
                 <Avatar
@@ -992,18 +965,18 @@ const EditMember = () => {
           </Card>
         </Box>
 
-        {/* Personal Information Section */}
+        {/* Unified Personal Details Section (mirroring UserProfilePage structure) */}
         <Card sx={{ mb: 3 }}>
           <CardHeader
-            title="Personal Information"
+            title="Personal Details"
             titleTypographyProps={{
               variant: "h6",
               color: "green",
               borderBottom: '2px solid #e0e0e0',
             }}
-
           />
           <CardContent>
+            {/* Basic Personal Details */}
             <Grid container spacing={2}>
               {Object.entries(personalInfoConfig).map(([fieldName, config]) => (
                 <Grid item xs={12} sm={6} key={fieldName}>
@@ -1011,40 +984,11 @@ const EditMember = () => {
                 </Grid>
               ))}
             </Grid>
-          </CardContent>
-        </Card>
 
-        {/* Contact Information Section */}
-        <Card sx={{ mb: 3 }}>
-          <CardHeader
-            title="Contact Information"
-            titleTypographyProps={{
-              variant: "h6",
-              color: "green",
-              borderBottom: '2px solid #e0e0e0',
-            }}
-          />
-          <CardContent>
-            <Grid container spacing={2}>
-              {Object.entries(contactInfoConfig).map(([fieldName, config]) => (
-                <Grid item xs={12} sm={6} key={fieldName}>
-                  {renderField(fieldName, config)}
-                </Grid>
-              ))}
-            </Grid>
-          </CardContent>
-        </Card>
-
-        <Card sx={{ mb: 3 }}>
-          <CardHeader
-            title="Address"
-            titleTypographyProps={{
-              variant: "h6",
-              color: "green",
-              borderBottom: '2px solid #e0e0e0',
-            }}
-          />
-          <CardContent>
+            {/* Address Information */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, color: '#1976d2' }}>
+              Address Information
+            </Typography>
             <Grid container spacing={2}>
               {Object.entries(addressInfoConfig).map(([fieldName, config]) => (
                 <Grid item xs={12} sm={6} key={fieldName}>
@@ -1052,20 +996,23 @@ const EditMember = () => {
                 </Grid>
               ))}
             </Grid>
-          </CardContent>
-        </Card>
 
-        {/* Additional Information Section */}
-        <Card sx={{ mb: 3 }}>
-          <CardHeader
-            title="Social Media"
-            titleTypographyProps={{
-              variant: "h6",
-              color: "green",
-              borderBottom: '2px solid #e0e0e0',
-            }}
-          />
-          <CardContent>
+            {/* Additional Contact Information */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, color: '#1976d2' }}>
+              Additional Contact Information
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(contactInfoConfig).map(([fieldName, config]) => (
+                <Grid item xs={12} sm={6} key={fieldName}>
+                  {renderField(fieldName, config)}
+                </Grid>
+              ))}
+            </Grid>
+
+            {/* Social Media Information */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, color: '#1976d2' }}>
+              Social Media Information
+            </Typography>
             <Grid container spacing={2}>
               {Object.entries(additionalInfoConfig).map(([fieldName, config]) => (
                 <Grid item xs={12} sm={6} key={fieldName}>
@@ -1073,21 +1020,9 @@ const EditMember = () => {
                 </Grid>
               ))}
             </Grid>
-          </CardContent>
-        </Card>
 
-        {/* Additional Details Section - Forum Memberships */}
-        <Card sx={{ mb: 3 }}>
-          <CardHeader
-            title="Additional Details"
-            titleTypographyProps={{
-              variant: "h6",
-              color: "green",
-              borderBottom: '2px solid #e0e0e0',
-            }}
-          />
-          <CardContent>
-            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+            {/* Forum Memberships */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, color: '#1976d2' }}>
               Forum Memberships
             </Typography>
             <Grid container spacing={2}>
@@ -1237,6 +1172,30 @@ const EditMember = () => {
                   }}
                 />
               </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Access Control Card */}
+        <Card sx={{ mb: 3 }}>
+          <CardHeader
+            title="Access Control"
+            titleTypographyProps={{
+              variant: "h6",
+              color: "green",
+              borderBottom: '2px solid #e0e0e0',
+            }}
+          />
+          <CardContent>
+            <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+              Manage member access level and payment status.
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(accessControlConfig).map(([fieldName, config]) => (
+                <Grid item xs={12} sm={6} key={fieldName}>
+                  {renderField(fieldName, config)}
+                </Grid>
+              ))}
             </Grid>
           </CardContent>
         </Card>

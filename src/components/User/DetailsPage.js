@@ -528,7 +528,7 @@ const BusinessListing = () => {
     }, []);
 
     return (
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1" style={{ overflowAnchor: 'none' }}>
         <button
           onClick={onToggle}
           className={`w-full px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between transition-all duration-300 ${gradient ? 'bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100' : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-green-50'
@@ -547,7 +547,7 @@ const BusinessListing = () => {
           </div>
         </button>
         {isExpanded && (
-          <div className="border-t border-gray-100">
+          <div className="border-t border-gray-100" style={{ overflowAnchor: 'none' }}>
             <div className="p-4 sm:p-6 bg-gradient-to-br from-gray-50 to-white">
               {children}
             </div>
@@ -895,7 +895,7 @@ const BusinessListing = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8" style={{ overflowAnchor: 'none' }}>
 
         {/* About This Business Card - hidden for salary type */}
         {((businessProfile?.business_type || '').toLowerCase() !== 'salary') && (

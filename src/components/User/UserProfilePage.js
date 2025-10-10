@@ -1854,7 +1854,12 @@ const ProfilePage = () => {
         label="Marital Status"
         value={profileData.personal.maritalStatus}
         onChange={personalHandlers.maritalStatus}
-        options={['Single', 'Married', 'Divorced', 'Widowed']}
+        options={[
+          { value: 'single', label: 'Single' },
+          { value: 'married', label: 'Married' },
+          { value: 'divorced', label: 'Divorced' },
+          { value: 'widowed', label: 'Widowed' }
+        ]}
         disabled={isPersonalDisabled}
       />
 
