@@ -256,14 +256,6 @@ const MemberManagement = () => {
     }
   };
 
-  const getPaidStatusIcon = (paidStatus) => {
-    switch (paidStatus) {
-      case 'Paid': return <Paid />;
-      case 'Unpaid': return <MoneyOff />;
-      default: return <Payment />;
-    }
-  };
-
   const getProMemberColor = (proStatus) => {
     switch (proStatus) {
       case 'Pro': return '#FF9800';
@@ -655,7 +647,6 @@ const MemberManagement = () => {
                               <Chip
                                 label={member.paid_status || 'Unpaid'}
                                 size="small"
-                                icon={getPaidStatusIcon(member.paid_status)}
                                 sx={{
                                   backgroundColor: getPaidStatusColor(member.paid_status),
                                   color: 'white',
@@ -866,7 +857,6 @@ const MemberManagement = () => {
                     />
                     <Chip
                       label={selectedMember.paid_status || 'Unpaid'}
-                      icon={getPaidStatusIcon(selectedMember.paid_status)}
                       sx={{ 
                         bgcolor: getPaidStatusColor(selectedMember.paid_status), 
                         color: 'white', 

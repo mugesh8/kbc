@@ -415,7 +415,22 @@ const MemberDetailsPage = () => {
                               {member.contact_no}
                             </a>
                           ) : (
-                            <p className="text-gray-600 text-left">Not available</p>
+                            <p className="text-gray-600">Not available</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                          <Phone className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold text-gray-800 block">Mobile Number</span>
+                          {member.mobile_no ? (
+                            <a href={`tel:${member.mobile_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                              {member.mobile_no}
+                            </a>
+                          ) : (
+                            <p className="text-gray-600">Not available</p>
                           )}
                         </div>
                       </div>
@@ -441,7 +456,22 @@ const MemberDetailsPage = () => {
                               {member.alternate_contact_no}
                             </a>
                           ) : (
-                            <p className="text-gray-600 text-left">Not available</p>
+                            <p className="text-gray-600">Not available</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-teal-100 rounded-lg flex-shrink-0">
+                          <Briefcase className="w-4 h-4 text-teal-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold text-gray-800 block">Work Phone</span>
+                          {member.work_phone ? (
+                            <a href={`tel:${member.work_phone}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                              {member.work_phone}
+                            </a>
+                          ) : (
+                            <p className="text-gray-600">Not available</p>
                           )}
                         </div>
                       </div>

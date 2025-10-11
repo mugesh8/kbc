@@ -54,12 +54,11 @@ const KBCDirectoryFooter = () => {
               <li>
                 <a href="/home" className="text-gray-400 hover:text-white transition-colors text-sm">Home</a>
               </li>
-              
-              <li>
-                <a href="/categories" className="text-gray-400 hover:text-white transition-colors text-sm">Categories</a>
-              </li>
               <li>
                 <a href="/members" className="text-gray-400 hover:text-white transition-colors text-sm">Members</a>
+              </li>
+              <li>
+                <a href="/categories" className="text-gray-400 hover:text-white transition-colors text-sm">Categories</a>
               </li>
               <li>
                 <a href="/about" className="text-gray-400 hover:text-white transition-colors text-sm">About</a>

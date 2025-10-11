@@ -72,17 +72,15 @@ const BusinessCategories = () => {
 
   // Function to calculate average rating for a business (EXACTLY MATCHING HOMEPAGE)
   const getBusinessRatings = (businessId) => {
-    const businessRatings = ratings.filter((rating) => {
-      const rBid = parseInt(rating.business_id, 10);
-      const bId = parseInt(businessId, 10);
-      return !Number.isNaN(rBid) && !Number.isNaN(bId) && rBid === bId;
-    });
-
+    const businessRatings = ratings.filter(rating => 
+      rating.business_id === businessId && rating.status === 'approved'
+    );
+    
     if (businessRatings.length === 0) {
       return { averageRating: 0, reviewCount: 0 };
     }
-
-    const totalRating = businessRatings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0);
+    
+    const totalRating = businessRatings.reduce((sum, rating) => sum + rating.rating, 0);
     const averageRating = totalRating / businessRatings.length;
 
     return {
@@ -462,7 +460,28 @@ const BusinessCategories = () => {
                               </span>
                             </div>
                           </div>
-                          <div className="text-gray-700 mb-3 sm:mb-4 text-left text-xs sm:text-sm">Best time to contact : <span className="font-medium">{business?.best_contact_time || 'Morning'}</span></div>
+
+                          {/* Business info - Updated to match HomePage style */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {business?.city && (
+                              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                                <MapPin className="w-3 h-3" />
+                                {business.city}
+                              </span>
+                            )}
+                            {business?.business_type && (
+                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
+                                <Briefcase className="w-3 h-3" />
+                                {business.business_type}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Best time to contact - Added from HomePage */}
+                          <div className="text-gray-700 mb-3 sm:mb-4 text-left text-xs sm:text-sm">
+                            Best time to contact: <span className="font-medium">{business?.best_contact_time || 'Morning'}</span>
+                          </div>
+                          
                           <div className="flex items-center gap-2">
                             <button className="inline-flex items-center px-4 sm:px-7 py-1.5 sm:py-2 rounded-full bg-green-600 text-white text-xs sm:text-sm font-medium hover:bg-green-700 transition"
                               onClick={(e) => {
