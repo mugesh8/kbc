@@ -310,39 +310,39 @@ const MemberDetailsPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div className="space-y-3 sm:space-y-4">
                       <div className="flex items-start gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                          <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                        <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                          <User className="w-4 h-4 text-blue-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block text-sm sm:text-base">Full Name</span>
-                          <p className="text-gray-600 text-sm sm:text-base">{member.first_name} {member.last_name}</p>
+                          <p className="text-gray-600 text-sm sm:text-base text-left">{member.first_name} {member.last_name}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Calendar className="w-4 h-4 text-green-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Date of Birth</span>
-                          <p className="text-gray-600">{member.dob || 'Not available'}</p>
+                          <p className="text-gray-600 text-left">{member.dob || 'Not available'}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                           <Users className="w-4 h-4 text-purple-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Gender</span>
-                          <p className="text-gray-600">{member.gender || 'Not available'}</p>
+                          <p className="text-gray-600 text-left">{member.gender || 'Not available'}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-pink-100 rounded-lg flex-shrink-0">
                           <Heart className="w-4 h-4 text-pink-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Marital Status</span>
-                          <p className="text-gray-600">{member.marital_status || 'Not available'}</p>
+                          <p className="text-gray-600 text-left">{member.marital_status || 'Not available'}</p>
                         </div>
                       </div>
                     </div>
@@ -351,18 +351,18 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                           <Shield className="w-4 h-4 text-red-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Blood Group</span>
-                          <p className="text-gray-600">{member.blood_group || 'Not available'}</p>
+                          <p className="text-gray-600 text-left">{member.blood_group || 'Not available'}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
                           <Award className="w-4 h-4 text-yellow-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Access Level</span>
-                          <div className="mt-1">
+                          <div className="mt-1 text-left">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               member.access_level?.toLowerCase() === 'admin' ? 'bg-red-100 text-red-800' :
                               member.access_level?.toLowerCase() === 'premium' ? 'bg-purple-100 text-purple-800' :
@@ -377,9 +377,9 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-indigo-100 rounded-lg flex-shrink-0">
                           <Shield className="w-4 h-4 text-indigo-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Status</span>
-                          <div className="mt-1">
+                          <div className="mt-1 text-left">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               member.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' :
                               member.status?.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -408,29 +408,14 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Phone className="w-4 h-4 text-green-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Primary Contact</span>
                           {member.contact_no ? (
-                            <a href={`tel:${member.contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                            <a href={`tel:${member.contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline text-left">
                               {member.contact_no}
                             </a>
                           ) : (
-                            <p className="text-gray-600">Not available</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                          <Phone className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="font-semibold text-gray-800 block">Mobile Number</span>
-                          {member.mobile_no ? (
-                            <a href={`tel:${member.mobile_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
-                              {member.mobile_no}
-                            </a>
-                          ) : (
-                            <p className="text-gray-600">Not available</p>
+                            <p className="text-gray-600 text-left">Not available</p>
                           )}
                         </div>
                       </div>
@@ -438,9 +423,9 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
                           <Mail className="w-4 h-4 text-purple-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Email Address</span>
-                          <p className="text-gray-600 break-words">{member.email || 'Not available'}</p>
+                          <p className="text-gray-600 break-words text-left">{member.email || 'Not available'}</p>
                         </div>
                       </div>
                     </div>
@@ -449,29 +434,14 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                           <Phone className="w-4 h-4 text-orange-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Alternative Contact</span>
                           {member.alternate_contact_no ? (
-                            <a href={`tel:${member.alternate_contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                            <a href={`tel:${member.alternate_contact_no}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline text-left">
                               {member.alternate_contact_no}
                             </a>
                           ) : (
-                            <p className="text-gray-600">Not available</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-teal-100 rounded-lg flex-shrink-0">
-                          <Briefcase className="w-4 h-4 text-teal-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="font-semibold text-gray-800 block">Work Phone</span>
-                          {member.work_phone ? (
-                            <a href={`tel:${member.work_phone}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
-                              {member.work_phone}
-                            </a>
-                          ) : (
-                            <p className="text-gray-600">Not available</p>
+                            <p className="text-gray-600 text-left">Not available</p>
                           )}
                         </div>
                       </div>
@@ -479,9 +449,9 @@ const MemberDetailsPage = () => {
                         <div className="p-2 bg-cyan-100 rounded-lg flex-shrink-0">
                           <Clock className="w-4 h-4 text-cyan-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block">Best Time to Contact</span>
-                          <p className="text-gray-600">{member.best_time_to_contact || 'Not available'}</p>
+                          <p className="text-gray-600 text-left">{member.best_time_to_contact || 'Not available'}</p>
                         </div>
                       </div>
                     </div>
@@ -500,9 +470,9 @@ const MemberDetailsPage = () => {
                       {businesses.map((b) => (
                         <div key={b.id} className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-3 sm:p-4 hover:shadow-lg transition-all duration-300">
                           <div className="flex flex-col gap-2 sm:gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-gray-900 mb-1 text-sm sm:text-base">{b.company_name}</h4>
-                              <p className="text-xs sm:text-sm text-gray-600 mb-2">{b.business_type || b.designation || ''}</p>
+                            <div className="flex-1 min-w-0 text-left">
+                              <h4 className="font-bold text-gray-900 mb-1 text-sm sm:text-base text-left">{b.company_name}</h4>
+                              <p className="text-xs sm:text-sm text-gray-600 mb-2 text-left">{b.business_type || b.designation || ''}</p>
                               {b.business_type && (
                                 <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                                   {b.business_type}
@@ -527,9 +497,9 @@ const MemberDetailsPage = () => {
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center">
                           <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                         </div>
-                        <div>
-                          <p className="text-gray-500 text-sm sm:text-base">No businesses listed</p>
-                          <p className="text-gray-400 text-xs sm:text-sm mt-1">This member hasn't added any business information yet.</p>
+                        <div className="text-left">
+                          <p className="text-gray-500 text-sm sm:text-base text-left">No businesses listed</p>
+                          <p className="text-gray-400 text-xs sm:text-sm mt-1 text-left">This member hasn't added any business information yet.</p>
                         </div>
                       </div>
                     </div>
@@ -553,7 +523,7 @@ const MemberDetailsPage = () => {
                         {family.father_name && (
                           <div className="flex items-start gap-2">
                             <User className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Father: </span>
                               <span className="text-gray-600">{family.father_name}</span>
                             </div>
@@ -562,9 +532,9 @@ const MemberDetailsPage = () => {
                         {family.father_contact && (
                           <div className="flex items-start gap-2">
                             <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Father Contact: </span>
-                              <a href={`tel:${family.father_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                              <a href={`tel:${family.father_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline text-left">
                                 {family.father_contact}
                               </a>
                             </div>
@@ -573,7 +543,7 @@ const MemberDetailsPage = () => {
                         {family.mother_name && (
                           <div className="flex items-start gap-2">
                             <User className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Mother: </span>
                               <span className="text-gray-600">{family.mother_name}</span>
                             </div>
@@ -582,9 +552,9 @@ const MemberDetailsPage = () => {
                         {family.mother_contact && (
                           <div className="flex items-start gap-2">
                             <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Mother Contact: </span>
-                              <a href={`tel:${family.mother_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                              <a href={`tel:${family.mother_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline text-left">
                                 {family.mother_contact}
                               </a>
                             </div>
@@ -597,7 +567,7 @@ const MemberDetailsPage = () => {
                         {family.spouse_name && (
                           <div className="flex items-start gap-2">
                             <Heart className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Spouse: </span>
                               <span className="text-gray-600">{family.spouse_name}</span>
                             </div>
@@ -606,9 +576,9 @@ const MemberDetailsPage = () => {
                         {family.spouse_contact && (
                           <div className="flex items-start gap-2">
                             <Phone className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Spouse Contact: </span>
-                              <a href={`tel:${family.spouse_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline">
+                              <a href={`tel:${family.spouse_contact}`} className="text-green-700 hover:text-green-800 underline-offset-2 hover:underline text-left">
                                 {family.spouse_contact}
                               </a>
                             </div>
@@ -617,7 +587,7 @@ const MemberDetailsPage = () => {
                         {typeof family.number_of_children === 'number' && (
                           <div className="flex items-start gap-2">
                             <Users className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Children: </span>
                               <span className="text-gray-600">{family.number_of_children}</span>
                             </div>
@@ -626,7 +596,7 @@ const MemberDetailsPage = () => {
                         {family.children_names && (
                           <div className="flex items-start gap-2">
                             <Users className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Children Names: </span>
                               <span className="text-gray-600">{formatChildrenNames(family.children_names)}</span>
                             </div>
@@ -638,7 +608,7 @@ const MemberDetailsPage = () => {
                         <div className="pt-4 border-t border-gray-200">
                           <div className="flex items-start gap-2">
                             <MapPin className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                               <span className="font-medium text-gray-800">Family Address: </span>
                               <span className="text-gray-600">{family.address}</span>
                             </div>
@@ -652,9 +622,9 @@ const MemberDetailsPage = () => {
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center">
                           <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                         </div>
-                        <div>
-                          <p className="text-gray-500 text-sm sm:text-base">No family information available</p>
-                          <p className="text-gray-400 text-xs sm:text-sm mt-1">Family details haven't been added yet.</p>
+                        <div className="text-left">
+                          <p className="text-gray-500 text-sm sm:text-base text-left">No family information available</p>
+                          <p className="text-gray-400 text-xs sm:text-sm mt-1 text-left">Family details haven't been added yet.</p>
                         </div>
                       </div>
                     </div>
@@ -673,18 +643,18 @@ const MemberDetailsPage = () => {
                       <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
                         <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-orange-600" />
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 text-left">
                         <span className="font-semibold text-gray-800 block text-sm sm:text-base">Kootam</span>
-                        <p className="text-gray-600 text-sm sm:text-base">{member.kootam || 'Not available'}</p>
+                        <p className="text-gray-600 text-sm sm:text-base text-left">{member.kootam || 'Not available'}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2 sm:gap-3">
                       <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
                         <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
                       </div>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 text-left">
                         <span className="font-semibold text-gray-800 block text-sm sm:text-base">Kovil</span>
-                        <p className="text-gray-600 text-sm sm:text-base">{member.kovil || 'Not available'}</p>
+                        <p className="text-gray-600 text-sm sm:text-base text-left">{member.kovil || 'Not available'}</p>
                       </div>
                     </div>
                     {member.aadhar_no && (
@@ -692,9 +662,9 @@ const MemberDetailsPage = () => {
                         <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg flex-shrink-0">
                           <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 text-left">
                           <span className="font-semibold text-gray-800 block text-sm sm:text-base">Aadhaar Number</span>
-                          <p className="text-gray-600 text-sm sm:text-base">{member.aadhar_no}</p>
+                          <p className="text-gray-600 text-sm sm:text-base text-left">{member.aadhar_no}</p>
                         </div>
                       </div>
                     )}

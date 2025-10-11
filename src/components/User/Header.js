@@ -137,14 +137,14 @@ const Header = () => {
               </button>
 
               {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 text-left">
+                  <div className="px-4 py-2 border-b border-gray-100 text-left">
+                    <p className="text-sm font-medium text-gray-900 text-left">
                       {memberData?.first_name
                         ? `${memberData.first_name}`
                         : 'Guest User'}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 text-left">
                       {memberData?.email || memberData?.contact_no || 'Not logged in'}
                     </p>
                   </div>
@@ -153,7 +153,7 @@ const Header = () => {
                       <Link 
                         to="/profile" 
                         onClick={handleProfileClick}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
                       >
                         Profile
                       </Link>
@@ -168,7 +168,7 @@ const Header = () => {
                     <Link 
                       to="/login" 
                       onClick={handleProfileClick}
-                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors text-left"
                     >
                       Login
                     </Link>
@@ -204,14 +204,14 @@ const Header = () => {
               </button>
 
               {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 text-left">
+                  <div className="px-4 py-2 border-b border-gray-100 text-left">
+                    <p className="text-sm font-medium text-gray-900 text-left">
                       {memberData?.first_name
                         ? `${memberData.first_name}`
                         : 'Guest User'}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 text-left">
                       {memberData?.email || memberData?.contact_no || 'Not logged in'}
                     </p>
                   </div>
@@ -223,7 +223,7 @@ const Header = () => {
                         key={item.name}
                         to={item.href}
                         onClick={() => setShowProfileDropdown(false)}
-                        className={`block px-4 py-2 text-sm transition-colors ${
+                        className={`block px-4 py-2 text-sm transition-colors text-left ${
                           location.pathname === item.href
                             ? 'text-green-700 bg-green-50'
                             : 'text-gray-700 hover:bg-gray-50'
@@ -240,7 +240,7 @@ const Header = () => {
                       <Link 
                         to="/profile" 
                         onClick={() => setShowProfileDropdown(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
                       >
                         Profile
                       </Link>
@@ -260,7 +260,7 @@ const Header = () => {
                     <Link 
                       to="/login" 
                       onClick={() => setShowProfileDropdown(false)}
-                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors"
+                      className="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition-colors text-left"
                     >
                       Login
                     </Link>

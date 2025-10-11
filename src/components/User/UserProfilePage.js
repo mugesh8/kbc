@@ -2199,7 +2199,6 @@ const ProfilePage = () => {
         <div className="max-w-7xl mx-auto py-8 sm:py-12 lg:py-16">
           <div className="text-center">
             <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-white mb-4">My Profile</h1>
-            <p className="text-base sm:text-lg text-white/90 mb-6 sm:mb-8">Manage your personal, business, and family information</p>
             {error && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 max-w-2xl mx-auto">
                 {error}
@@ -2273,7 +2272,6 @@ const ProfilePage = () => {
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900">Personal Details</h2>
-                  <p className="text-xs sm:text-sm text-gray-600">Your personal information and contact details</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 sm:space-x-4">
@@ -2641,7 +2639,6 @@ const ProfilePage = () => {
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900">Business Details</h2>
-                  <p className="text-xs sm:text-sm text-gray-600">Your business information and professional profile</p>
                 </div>
               </div>
               <div className="flex space-x-2 sm:space-x-3">
@@ -3130,7 +3127,6 @@ const ProfilePage = () => {
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-gray-900">Family Details</h2>
-                  <p className="text-xs sm:text-sm text-gray-600">Your family information and emergency contacts</p>
                 </div>
               </div>
               <button

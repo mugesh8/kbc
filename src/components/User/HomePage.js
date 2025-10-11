@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Star, Users, Eye, Phone, Mail, Facebook, Twitter, Linkedin, Instagram, MessageCircle } from 'lucide-react';
+import { Search, MapPin, Star, Users, Eye, Phone, Mail, Facebook, Twitter, Linkedin, Instagram, MessageCircle, Building2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Import your header and footer components
@@ -274,15 +274,17 @@ const HomePage = () => {
 
   // Calculate ratings for a specific business
   const getBusinessRatings = (businessId) => {
-    const businessRatings = ratings.filter(rating =>
-      rating.business_id === businessId && rating.status === 'approved'
-    );
+    const businessRatings = ratings.filter((rating) => {
+      const rBid = parseInt(rating.business_id, 10);
+      const bId = parseInt(businessId, 10);
+      return !Number.isNaN(rBid) && !Number.isNaN(bId) && rBid === bId;
+    });
 
     if (businessRatings.length === 0) {
       return { averageRating: 0, reviewCount: 0 };
     }
 
-    const totalRating = businessRatings.reduce((sum, rating) => sum + rating.rating, 0);
+    const totalRating = businessRatings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0);
     const averageRating = totalRating / businessRatings.length;
 
     return {
@@ -377,8 +379,13 @@ const HomePage = () => {
       <div className="bg-gradient-to-r from-green-500 to-green-600 text-white py-8 sm:py-10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">Discover Local Businesses</h1>
-            <p className="text-green-100 text-base sm:text-lg">Connect with trusted businesses in your community</p>
+            <div className="flex items-center justify-center mb-3 sm:mb-4">
+              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
+                <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-2">Discover Local Businesses</h1>
+            <p className="text-green-100 text-base sm:text-lg">Connect with Trusted Businesses in your Community</p>
           </div>
 
           {/* Search Section */}
@@ -407,7 +414,7 @@ const HomePage = () => {
                     {/* Tag Input */}
                     <input
                       type="text"
-                      placeholder={selectedTags.length === 0 ? "Search businesses, services, tags..." : "Add more tags..."}
+                      placeholder={selectedTags.length === 0 ? "Search Businesses, Tags..." : "Add more tags..."}
                       value={tagInput}
                       onChange={handleSearchChange}
                       onKeyPress={handleTagInputKeyPress}
@@ -525,7 +532,6 @@ const HomePage = () => {
       <div className="container mx-auto px-4 py-8 sm:py-12">
         <div className="mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Businesses</h2>
-          <p className="text-gray-600 text-sm sm:text-base">Discover top-rated local businesses</p>
         </div>
 
         {/* Category Filter (dynamic from business_type) */}
@@ -865,7 +871,7 @@ const HomePage = () => {
       <div className="bg-gray-100 py-8 sm:py-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Browse by Category</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Business Types</h2>
             <button
               onClick={() => navigate('/categories')}
               className="text-green-600 font-medium hover:text-green-700 border border-green-600 px-4 py-2 rounded-lg hover:bg-green-50 transition duration-200 text-sm sm:text-base"
@@ -884,17 +890,14 @@ const HomePage = () => {
                   setAppliedCategory(category.name);
                 }}
               >
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <div className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${category.color}`}>
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${category.color} mb-2`}>
                     {category.name}
                   </div>
                   <div className="text-xl sm:text-2xl font-bold text-gray-900">
                     {category.count}
                   </div>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  {category.count === '1' ? 'business' : 'businesses'}
-                </p>
               </div>
             ))}
           </div>

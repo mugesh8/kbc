@@ -8,15 +8,24 @@ const About = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-0 font-['Roboto','Helvetica','Arial',sans-serif]">
       <Header />
+      
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-green-600 to-green-700 text-white py-12 sm:py-16 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
-            About Us - Kongu Business Community (KBC)
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl opacity-90 font-normal">
-            Empowering Kongu through business, collaboration, and innovation
-          </p>
+      <div className="bg-gradient-to-r from-green-500 to-green-600 text-white py-8 sm:py-10">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-6 sm:mb-8">
+            {/* Icon above heading - same as HomePage */}
+            <div className="flex items-center justify-center mb-3 sm:mb-4">
+              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
+                <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-2">
+              About Us - Kongu Business Community (KBC)
+            </h1>
+            <p className="text-green-100 text-base sm:text-lg">
+              Empowering Kongu through business, collaboration, and innovation
+            </p>
+          </div>
         </div>
       </div>
 
@@ -158,6 +167,7 @@ const About = () => {
           </div>
         </div>
       </div>
+      
       <Footer />
       <MobileFooter />
     </div>

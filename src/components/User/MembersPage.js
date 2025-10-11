@@ -131,20 +131,20 @@ const MembersPage = () => {
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 px-2">
               Our Community Members
             </h1>
-            <p className="text-green-100 text-sm sm:text-base md:text-lg lg:text-xl max-w-2xl mx-auto px-4">
-              Connect with fellow community members, discover businesses, and build meaningful relationships
+            <p className="text-green-100 text-base sm:text-lg">
+              Connect with Fellow Community Members, Discover Businesses, and Build Meaningful Relationships
             </p>
           </div>
 
           {/* Search Section */}
           <div className="max-w-4xl mx-auto bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
-            <div className="relative">
+            <div className="relative border border-gray-200 rounded-xl">
               <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
               </div>
               <input
                 type="text"
-                placeholder="Search members by name, business, kootam, kovil, phone..."
+                placeholder="Search Members by Name, Business, Kootam, Kovil, Phone..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 border-5 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 text-sm sm:text-base text-gray-900 placeholder-gray-500"
@@ -228,7 +228,7 @@ const MembersPage = () => {
                         <div className="absolute inset-0 bg-black/10"></div>
                         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                           <div className="flex items-center gap-2 sm:gap-3">
-                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white p-0.5 sm:p-1 shadow-lg">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-white p-0.5 sm:p-1 shadow-lg flex-shrink-0">
                               <div className="w-full h-full rounded-lg sm:rounded-xl overflow-hidden bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
                                 {profileImg && !hasImageError ? (
                                   <img 
@@ -254,8 +254,8 @@ const MembersPage = () => {
                                 </span>
                               </div>
                             </div>
-                            <div className="flex-1 text-white min-w-0">
-                              <h3 className="text-base sm:text-lg font-bold truncate">{m.first_name} {m.last_name}</h3>
+                            <div className="flex-1 min-w-0 text-left">
+                              <h3 className="text-base sm:text-lg font-bold text-white truncate">{m.first_name} {m.last_name}</h3>
                               <p className="text-green-100 text-xs sm:text-sm truncate">{m.email || m.contact_no}</p>
                             </div>
                           </div>
@@ -265,23 +265,15 @@ const MembersPage = () => {
                       {/* Card Content */}
                       <div className="p-4 sm:p-6">
                         <div className="space-y-3 sm:space-y-4">
-                          {(m.kootam || m.kovil) && (
-                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                              <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
-                              <span className="truncate">
-                              {m.kootam ? `Kootam: ${m.kootam}` : ''}{m.kootam && m.kovil ? ' • ' : ''}{m.kovil ? `Kovil: ${m.kovil}` : ''}
-                            </span>
-                            </div>
-                          )}
                           
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                               <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
                                 <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                               </div>
-                              <div>
+                              <div className="text-left">
                                 <p className="text-sm sm:text-base font-medium text-gray-900">{businessCount}</p>
-                                <p className="text-xs text-gray-500">Businesses</p>
+                                <p className="text-xs text-gray-500">Business</p>
                               </div>
                             </div>
                             
@@ -307,83 +299,80 @@ const MembersPage = () => {
                   
                   return (
                     <div key={m.mid} className="bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-4 sm:p-6">
-                      <div className="flex items-center gap-4 sm:gap-6">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-green-100 to-emerald-100 p-1 shadow-lg flex-shrink-0">
-                          <div className="w-full h-full rounded-lg sm:rounded-xl overflow-hidden flex items-center justify-center">
-                            {profileImg && !hasImageError ? (
-                              <img 
-                                src={profileImg} 
-                                alt={m.first_name} 
-                                className="w-full h-full object-cover"
-                                onError={() => {
-                                  setImageErrors(prev => new Set([...prev, m.mid]));
-                                }}
-                                onLoad={() => {
-                                  setImageErrors(prev => {
-                                    const newSet = new Set(prev);
-                                    newSet.delete(m.mid);
-                                    return newSet;
-                                  });
-                                }}
-                              />
-                            ) : null}
-                            <span 
-                              className={`text-green-600 font-bold text-lg sm:text-2xl ${profileImg && !hasImageError ? 'hidden' : 'flex'} items-center justify-center`}
-                            >
-                              {(m.first_name || 'U').charAt(0)}
-                            </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                        {/* Profile Image */}
+                        <div className="flex-shrink-0">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-green-100 to-emerald-100 p-1 shadow-lg">
+                            <div className="w-full h-full rounded-lg sm:rounded-xl overflow-hidden flex items-center justify-center">
+                              {profileImg && !hasImageError ? (
+                                <img 
+                                  src={profileImg} 
+                                  alt={m.first_name} 
+                                  className="w-full h-full object-cover"
+                                  onError={() => {
+                                    setImageErrors(prev => new Set([...prev, m.mid]));
+                                  }}
+                                  onLoad={() => {
+                                    setImageErrors(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.delete(m.mid);
+                                      return newSet;
+                                    });
+                                  }}
+                                />
+                              ) : null}
+                              <span 
+                                className={`text-green-600 font-bold text-lg sm:text-2xl ${profileImg && !hasImageError ? 'hidden' : 'flex'} items-center justify-center`}
+                              >
+                                {(m.first_name || 'U').charAt(0)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         
+                        {/* Member Info - Left Aligned */}
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col gap-3 sm:gap-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                              <div className="min-w-0">
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1 truncate">{m.first_name} {m.last_name}</h3>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-2">
-                                  {m.email && (
-                                    <div className="flex items-center gap-1 min-w-0">
-                                      <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
-                                      <span className="truncate">{m.email}</span>
-                                    </div>
-                                  )}
-                                  {m.contact_no && (
-                                    <div className="flex items-center gap-1 min-w-0">
-                                      <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
-                                      <span className="truncate">{m.contact_no}</span>
-                                    </div>
-                                  )}
-                                </div>
-                                {(m.kootam || m.kovil) && (
-                                  <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-500">
-                                    <Building2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
-                                    <span className="truncate">
-                                      {m.kootam ? `Kootam: ${m.kootam}` : ''}{m.kootam && m.kovil ? ' • ' : ''}{m.kovil ? `Kovil: ${m.kovil}` : ''}
-                                    </span>
+                            {/* Name and Contact Info */}
+                            <div className="text-left">
+                              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{m.first_name} {m.last_name}</h3>
+                              
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm text-gray-600 mb-3">
+                                {m.email && (
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                                    <span className="truncate">{m.email}</span>
                                   </div>
                                 )}
-                              </div>
-                              
-                              <div className="flex items-center gap-3 sm:gap-4">
-                                <div className="text-center">
-                                  <div className="text-xl sm:text-2xl font-bold text-green-600">{businessCount}</div>
-                                  <div className="text-xs text-gray-500">Businesses</div>
-                                </div>
-                                <Link 
-                                  to={`/member/${m.mid}`} 
-                                  className="px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm sm:text-base font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg whitespace-nowrap"
-                                >
-                                  View Profile
-                                </Link>
+                                {m.contact_no && (
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Phone className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                                    <span className="truncate">{m.contact_no}</span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
                         </div>
+
+                        {/* Business Count and Action Button - Right Aligned */}
+                        <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
+                          <div className="text-center sm:text-right">
+                            <div className="text-xl sm:text-2xl font-bold text-green-600">{businessCount}</div>
+                            <div className="text-xs text-gray-500 whitespace-nowrap">Businesses</div>
+                          </div>
+                          <Link 
+                            to={`/member/${m.mid}`} 
+                            className="px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm sm:text-base font-semibold hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg whitespace-nowrap flex-shrink-0"
+                          >
+                            View Profile
+                          </Link>
+                        </div>
                       </div>
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
             
             {filtered.length === 0 && (
