@@ -72,15 +72,17 @@ const BusinessCategories = () => {
 
   // Function to calculate average rating for a business (EXACTLY MATCHING HOMEPAGE)
   const getBusinessRatings = (businessId) => {
-    const businessRatings = ratings.filter(rating => 
-      rating.business_id === businessId && rating.status === 'approved'
-    );
+    const businessRatings = ratings.filter(rating => {
+      const rBid = parseInt(rating.business_id, 10);
+      const bId = parseInt(businessId, 10);
+      return !Number.isNaN(rBid) && !Number.isNaN(bId) && rBid === bId;
+    });
     
     if (businessRatings.length === 0) {
       return { averageRating: 0, reviewCount: 0 };
     }
     
-    const totalRating = businessRatings.reduce((sum, rating) => sum + rating.rating, 0);
+    const totalRating = businessRatings.reduce((sum, rating) => sum + Number(rating.rating || 0), 0);
     const averageRating = totalRating / businessRatings.length;
 
     return {
@@ -122,6 +124,13 @@ const BusinessCategories = () => {
       }
     }
   }, []);
+
+  // Function to get member name (matching HomePage logic)
+  const getMemberName = (business) => {
+    const memberFirstName = business?.member?.first_name || business?.Member?.first_name || '';
+    const memberLastName = business?.member?.last_name || business?.Member?.last_name || '';
+    return [memberFirstName, memberLastName].filter(Boolean).join(' ');
+  };
 
   // Fetch categories and business counts from API
   useEffect(() => {
@@ -273,13 +282,6 @@ const BusinessCategories = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentItems = filteredBusinesses.slice(startIndex, endIndex);
 
-  // Function to get member name (matching HomePage logic)
-  const getMemberName = (business) => {
-    const memberFirstName = business?.member?.first_name || business?.Member?.first_name || '';
-    const memberLastName = business?.member?.last_name || business?.Member?.last_name || '';
-    return [memberFirstName, memberLastName].filter(Boolean).join(' ');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50 to-emerald-50 pb-20 lg:pb-0">
       <Header />
@@ -378,7 +380,7 @@ const BusinessCategories = () => {
           </div>
         )}
 
-        {/* Business Cards View - UPDATED WITH EXACT HOMEPAGE CARD DIMENSIONS AND STYLING */}
+        {/* Business Cards View - UPDATED WITH EXACT HOMEPAGE CARD DIMENSIONS, STYLING, AND RATINGS */}
         {!loading && !error && showBusinesses && (
           <>
             {/* Results count */}
@@ -391,7 +393,7 @@ const BusinessCategories = () => {
               </p>
             </div>
 
-            {/* Business Grid - EXACT SAME CARD SIZE AND STYLING AS HOMEPAGE */}
+            {/* Business Grid - EXACT SAME CARD SIZE AND STYLING AS HOMEPAGE WITH RATINGS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8">
               {currentItems.map((business) => {
                 const imageUrl = getBannerImageUrl(business);
@@ -420,8 +422,12 @@ const BusinessCategories = () => {
                         {/* Avatar and member name positioned on the right side between green and white sections - EXACT SAME POSITIONING */}
                         <div className="absolute right-6 top-20 flex flex-col items-end z-10">
                           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-md border-2 border-white">
-                            {imageUrl ? (
-                              <img src={`${baseurl}/${business.Member?.profile_image}`} alt="Profile" className="w-12 h-12 object-cover rounded-full" />
+                            {business?.Member?.profile_image ? (
+                              <img 
+                                src={`${baseurl}/${business.Member.profile_image}`} 
+                                alt="Profile" 
+                                className="w-12 h-12 object-cover rounded-full" 
+                              />
                             ) : (
                               <div className="w-10 h-10 bg-green-100 rounded-full" />
                             )}
@@ -437,6 +443,8 @@ const BusinessCategories = () => {
                         <div className="px-3 sm:px-4 pt-10 sm:pt-12 pb-3 text-left">
                           <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 mb-2 text-left">{title}</h3>
                           <p className="text-gray-600 text-sm sm:text-base mb-3 text-left">{subtitle}</p>
+                          
+                          {/* Ratings Section - EXACT SAME AS HOMEPAGE */}
                           <div className="flex items-center gap-2 sm:gap-3 mb-3 justify-start">
                             <div className="flex items-center text-yellow-500">
                               {[1, 2, 3, 4, 5].map((star) => (
@@ -453,28 +461,12 @@ const BusinessCategories = () => {
                             </div>
                             <div className="flex items-baseline gap-1 sm:gap-2">
                               <span className="text-gray-900 text-sm sm:text-lg font-semibold">
-                                {ratingValue > 0 ? ratingValue.toFixed(1) : ''}
+                                {ratingValue > 0 ? ratingValue.toFixed(1) : '0.0'}
                               </span>
                               <span className="text-gray-500 text-xs sm:text-sm">
                                 ({reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'})
                               </span>
                             </div>
-                          </div>
-
-                          {/* Business info - Updated to match HomePage style */}
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {business?.city && (
-                              <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
-                                <MapPin className="w-3 h-3" />
-                                {business.city}
-                              </span>
-                            )}
-                            {business?.business_type && (
-                              <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">
-                                <Briefcase className="w-3 h-3" />
-                                {business.business_type}
-                              </span>
-                            )}
                           </div>
                           
                           {/* Best time to contact - Added from HomePage */}

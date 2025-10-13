@@ -672,8 +672,7 @@ const EditMember = () => {
       type: 'select',
       options: [
         { value: 'Basic', label: t('Basic') },
-        { value: 'Premium', label: 'Premium' },
-        { value: 'Admin', label: 'Admin' }
+        { value: 'Advanced', label: 'Advanced' }
       ],
       required: true
     },
