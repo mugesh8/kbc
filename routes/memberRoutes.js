@@ -8,6 +8,7 @@ const { uploadBusinessProfileMedia } = require('../middleware/multer');
 router.post('/member/register', uploadBusinessProfileMedia, memberController.registerMember);
 router.post('/member/login', memberController.loginMember);
 router.post('/member/logout/:id', memberController.logoutMember);
+router.post('/add-business-profile/:member_id', uploadBusinessProfileMedia, memberController.addBusinessProfileForMember);
 
 // Profile routes - protected by authentication middleware
 router.get('/member/all', memberController.getAllMembers);
@@ -23,7 +24,7 @@ router.delete('/member/delete/:id', memberController.deleteMember);
 router.delete('/business/delete/:id', memberController.deleteBusinessProfile);
 router.delete('/family/delete/:id', memberController.deleteFamily);
 
-router.post('/business-profile/:member_id', uploadBusinessProfileMedia, memberController.addBusinessProfileForMember);
+
 router.get('/business-profile/all', memberController.getAllBusinessProfiles);
 router.get('/business-profile/:id', memberController.getBusinessProfileById);
 

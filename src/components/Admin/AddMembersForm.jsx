@@ -251,7 +251,7 @@ const FamilyModal = ({
               placeholder="+91 98765 43210"
             />
           </Grid>
-          {(['married','divorced','widowed'].includes((maritalStatus || '').toLowerCase())) && (
+          {(['married','widowed'].includes((maritalStatus || '').toLowerCase())) && (
             <>
               <Grid item xs={12} sm={6}>
                 <NameAutocompleteField
@@ -274,25 +274,29 @@ const FamilyModal = ({
               </Grid>
             </>
           )}
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              label="No. of Children"
-              type="number"
-              value={familyData.number_of_children || ''}
-              onChange={(e) => onFamilyDataChange('number_of_children', e.target.value)}
-              placeholder="2"
-            />
-          </Grid>
-          <Grid item xs={12} sm={8}>
-            <TextField
-              fullWidth
-              label="Children Names (comma separated)"
-              value={familyData.children_names || ''}
-              onChange={(e) => onFamilyDataChange('children_names', e.target.value)}
-              placeholder="Chris John, Jane Doe"
-            />
-          </Grid>
+          {(['married','widowed'].includes((maritalStatus || '').toLowerCase())) && (
+            <>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="No. of Children"
+                  type="number"
+                  value={familyData.number_of_children || ''}
+                  onChange={(e) => onFamilyDataChange('number_of_children', e.target.value)}
+                  placeholder="2"
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  fullWidth
+                  label="Children Names (comma separated)"
+                  value={familyData.children_names || ''}
+                  onChange={(e) => onFamilyDataChange('children_names', e.target.value)}
+                  placeholder="Chris John, Jane Doe"
+                />
+              </Grid>
+            </>
+          )}
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -1252,15 +1256,27 @@ const AddNewMemberForm = () => {
   // Add profile image state
   const [profileImage, setProfileImage] = useState(null);
 
-  // Clear spouse fields when marital status is not married/divorced/widowed
+  // Clear spouse and children fields when marital status is Single or Divorced
   useEffect(() => {
     const status = (formData.marital_status || '');
-    const shouldShowSpouse = ['Married', 'Divorced', 'Widowed'].includes(status);
-    if (!shouldShowSpouse && (familyData.spouse_name || familyData.spouse_contact)) {
-      setFamilyData(prev => ({ ...prev, spouse_name: '', spouse_contact: '' }));
+    const shouldShowSpouseAndChildren = ['Married', 'Widowed'].includes(status);
+    if (!shouldShowSpouseAndChildren && (familyData.spouse_name || familyData.spouse_contact || familyData.number_of_children || familyData.children_names)) {
+      setFamilyData(prev => ({ 
+        ...prev, 
+        spouse_name: '', 
+        spouse_contact: '', 
+        number_of_children: '', 
+        children_names: '' 
+      }));
       setFormData(prev => ({
         ...prev,
-        family_details: { ...(prev.family_details || {}), spouse_name: '', spouse_contact: '' }
+        family_details: { 
+          ...(prev.family_details || {}), 
+          spouse_name: '', 
+          spouse_contact: '', 
+          number_of_children: '', 
+          children_names: '' 
+        }
       }));
     }
   }, [formData.marital_status]);
@@ -1393,7 +1409,7 @@ const AddNewMemberForm = () => {
         'twitter', 'youtube', 'best_time_to_contact',
         'referral_name', 'referral_code', 'status', 'access_level',
         'paid_status', 'Arakattalai', 'KNS_Member', 'KBN_Member', 'BNI',
-        'Rotary', 'Lions', 'Other_forum', 'pro', 'core_pro', 'squad', 'squad_fields'
+        'Rotary', 'Lions', 'Other_forum', 'pro', 'squad', 'squad_fields'
       ];
 
       memberFields.forEach(field => {
@@ -1435,9 +1451,17 @@ const AddNewMemberForm = () => {
       if (formData.pro === 'Unpro') {
         coreProFinal = formData.core_pro || null;
       }
-      if (coreProFinal) {
-        const finalCoreProValue = Array.isArray(coreProFinal) ? coreProFinal[0] : coreProFinal;
-        formDataToSend.append('core_pro', String(finalCoreProValue));
+      if (coreProFinal !== null && coreProFinal !== undefined && coreProFinal !== '') {
+        let finalCoreProValue = coreProFinal;
+        if (Array.isArray(finalCoreProValue)) {
+          finalCoreProValue = finalCoreProValue[0] || '';
+        } else if (typeof finalCoreProValue === 'object') {
+          // Coerce any object to string safely
+          finalCoreProValue = String(finalCoreProValue);
+        }
+        if (finalCoreProValue !== '') {
+          formDataToSend.append('core_pro', String(finalCoreProValue));
+        }
       }
 
       // Handle membership_valid_until based on paid_status (same as backend logic)
@@ -1800,6 +1824,17 @@ const AddNewMemberForm = () => {
               helperText={errors.first_name}
             />
           </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField
+              fullWidth
+              label="Contact Number"
+              value={formData.contact_no}
+              onChange={handleInputChange('contact_no')}
+              required
+              error={!!errors.contact_no}
+              helperText={errors.contact_no}
+            />
+          </Grid>
           <Grid item xs={12} sm={4}>
             <TextField
               fullWidth
@@ -1888,17 +1923,6 @@ const AddNewMemberForm = () => {
                 sx={{ mt: 1 }}
               />
             )}
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              fullWidth
-              label="Contact Number"
-              value={formData.contact_no}
-              onChange={handleInputChange('contact_no')}
-              required
-              error={!!errors.contact_no}
-              helperText={errors.contact_no}
-            />
           </Grid>
           <Grid item xs={12} sm={3}>
             <FormControl fullWidth sx={{ minWidth: 150 }}>

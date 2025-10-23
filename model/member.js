@@ -254,6 +254,10 @@ const Member = db.define('Member', {
     squad_fields: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    reward_points: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
     }
 }, {
     tableName: 'member',

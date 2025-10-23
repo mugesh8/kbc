@@ -780,9 +780,9 @@ const MemberManagement = () => {
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#fafafa' }}>
                   <TableCell sx={{ fontWeight: 600, color: '#666' }}>Member</TableCell>
-                  {!isSmall && <TableCell sx={{ fontWeight: 600, color: '#666' }}>Join Date</TableCell>}
+                  {!isSmall && <TableCell sx={{ fontWeight: 600, color: '#666' }}>Contact</TableCell>}
                   <TableCell sx={{ fontWeight: 600, color: '#666' }}>Access Level</TableCell>
-                  {!isMobile && <TableCell sx={{ fontWeight: 600, color: '#666' }}>Linked to</TableCell>}
+                  {!isMobile && <TableCell sx={{ fontWeight: 600, color: '#666' }}>Kootam</TableCell>}
                   <TableCell sx={{ fontWeight: 600, color: '#666' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 600, color: '#666' }}>Actions</TableCell>
                 </TableRow>
@@ -876,13 +876,14 @@ const MemberManagement = () => {
                       </TableCell>
                       {!isSmall && (
                         <TableCell>
-                          <Typography variant="body2">
-                            {new Date(member.join_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </Typography>
+                          <Box>
+                            <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
+                              {member.contact_no || 'No contact'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {member.city || 'Location not set'}
+                            </Typography>
+                          </Box>
                         </TableCell>
                       )}
                       <TableCell>
@@ -901,12 +902,10 @@ const MemberManagement = () => {
                         <TableCell>
                           <Box>
                             <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
-                              {member.business_profiles?.length > 0 ? 'Business Profile' :
-                                member.family_details ? 'Family Profile' : 'No Profile'}
+                              {member.kootam || 'Not specified'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {member.business_profiles?.[0]?.company_name ||
-                                member.family_details?.father_name ? 'Family Details' : 'Not linked'}
+                              {member.kovil || 'Kovil not set'}
                             </Typography>
                           </Box>
                         </TableCell>

@@ -38,9 +38,8 @@ const EditFamily = () => {
         spouse_name: '',
         spouse_contact: '',
         number_of_children: 0,
-        children_names: [],
-        address: '',
-        children_details: ''
+        children_names_text: '',
+        address: ''
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -64,22 +63,30 @@ const EditFamily = () => {
 
                 // Initialize family data if exists
                 if (data.data.MemberFamily) {
-                    // Convert children names from JSON string to array
-                    const childrenArray = data.data.MemberFamily.children_names
-                        ? JSON.parse(data.data.MemberFamily.children_names)
-                        : [];
+                    // Convert children names from JSON string to comma-separated text safely
+                    let childrenText = '';
+                    try {
+                        const raw = data.data.MemberFamily.children_names;
+                        if (raw && raw !== 'N/A') {
+                            const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                            if (Array.isArray(arr)) {
+                                childrenText = arr.join(', ');
+                            }
+                        }
+                    } catch (_) {
+                        childrenText = '';
+                    }
 
                     setFamily({
-                        father_name: data.data.MemberFamily.father_name || '',
-                        father_contact: data.data.MemberFamily.father_contact || '',
-                        mother_name: data.data.MemberFamily.mother_name || '',
-                        mother_contact: data.data.MemberFamily.mother_contact || '',
-                        spouse_name: data.data.MemberFamily.spouse_name || '',
-                        spouse_contact: data.data.MemberFamily.spouse_contact || '',
+                        father_name: data.data.MemberFamily.father_name && data.data.MemberFamily.father_name !== 'N/A' ? data.data.MemberFamily.father_name : '',
+                        father_contact: data.data.MemberFamily.father_contact && data.data.MemberFamily.father_contact !== 'N/A' ? data.data.MemberFamily.father_contact : '',
+                        mother_name: data.data.MemberFamily.mother_name && data.data.MemberFamily.mother_name !== 'N/A' ? data.data.MemberFamily.mother_name : '',
+                        mother_contact: data.data.MemberFamily.mother_contact && data.data.MemberFamily.mother_contact !== 'N/A' ? data.data.MemberFamily.mother_contact : '',
+                        spouse_name: data.data.MemberFamily.spouse_name && data.data.MemberFamily.spouse_name !== 'N/A' ? data.data.MemberFamily.spouse_name : '',
+                        spouse_contact: data.data.MemberFamily.spouse_contact && data.data.MemberFamily.spouse_contact !== 'N/A' ? data.data.MemberFamily.spouse_contact : '',
                         number_of_children: data.data.MemberFamily.number_of_children || 0,
-                        children_names: childrenArray,
-                        address: data.data.MemberFamily.address || '',
-                        children_details: childrenArray.join(', ') // Convert array to string for input
+                        children_names_text: childrenText,
+                        address: data.data.MemberFamily.address && data.data.MemberFamily.address !== 'N/A' ? data.data.MemberFamily.address : ''
                     });
                 }
             } catch (err) {
@@ -111,13 +118,14 @@ const EditFamily = () => {
             marital_status: maritalStatus
         }));
 
-        // If marital status changes to single or disabled, clear children details
-        if (maritalStatus === 'single' || maritalStatus === 'disabled') {
+        // If marital status changes to single or disabled, clear spouse and children details
+        if (['single', 'disabled'].includes((maritalStatus || '').toLowerCase())) {
             setFamily(prev => ({
                 ...prev,
-                children_details: '',
-                number_of_children: 0,
-                children_names: []
+                spouse_name: '',
+                spouse_contact: '',
+                children_names_text: '',
+                number_of_children: 0
             }));
         }
     };
@@ -127,9 +135,9 @@ const EditFamily = () => {
         try {
             setLoading(true);
 
-            // Convert children details to array
-            const childrenArray = family.children_details
-                ? family.children_details.split(',').map(name => name.trim()).filter(name => name)
+            // Convert children names text to array
+            const childrenArray = family.children_names_text
+                ? family.children_names_text.split(',').map(name => name.trim()).filter(Boolean)
                 : [];
 
             // Prepare payload matching backend expectations
@@ -141,7 +149,7 @@ const EditFamily = () => {
                 mother_contact: family.mother_contact,
                 spouse_name: family.spouse_name,
                 spouse_contact: family.spouse_contact,
-                number_of_children: childrenArray.length,
+                number_of_children: Number.isFinite(Number(family.number_of_children)) ? Number(family.number_of_children) : childrenArray.length,
                 children_names: childrenArray,
                 address: family.address,
                 marital_status: member?.marital_status || ''
@@ -183,7 +191,9 @@ const EditFamily = () => {
     };
 
     // Determine if children details should be disabled
-    const isChildDetailsDisabled = member?.marital_status === 'single' || member?.marital_status === 'disabled';
+    const marital = (member?.marital_status || '').toLowerCase();
+    const showSpouse = ['married', 'divorced', 'widowed'].includes(marital);
+    const isChildDetailsDisabled = ['single', 'disabled'].includes(marital);
 
     if (loading && !member) {
         return (
@@ -307,7 +317,7 @@ const EditFamily = () => {
                                     value={family.spouse_name}
                                     onChange={handleChange}
                                     variant="outlined"
-                                    disabled={isChildDetailsDisabled}
+                                    disabled={!showSpouse}
                                 />
                             </Grid>
 
@@ -319,7 +329,7 @@ const EditFamily = () => {
                                     value={family.spouse_contact}
                                     onChange={handleChange}
                                     variant="outlined"
-                                    disabled={isChildDetailsDisabled}
+                                    disabled={!showSpouse}
                                 />
                             </Grid>
 
@@ -348,19 +358,28 @@ const EditFamily = () => {
                                 />
                             </Grid>
 
-                            <Grid item xs={12}>
+                            <Grid item xs={12} md={6}>
                                 <TextField
                                     fullWidth
-                                    label="Children Details"
-                                    name="children_details"
-                                    value={family.children_details}
+                                    type="number"
+                                    label="Number of Children"
+                                    name="number_of_children"
+                                    value={family.number_of_children}
                                     onChange={handleChange}
                                     variant="outlined"
-                                    placeholder="Enter names separated by commas"
-                                    helperText={isChildDetailsDisabled ?
-                                        "Children details not applicable for single or disabled members" :
-                                        "e.g., John, Mary, David"
-                                    }
+                                    disabled={isChildDetailsDisabled}
+                                />
+                            </Grid>
+
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Children Names (comma separated)"
+                                    name="children_names_text"
+                                    value={family.children_names_text}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    placeholder="e.g., John, Mary, David"
                                     disabled={isChildDetailsDisabled}
                                 />
                             </Grid>

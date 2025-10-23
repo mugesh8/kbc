@@ -30,7 +30,13 @@ import {
     Chip,
     Collapse,
     Tabs,
-    Tab
+    Tab,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import {
     Search,
@@ -47,12 +53,895 @@ import {
     Facebook,
     Instagram,
     Twitter,
-    YouTube
+    YouTube,
+    Add,
+    CloudUpload
 } from '@mui/icons-material';
 import VideocamIcon from '@mui/icons-material/Videocam';
 
 import baseurl from '../Baseurl/baseurl';
 import * as XLSX from 'xlsx';
+
+// TagsInput Component (without label) - same behavior as in AddMembersForm
+const TagsInput = ({ tags = [], onAdd, onRemove, suggestions = [] }) => {
+    const [inputValue, setInputValue] = React.useState('');
+
+    const filteredSuggestions = suggestions
+        .filter(s => s.toLowerCase().includes(inputValue.toLowerCase()))
+        .filter(s => !tags.some(t => t.toLowerCase() === s.toLowerCase()))
+        .slice(0, 8);
+
+    const handleAdd = (tag) => {
+        if (!tag) return;
+        const trimmed = tag.trim();
+        if (!trimmed) return;
+        if (tags.find(t => t.toLowerCase() === trimmed.toLowerCase())) return;
+        onAdd && onAdd(trimmed);
+        setInputValue('');
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            handleAdd(inputValue);
+        } else if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
+            onRemove && onRemove(tags.length - 1);
+        }
+    };
+
+    return (
+        <div style={{ marginBottom: '16px' }}>
+            <div style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                backgroundColor: '#f9fafb'
+            }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {tags.map((tag, idx) => (
+                        <span key={idx} style={{
+                            backgroundColor: '#dcfce7',
+                            color: '#166534',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}>
+                            {tag}
+                            <button 
+                                type="button" 
+                                style={{ 
+                                    color: '#166534', 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    fontSize: '16px'
+                                }} 
+                                onClick={() => onRemove && onRemove(idx)}
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
+                    <input
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type to add tags"
+                        style={{
+                            flex: 1,
+                            minWidth: '120px',
+                            backgroundColor: 'transparent',
+                            outline: 'none',
+                            border: 'none',
+                            color: '#374151'
+                        }}
+                    />
+                </div>
+            </div>
+            {filteredSuggestions.length > 0 && (
+                <div style={{
+                    marginTop: '8px',
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    padding: '8px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '8px'
+                }}>
+                    {filteredSuggestions.map((s, i) => (
+                        <button
+                            type="button"
+                            key={i}
+                            onClick={() => handleAdd(s)}
+                            style={{
+                                textAlign: 'left',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                backgroundColor: '#f9fafb',
+                                border: '1px solid #f3f4f6',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = '#f0fdf4';
+                                e.target.style.color = '#166534';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = '#f9fafb';
+                                e.target.style.color = 'inherit';
+                            }}
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Business Profile Modal Component
+const BusinessProfileModal = ({
+    open,
+    onClose,
+    member,
+    onSubmit,
+    categories
+}) => {
+    const [businessData, setBusinessData] = useState({
+        company_name: '',
+        business_type: '',
+        category_id: '',
+        category_input: '',
+        business_registration_type: '',
+        business_registration_type_other: '',
+        about: '',
+        company_address: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        staff_size: '',
+        business_work_contract: '',
+        email: '',
+        source: '',
+        tags: [],
+        designation: '',
+        salary: '',
+        location: '',
+        experience: '',
+        contact_no: '',
+        business_profile_image: null,
+        media_gallery: [],
+        branches: [],
+        exclusive_member_benefit: '',
+        status: 'Approved' // Set default status to Approved
+    });
+
+    const [categoryInput, setCategoryInput] = useState('');
+    const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+    const [branches, setBranches] = useState([]);
+    const [customBusinessRegistrationType, setCustomBusinessRegistrationType] = useState('');
+
+    useEffect(() => {
+        if (open) {
+            // Initialize with main branch
+            setBranches([{
+                id: 1,
+                branch_name: 'Main Branch',
+                contact_no: '',
+                email: '',
+                company_address: '',
+                city: '',
+                state: '',
+                zip_code: '',
+                is_main: true
+            }]);
+        }
+    }, [open]);
+
+    const filteredCategories = (categories || [])
+        .filter(c => c.category_name.toLowerCase().includes((categoryInput || '').toLowerCase()))
+        .slice(0, 8);
+
+    const handleBusinessDataChange = (field, value) => {
+        setBusinessData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSelectExistingCategory = (cid, name) => {
+        handleBusinessDataChange("category_id", String(cid));
+        setCategoryInput(name);
+        setShowCategorySuggestions(false);
+    };
+
+    const handleCategoryInputChange = (value) => {
+        setCategoryInput(value);
+        setShowCategorySuggestions(true);
+        handleBusinessDataChange("category_input", value);
+        if (!value || value.trim() === '' || (businessData.category_id && value.trim().toLowerCase() !== (categories.find(c => String(c.cid) === String(businessData.category_id))?.category_name || '').toLowerCase())) {
+            handleBusinessDataChange("category_id", '');
+        }
+    };
+
+    const handleAddBranch = () => {
+        const newBranchId = branches.length > 0 ? Math.max(...branches.map(b => b.id)) + 1 : 1;
+        const newBranch = {
+            id: newBranchId,
+            branch_name: `Branch ${newBranchId}`,
+            contact_no: '',
+            email: '',
+            company_address: '',
+            city: '',
+            state: '',
+            zip_code: '',
+            is_main: false
+        };
+        setBranches(prev => [...prev, newBranch]);
+    };
+
+    const handleRemoveBranch = (branchId) => {
+        setBranches(prev => prev.filter(branch => branch.id !== branchId));
+    };
+
+    const handleBranchChange = (branchId, field, value) => {
+        setBranches(prev => prev.map(branch => 
+            branch.id === branchId ? { ...branch, [field]: value } : branch
+        ));
+    };
+
+    const handleFileUpload = (field, file) => {
+        if (field === 'media_gallery') {
+            const filesArray = Array.from(file);
+            setBusinessData(prev => ({
+                ...prev,
+                media_gallery: [...(prev.media_gallery || []), ...filesArray]
+            }));
+        } else {
+            setBusinessData(prev => ({
+                ...prev,
+                [field]: file
+            }));
+        }
+    };
+
+    const handleRemoveProfileImage = () => {
+        setBusinessData(prev => ({
+            ...prev,
+            business_profile_image: null
+        }));
+    };
+
+    const handleRemoveMedia = (mediaIndex) => {
+        setBusinessData(prev => ({
+            ...prev,
+            media_gallery: (prev.media_gallery || []).filter((_, idx) => idx !== mediaIndex)
+        }));
+    };
+
+    // Tag handlers
+    const handleTagAdd = (tag) => {
+        setBusinessData(prev => ({
+            ...prev,
+            tags: [...(prev.tags || []), tag]
+        }));
+    };
+
+    const handleTagRemove = (tagIndex) => {
+        setBusinessData(prev => ({
+            ...prev,
+            tags: (prev.tags || []).filter((_, idx) => idx !== tagIndex)
+        }));
+    };
+
+    const handleSubmit = async () => {
+        // Validate required fields
+        if (!businessData.business_type || !businessData.company_name) {
+            alert('Business type and company name are required');
+            return;
+        }
+
+        if (!businessData.category_id && !(businessData.category_input && businessData.category_input.trim())) {
+            alert('Category is required');
+            return;
+        }
+
+        if (businessData.business_type === 'self-employed' || businessData.business_type === 'business') {
+            if (!businessData.about) {
+                alert('About is required for this business type');
+                return;
+            }
+        }
+
+        if (businessData.business_type === 'salary') {
+            if (!businessData.designation || !businessData.salary || !businessData.experience) {
+                alert('Designation, salary, and experience are required for salary type');
+                return;
+            }
+        }
+
+        // Validate at least one branch has address data
+        const hasValidBranch = branches && branches.some(branch => 
+            branch.company_address && branch.city && branch.state && branch.zip_code
+        );
+        
+        if (!hasValidBranch) {
+            alert('At least one branch with complete address information is required');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+
+            // Add member_id
+            formData.append('member_id', member.mid);
+
+            // Prepare business data - Set status to "Approved"
+            const businessPayload = {
+                company_name: businessData.company_name,
+                business_type: businessData.business_type,
+                salary: businessData.salary,
+                category_id: businessData.category_id,
+                category_input: businessData.category_input,
+                business_registration_type: businessData.business_registration_type,
+                business_registration_type_other: businessData.business_registration_type_other,
+                about: businessData.about,
+                staff_size: businessData.staff_size,
+                designation: businessData.designation,
+                experience: businessData.experience,
+                source: businessData.source,
+                tags: Array.isArray(businessData.tags) ? businessData.tags.join(',') : businessData.tags,
+                website: businessData.website,
+                google_link: businessData.google_link,
+                facebook_link: businessData.facebook_link,
+                instagram_link: businessData.instagram_link,
+                linkedin_link: businessData.linkedin_link,
+                exclusive_member_benefit: businessData.exclusive_member_benefit,
+                status: 'Approved' // Explicitly set status to Approved
+            };
+
+            // Handle category
+            if ((!businessPayload.category_id || String(businessPayload.category_id).trim() === '') && businessPayload.category_input && businessPayload.category_input.trim()) {
+                businessPayload.new_category_name = businessPayload.category_input.trim();
+                delete businessPayload.category_id;
+            }
+
+            // Handle business registration type
+            if (businessData.business_registration_type !== 'Others') {
+                delete businessPayload.business_registration_type_other;
+            }
+
+            // Handle branches
+            if (branches && branches.length > 0) {
+                const branch_names = branches.map(branch => branch.branch_name || '');
+                const company_addresses = branches.map(branch => branch.company_address || '');
+                const cities = branches.map(branch => branch.city || '');
+                const states = branches.map(branch => branch.state || '');
+                const zip_codes = branches.map(branch => branch.zip_code || '');
+                const business_work_contract = branches.map(branch => branch.contact_no || '');
+                const emails = branches.map(branch => branch.email || '');
+
+                businessPayload.branch_name = branch_names;
+                businessPayload.company_address = company_addresses;
+                businessPayload.city = cities;
+                businessPayload.state = states;
+                businessPayload.zip_code = zip_codes;
+                businessPayload.business_work_contract = business_work_contract;
+                businessPayload.email = emails;
+            }
+
+            formData.append('business_profiles', JSON.stringify([businessPayload]));
+
+            // Handle files
+            if (businessData.business_profile_image) {
+                formData.append('business_profile_image_0', businessData.business_profile_image);
+            }
+
+            if (businessData.media_gallery && businessData.media_gallery.length > 0) {
+                businessData.media_gallery.forEach((file, index) => {
+                    formData.append(`media_gallery_0`, file);
+                });
+            }
+
+            const response = await fetch(`${baseurl}/api/add-business-profile/${member.mid}`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorResult = await response.json().catch(() => null);
+                throw new Error(errorResult?.msg || 'Failed to add business profile');
+            }
+
+            const result = await response.json();
+            alert(result.msg || 'Business profile added successfully');
+            onClose();
+            if (onSubmit) onSubmit();
+        } catch (error) {
+            console.error('Error adding business profile:', error);
+            alert(error.message || 'Failed to add business profile');
+        }
+    };
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="md"
+            fullWidth
+            scroll="paper"
+        >
+            <DialogTitle sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                bgcolor: '#4CAF50',
+                color: 'white'
+            }}>
+                <Typography variant="h6" fontWeight={600}>
+                    Add Business Profile for {member?.first_name}
+                </Typography>
+                <IconButton onClick={onClose} sx={{ color: 'white' }}>
+                    <Close />
+                </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ p: 3 }}>
+                <Grid container spacing={3}>
+                    {/* Business Type */}
+                    <Grid item xs={12} sm={6}>
+                        <FormControl fullWidth required sx={{ marginTop: '10px' }}>
+                            <InputLabel>Business Type</InputLabel>
+                            <Select
+                                label="Business Type"
+                                value={businessData.business_type || ''}
+                                onChange={(e) => handleBusinessDataChange("business_type", e.target.value)}
+                            >
+                                <MenuItem value="self-employed">Self Employed</MenuItem>
+                                <MenuItem value="business">Business</MenuItem>
+                                <MenuItem value="salary">Salary</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+
+                    {/* Category */}
+                    {(businessData.business_type === "self-employed" || businessData.business_type === "business" || businessData.business_type === "salary") && (
+                        <Grid item xs={12} sm={6}>
+                            <div style={{ marginBottom: '16px', position: 'relative' }}>
+                                <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                                    Category <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={categoryInput}
+                                    onChange={(e) => handleCategoryInputChange(e.target.value)}
+                                    placeholder="Type to search or add category"
+                                    style={{
+                                        width: '100%',
+                                        padding: '16px',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '12px',
+                                        outline: 'none',
+                                        backgroundColor: '#f9fafb',
+                                    }}
+                                    onFocus={() => setShowCategorySuggestions(true)}
+                                    onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 150)}
+                                />
+                                {showCategorySuggestions && categoryInput && filteredCategories.length > 0 && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        zIndex: 20,
+                                        marginTop: '8px',
+                                        width: '100%',
+                                        backgroundColor: 'white',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                        maxHeight: '224px',
+                                        overflow: 'auto'
+                                    }}>
+                                        {filteredCategories.map(cat => (
+                                            <button
+                                                type="button"
+                                                key={cat.cid}
+                                                style={{
+                                                    width: '100%',
+                                                    textAlign: 'left',
+                                                    padding: '12px 16px',
+                                                    backgroundColor: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer'
+                                                }}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => handleSelectExistingCategory(cat.cid, cat.category_name)}
+                                                onMouseEnter={(e) => {
+                                                    e.target.style.backgroundColor = '#f0fdf4';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.target.style.backgroundColor = 'transparent';
+                                                }}
+                                            >
+                                                {cat.category_name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </Grid>
+                    )}
+
+                    {/* Company Name */}
+                    <Grid item xs={12} sm={6}>
+                        <TextField
+                            fullWidth
+                            required
+                            label="Company Name"
+                            value={businessData.company_name || ''}
+                            onChange={(e) => handleBusinessDataChange("company_name", e.target.value)}
+                            placeholder="Enter company name"
+                            sx={{ marginTop: '10px' }}
+                        />
+                    </Grid>
+
+                    {/* Business Registration Type for self-employed and business */}
+                    {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
+                        <Grid item xs={12} sm={6}>
+                            <FormControl fullWidth sx={{ marginTop: '10px' }}>
+                                <InputLabel>Business Registration Type</InputLabel>
+                                <Select
+                                    value={businessData.business_registration_type || ""}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        handleBusinessDataChange("business_registration_type", value);
+                                        if (value !== "Others") {
+                                            setCustomBusinessRegistrationType('');
+                                            handleBusinessDataChange("business_registration_type_other", '');
+                                        }
+                                    }}
+                                    label="Business Registration Type"
+                                >
+                                    <MenuItem value="Proprietor">Proprietor</MenuItem>
+                                    <MenuItem value="Partnership">Partnership</MenuItem>
+                                    <MenuItem value="Private Limited">Private Limited</MenuItem>
+                                    <MenuItem value="Others">Others</MenuItem>
+                                </Select>
+                            </FormControl>
+                            {businessData.business_registration_type === "Others" && (
+                                <TextField
+                                    fullWidth
+                                    label="Specify Business Registration Type"
+                                    value={customBusinessRegistrationType}
+                                    onChange={(e) => {
+                                        const customValue = e.target.value;
+                                        setCustomBusinessRegistrationType(customValue);
+                                        handleBusinessDataChange("business_registration_type_other", customValue);
+                                    }}
+                                    sx={{ mt: 1 }}
+                                />
+                            )}
+                        </Grid>
+                    )}
+
+                    {/* Work Experience for Self-Employed */}
+                    {businessData.business_type === "self-employed" && (
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="Work Experience (years)"
+                                placeholder="Enter years of experience"
+                                type="number"
+                                value={businessData.experience || ''}
+                                onChange={(e) => handleBusinessDataChange("experience", e.target.value)}
+                                sx={{ marginTop: '10px' }}
+                            />
+                        </Grid>
+                    )}
+
+                    {/* About Section */}
+                    {(businessData.business_type === "self-employed" || businessData.business_type === "business") && (
+                        <Grid item xs={12}>
+                            <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                                About <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            <textarea
+                                rows={4}
+                                placeholder="Enter company about"
+                                required
+                                value={businessData.about || ""}
+                                onChange={(e) => handleBusinessDataChange("about", e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    resize: 'vertical',
+                                    outline: 'none',
+                                    fontFamily: 'inherit'
+                                }}
+                            />
+                        </Grid>
+                    )}
+
+                    {/* Salary Fields */}
+                    {businessData.business_type === "salary" && (
+                        <>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Designation"
+                                    placeholder="Enter designation"
+                                    required
+                                    value={businessData.designation || ""}
+                                    onChange={(e) => handleBusinessDataChange("designation", e.target.value)}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    label="Experience (Years)"
+                                    placeholder="Enter years of experience"
+                                    required
+                                    value={businessData.experience || ""}
+                                    onChange={(e) => handleBusinessDataChange("experience", e.target.value)}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    label="Salary"
+                                    placeholder="Enter salary"
+                                    required
+                                    value={businessData.salary || ""}
+                                    onChange={(e) => handleBusinessDataChange("salary", e.target.value)}
+                                />
+                            </Grid>
+                        </>
+                    )}
+
+                    {/* Branches Section */}
+                    <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                                Company Address & Branches
+                            </Typography>
+                            <Button
+                                variant="outlined"
+                                startIcon={<Add />}
+                                onClick={handleAddBranch}
+                                color="primary"
+                            >
+                                Add Branch
+                            </Button>
+                        </Box>
+
+                        {branches.map((branch, index) => (
+                            <Box key={branch.id} sx={{ mb: 3, p: 2, border: '1px solid', borderColor: 'grey.300', borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Typography variant="subtitle1" fontWeight={600}>
+                                        {branch.is_main ? 'Main Branch' : `Branch ${index}`}
+                                    </Typography>
+                                    {!branch.is_main && (
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => handleRemoveBranch(branch.id)}
+                                            color="error"
+                                        >
+                                            <Delete />
+                                        </IconButton>
+                                    )}
+                                </Box>
+
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Branch Name"
+                                            placeholder="Enter branch name"
+                                            value={branch.branch_name || ''}
+                                            onChange={(e) => handleBranchChange(branch.id, 'branch_name', e.target.value)}
+                                            required={branch.is_main}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Contact Number"
+                                            placeholder="Enter contact number"
+                                            value={branch.contact_no || ''}
+                                            onChange={(e) => handleBranchChange(branch.id, 'contact_no', e.target.value)}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Email"
+                                            placeholder="Enter email"
+                                            type="email"
+                                            value={branch.email || ''}
+                                            onChange={(e) => handleBranchChange(branch.id, 'email', e.target.value)}
+                                        />
+                                    </Grid>
+
+                                    <Grid item xs={12}>
+                                        <label style={{ display: 'block', color: '#1f2937', fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                                            Company Address {branch.is_main && <span style={{ color: '#ef4444' }}>*</span>}
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            placeholder="Enter company address"
+                                            value={branch.company_address || ""}
+                                            onChange={(e) => handleBranchChange(branch.id, 'company_address', e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px',
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '16px',
+                                                resize: 'vertical',
+                                                outline: 'none',
+                                                fontFamily: 'inherit'
+                                            }}
+                                        />
+                                    </Grid>
+                                    
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="City"
+                                            placeholder="Enter city"
+                                            value={branch.city || ""}
+                                            onChange={(e) => handleBranchChange(branch.id, 'city', e.target.value)}
+                                            required={branch.is_main}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="State"
+                                            placeholder="Enter state"
+                                            value={branch.state || ""}
+                                            onChange={(e) => handleBranchChange(branch.id, 'state', e.target.value)}
+                                            required={branch.is_main}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Pincode"
+                                            placeholder="Enter pincode"
+                                            value={branch.zip_code || ""}
+                                            onChange={(e) => handleBranchChange(branch.id, 'zip_code', e.target.value)}
+                                            required={branch.is_main}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Box>
+                        ))}
+                    </Grid>
+
+                    {/* Tags Input for all business types */}
+                    <Grid item xs={12}>
+                        <TagsInput
+                            tags={businessData.tags || []}
+                            onAdd={handleTagAdd}
+                            onRemove={handleTagRemove}
+                        />
+                    </Grid>
+
+                    {/* File Uploads */}
+                    <Grid item xs={12} sm={6}>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Business Profile Image
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    startIcon={<CloudUpload />}
+                                    sx={{ minWidth: 200 }}
+                                >
+                                    Upload Image
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                handleFileUpload('business_profile_image', e.target.files[0]);
+                                            }
+                                        }}
+                                    />
+                                </Button>
+                                {businessData.business_profile_image && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {businessData.business_profile_image.name}
+                                        </Typography>
+                                        <IconButton
+                                            size="small"
+                                            onClick={handleRemoveProfileImage}
+                                            color="error"
+                                        >
+                                            <Delete fontSize="small" />
+                                        </IconButton>
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                                Media Gallery ({businessData.media_gallery?.length || 0}/5)
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    startIcon={<CloudUpload />}
+                                    sx={{ minWidth: 200 }}
+                                >
+                                    Upload Media
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*,video/*"
+                                        multiple
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                handleFileUpload('media_gallery', e.target.files);
+                                            }
+                                        }}
+                                    />
+                                </Button>
+                            </Box>
+                            {businessData.media_gallery && businessData.media_gallery.length > 0 && (
+                                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    {businessData.media_gallery.map((file, index) => (
+                                        <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.100', px: 1, py: 0.5, borderRadius: 1 }}>
+                                            <Typography variant="caption" sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {file.name}
+                                            </Typography>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleRemoveMedia(index)}
+                                                color="error"
+                                                sx={{ p: 0.25 }}
+                                            >
+                                                <Delete fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                        </Box>
+                    </Grid>
+                </Grid>
+            </DialogContent>
+            <DialogActions sx={{ p: 3 }}>
+                <Button onClick={onClose}>
+                    Cancel
+                </Button>
+                <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleSubmit}
+                    sx={{ px: 4 }}
+                >
+                    Add Business Profile
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 const BusinessManagement = () => {
     const navigate = useNavigate();
@@ -67,16 +956,35 @@ const BusinessManagement = () => {
     const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
     const [currentMedia, setCurrentMedia] = useState(null);
     const [activeTab, setActiveTab] = useState('all');
-    // Detailed businesses fetched per member (uses business-profile/all like UserProfilePage)
     const [memberBusinessesDetailed, setMemberBusinessesDetailed] = useState({});
+    const [addBusinessModalOpen, setAddBusinessModalOpen] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
-    // Normalize branches helper: fixes nested arrays like [["a","b"]]
+    // Fetch categories
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await fetch(`${baseurl}/api/category/all`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        setCategories(data.data);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            }
+        };
+        fetchCategories();
+    }, []);
+
+    // Normalize branches helper
     const normalizeBranchesArray = (branches) => {
         if (!Array.isArray(branches) || branches.length === 0) return [];
 
         const fields = ['branch_name', 'company_address', 'city', 'state', 'zip_code', 'email', 'business_work_contract'];
 
-        // If a single branch object contains arrays, expand them into multiple branches
         if (branches.length === 1) {
             const b = branches[0] || {};
             const toFlatArray = (val) => {
@@ -101,7 +1009,6 @@ const BusinessManagement = () => {
             }
         }
 
-        // Otherwise, flatten any single-element arrays inside each branch object
         return branches.map((b) => {
             const result = { ...b };
             fields.forEach((f) => {
@@ -113,7 +1020,7 @@ const BusinessManagement = () => {
             return result;
         });
     };
-    // Helpers to normalize API fields that may be JSON-encoded arrays
+
     const parseArrayString = (value) => {
         try {
             if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
@@ -131,14 +1038,15 @@ const BusinessManagement = () => {
         if (value === undefined || value === null || value === '') return [];
         return [String(value)];
     };
+
     const firstFromArrayish = (value) => {
         const arr = parseArrayString(value);
         return arr.length > 0 ? arr[0] : '';
     };
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
-    const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
 
     // Fetch all business profiles
     useEffect(() => {
@@ -152,7 +1060,6 @@ const BusinessManagement = () => {
                     throw new Error(data.msg || 'Failed to fetch members');
                 }
 
-                // Group businesses by member
                 const grouped = {};
                 (data.data || []).forEach(member => {
                     if (member.BusinessProfiles && member.BusinessProfiles.length > 0) {
@@ -187,7 +1094,52 @@ const BusinessManagement = () => {
         fetchBusinessProfiles();
     }, []);
 
-    // Toggle expanded state for a member
+    // Refresh business profiles after adding new one
+    const refreshBusinessProfiles = () => {
+        const fetchBusinessProfiles = async () => {
+            try {
+                const response = await fetch(`${baseurl}/api/member/all`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.msg || 'Failed to fetch members');
+                }
+
+                const grouped = {};
+                (data.data || []).forEach(member => {
+                    if (member.BusinessProfiles && member.BusinessProfiles.length > 0) {
+                        grouped[member.mid] = {
+                            member: {
+                                mid: member.mid,
+                                first_name: member.first_name,
+                                last_name: member.last_name,
+                                email: member.email,
+                                profile_image: member.profile_image,
+                                status: member.status,
+                                contact_no: member.contact_no,
+                                city: member.city,
+                                state: member.state,
+                                zip_code: member.zip_code
+                            },
+                            businesses: member.BusinessProfiles
+                        };
+                    }
+                });
+
+                setGroupedBusinesses(grouped);
+                setSnackbar({
+                    open: true,
+                    message: 'Business profile added successfully',
+                    severity: 'success'
+                });
+            } catch (err) {
+                console.error('Error refreshing business profiles:', err);
+            }
+        };
+
+        fetchBusinessProfiles();
+    };
+
     const toggleExpand = (mid) => {
         setExpandedMembers(prev => ({
             ...prev,
@@ -195,10 +1147,8 @@ const BusinessManagement = () => {
         }));
     };
 
-    // Apply tab filter
     const tabbedGroups = Object.values(groupedBusinesses)
         .map(group => {
-            // Filter businesses based on active tab
             let filteredBusinesses = group.businesses;
             
             if (activeTab === 'pending') {
@@ -206,7 +1156,6 @@ const BusinessManagement = () => {
                     (b.status || '').toLowerCase() === 'pending'
                 );
             }
-            // For 'all' tab, we keep all businesses
             
             return {
                 ...group,
@@ -215,7 +1164,6 @@ const BusinessManagement = () => {
         })
         .filter(group => group.businesses.length > 0);
 
-    // Filter business profiles based on search term
     const filteredGroups = tabbedGroups.filter(group => {
         const searchLower = searchTerm.toLowerCase();
         return (
@@ -240,17 +1188,16 @@ const BusinessManagement = () => {
     };
 
     const handleEditBusiness = (business) => {
-        // Navigate to the business edit form with the business ID
         navigate(`/admin/BusinessDirectory/${business.id}`);
     };
-    const handleAddBusiness = (memberId) => {
-        // Navigate to the add business form with the MEMBER ID
-        navigate(`/admin/AddBusinessDirectory/${memberId}`);
+
+    const handleAddBusiness = (member) => {
+        setSelectedMember(member);
+        setAddBusinessModalOpen(true);
     };
 
     const handleViewMember = async (member) => {
         setSelectedMember(member);
-        // Fetch detailed business profiles with branches array for this member
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
             const response = await fetch(`${baseurl}/api/business-profile/all?member_id=${member.mid}`, {
@@ -294,7 +1241,6 @@ const BusinessManagement = () => {
                 throw new Error('Failed to delete business profile');
             }
 
-            // Remove the deleted business from the list
             setGroupedBusinesses(prev => {
                 const newGrouped = { ...prev };
                 if (newGrouped[selectedMember.mid]) {
@@ -302,7 +1248,6 @@ const BusinessManagement = () => {
                         b => b.id !== selectedMember.businessToDelete.id
                     );
 
-                    // Remove member if no businesses left
                     if (newGrouped[selectedMember.mid].businesses.length === 0) {
                         delete newGrouped[selectedMember.mid];
                     }
@@ -318,7 +1263,6 @@ const BusinessManagement = () => {
     };
 
     const handleExport = () => {
-        // Prepare data for export with all required business fields
         const exportData = [];
 
         Object.values(groupedBusinesses).forEach(group => {
@@ -347,24 +1291,17 @@ const BusinessManagement = () => {
             });
         });
 
-        // Create worksheet
         const ws = XLSX.utils.json_to_sheet(exportData);
-
-        // Create workbook
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Business Profiles');
-
-        // Generate file and trigger download
         XLSX.writeFile(wb, `business_profiles_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
 
-    // Handle media click
     const handleMediaClick = (mediaUrl) => {
         setCurrentMedia(mediaUrl);
         setMediaViewerOpen(true);
     };
 
-    // Calculate total businesses count
     const totalBusinesses = Object.values(groupedBusinesses).reduce(
         (total, group) => total + group.businesses.length, 0
     );
@@ -571,16 +1508,18 @@ const BusinessManagement = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Stack direction="row" spacing={0.5}>
-                                                        {/* <IconButton
+                                                        {/* Add Business Button */}
+                                                        <IconButton
                                                             size="small"
-                                                            sx={{ color: '#666' }}
+                                                            sx={{ color: '#4CAF50' }}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleAddBusiness(group.member.mid);
+                                                                handleAddBusiness(group.member);
                                                             }}
+                                                            title="Add Business Profile"
                                                         >
-                                                            <BusinessIcon fontSize="small" />
-                                                        </IconButton> */}
+                                                            <Add fontSize="small" />
+                                                        </IconButton>
                                                         <IconButton
                                                             size="small"
                                                             sx={{ color: '#666' }}
@@ -635,7 +1574,6 @@ const BusinessManagement = () => {
 
                                                             <Grid container spacing={2}>
                                                                 {group.businesses.map((business) => {
-                                                                    // Check if this business should be disabled
                                                                     const isDisabled = activeTab === 'all' && business.status === 'Pending';
                                                                     
                                                                     return (
@@ -859,6 +1797,15 @@ const BusinessManagement = () => {
                     </Box>
                 </CardContent>
             </Card>
+
+            {/* Add Business Profile Modal */}
+            <BusinessProfileModal
+                open={addBusinessModalOpen}
+                onClose={() => setAddBusinessModalOpen(false)}
+                member={selectedMember}
+                onSubmit={refreshBusinessProfiles}
+                categories={categories}
+            />
 
             {/* View Member Dialog */}
             <Dialog
@@ -1192,7 +2139,6 @@ const BusinessManagement = () => {
                                                                 </Typography>
                                                             </Box>
 
-
                                                             <Box sx={{ display: 'flex', mb: 1.5 }}>
                                                                 <Box sx={{ minWidth: 140 }}>
                                                                     <Typography variant="body2" color="text.secondary">
@@ -1203,8 +2149,32 @@ const BusinessManagement = () => {
                                                                     {business.tags || 'N/A'}
                                                                 </Typography>
                                                             </Box>
-                                                        </Grid>
 
+                                                            {/* Show business_registration_type_other if business_registration_type is "Others" */}
+                                                            {business.business_registration_type === 'Others' && business.business_registration_type_other && (
+                                                                <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                    <Box sx={{ minWidth: 140 }}>
+                                                                        <Typography variant="body2" color="text.secondary">
+                                                                            Registration Type (Other)
+                                                                        </Typography>
+                                                                    </Box>
+                                                                    <Typography variant="body1" fontWeight={500}>
+                                                                        {business.business_registration_type_other || 'N/A'}
+                                                                    </Typography>
+                                                                </Box>
+                                                            )}
+
+                                                            <Box sx={{ display: 'flex', mb: 1.5 }}>
+                                                                <Box sx={{ minWidth: 140 }}>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        Staff Size
+                                                                    </Typography>
+                                                                </Box>
+                                                                <Typography variant="body1" fontWeight={500}>
+                                                                    {business.staff_size || 'N/A'}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
 
                                                         <Grid item xs={12} md={6}>
                                                             {business.business_type === 'salary' ? (
@@ -1236,89 +2206,34 @@ const BusinessManagement = () => {
                                                                     <Box sx={{ display: 'flex', mb: 1.5 }}>
                                                                         <Box sx={{ minWidth: 140 }}>
                                                                             <Typography variant="body2" color="text.secondary">
-                                                                                Established
+                                                                                Registration Type
                                                                             </Typography>
                                                                         </Box>
                                                                         <Typography variant="body1" fontWeight={500}>
-                                                                            {business.business_starting_year || 'N/A'}
+                                                                            {business.business_registration_type || 'N/A'}
                                                                         </Typography>
                                                                     </Box>
 
-                                                                    <Box sx={{ display: 'flex', mb: 1.5 }}>
-                                                                        <Box sx={{ minWidth: 140 }}>
-                                                                            <Typography variant="body2" color="text.secondary">
-                                                                                Staff Size
-                                                                            </Typography>
-                                                                        </Box>
-                                                                        <Typography variant="body1" fontWeight={500}>
-                                                                            {business.staff_size || 'N/A'}
-                                                                        </Typography>
-                                                                    </Box>
-
-                                                                    {business.business_type === 'self-employed' && business.business_registration_type && (
+                                                                    {business.business_type === 'self-employed' && (
                                                                         <Box sx={{ display: 'flex', mb: 1.5 }}>
                                                                             <Box sx={{ minWidth: 140 }}>
                                                                                 <Typography variant="body2" color="text.secondary">
-                                                                                    Registration Type
+                                                                                    Work Contact
                                                                                 </Typography>
                                                                             </Box>
                                                                             <Typography variant="body1" fontWeight={500}>
-                                                                                {business.business_registration_type || 'N/A'}
+                                                                                {(() => {
+                                                                                    if (Array.isArray(business.business_work_contract)) {
+                                                                                        return business.business_work_contract.join(', ');
+                                                                                    }
+                                                                                    return firstFromArrayish(business.business_work_contract) || 'N/A';
+                                                                                })()}
                                                                             </Typography>
                                                                         </Box>
                                                                     )}
                                                                 </>
                                                             )}
                                                         </Grid>
-
-                                                        {/* <Grid item xs={12}>
-                                                            <Box sx={{ display: 'flex' }}>
-                                                                <Box sx={{ minWidth: 140 }}>
-                                                                    <Typography variant="body2" color="text.secondary">
-                                                                        Address
-                                                                    </Typography>
-                                                                </Box>
-                                                                <Typography variant="body1" fontWeight={500}>
-                                                                    {(() => {
-                                                                        // Handle array addresses from API response
-                                                                        if (Array.isArray(business.company_address) && Array.isArray(business.city) && Array.isArray(business.state) && Array.isArray(business.zip_code)) {
-                                                                            const addresses = [];
-                                                                            const maxLength = Math.max(business.company_address.length, business.city.length, business.state.length, business.zip_code.length);
-                                                                            for (let i = 0; i < maxLength; i++) {
-                                                                                const parts = [
-                                                                                    business.company_address[i] || '',
-                                                                                    business.city[i] || '',
-                                                                                    business.state[i] || '',
-                                                                                    business.zip_code[i] || ''
-                                                                                ].filter(Boolean);
-                                                                                if (parts.length > 0) {
-                                                                                    addresses.push(parts.join(', '));
-                                                                                }
-                                                                            }
-                                                                            return addresses.length > 0 ? addresses.join(' | ') : 'Not provided';
-                                                                        }
-                                                                        
-                                                                        const branches = normalizeBranchesArray(business.branches || []);
-                                                                        if (branches.length > 0) {
-                                                                            const b0 = branches[0];
-                                                                            const address = b0.company_address || firstFromArrayish(b0.company_address);
-                                                                            const city = b0.city || firstFromArrayish(b0.city);
-                                                                            const state = b0.state || firstFromArrayish(b0.state);
-                                                                            const zip = b0.zip_code || firstFromArrayish(b0.zip_code);
-                                                                            const parts = [address, city, state, zip].filter(Boolean);
-                                                                            return parts.length ? parts.join(', ') : 'Not provided';
-                                                                        }
-                                                                        const addr = firstFromArrayish(business.company_address);
-                                                                        const city = firstFromArrayish(business.city);
-                                                                        const state = firstFromArrayish(business.state);
-                                                                        const zip = firstFromArrayish(business.zip_code);
-                                                                        const parts = [addr, city, state, zip].filter(Boolean);
-                                                                        return parts.length ? parts.join(', ') : 'Not provided';
-                                                                    })()}
-                                                                </Typography>
-                                                            </Box>
-                                                        </Grid> */}
-
 
                                                         {/* Social Media & Links Section */}
                                                         {(business.website || business.google_link || business.facebook_link || business.instagram_link || business.linkedin_link) && (
@@ -1460,67 +2375,6 @@ const BusinessManagement = () => {
                                                                 </Box>
                                                             </Grid>
                                                         )}
-
-                                                        {/* Additional Business Information
-                                                        <Grid item xs={12}>
-                                                            <Box sx={{ mt: 2, p: 2, bgcolor: '#f8f9fa', borderRadius: 2, border: '1px solid #e0e0e0' }}>
-                                                                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#2c387e' }}>
-                                                                    Additional Information
-                                                                </Typography>
-                                                                <Grid container spacing={2}>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Business ID:</strong> {business.id}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Member ID:</strong> {business.member_id}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Category ID:</strong> {business.category_id}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Media Type:</strong> {business.media_gallery_type || 'Not specified'}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Created:</strong> {business.createdAt ? new Date(business.createdAt).toLocaleDateString() : 'Not available'}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    <Grid item xs={12} sm={6} md={3}>
-                                                                        <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                            <strong>Updated:</strong> {business.updatedAt ? new Date(business.updatedAt).toLocaleDateString() : 'Not available'}
-                                                                        </Typography>
-                                                                    </Grid>
-                                                                    {business.website && (
-                                                                        <Grid item xs={12} sm={6} md={3}>
-                                                                            <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                                <strong>Website:</strong> 
-                                                                                <a href={business.website} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', marginLeft: 4 }}>
-                                                                                    Visit Website
-                                                                                </a>
-                                                                            </Typography>
-                                                                        </Grid>
-                                                                    )}
-                                                                    {business.google_link && (
-                                                                        <Grid item xs={12} sm={6} md={3}>
-                                                                            <Typography variant="body2" sx={{ color: '#666' }}>
-                                                                                <strong>Google:</strong> 
-                                                                                <a href={business.google_link} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none', marginLeft: 4 }}>
-                                                                                    View on Google
-                                                                                </a>
-                                                                            </Typography>
-                                                                        </Grid>
-                                                                    )}
-                                                                </Grid>
-                                                            </Box>
-                                                        </Grid> */}
 
                                                         {/* Media Gallery Section */}
                                                         {business.media_gallery && business.media_gallery.trim() !== '' && (
@@ -1775,6 +2629,17 @@ const BusinessManagement = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+            >
+                <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

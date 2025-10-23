@@ -79,9 +79,27 @@ const FamilyInformation = () => {
                 }
 
                 // Filter members to only include those with family profiles
-                const membersWithFamily = (data.data || []).filter(member =>
-                    member.MemberFamily !== null
-                );
+                const membersWithFamily = (data.data || [])
+                    .filter(member => member.MemberFamily !== null)
+                    .map(member => {
+                        const fam = member.MemberFamily || {};
+                        const safe = (v) => (v === null || v === undefined || String(v).trim() === '' ? 'N/A' : v);
+                        return {
+                            ...member,
+                            MemberFamily: {
+                                ...fam,
+                                father_name: safe(fam.father_name),
+                                father_contact: safe(fam.father_contact),
+                                mother_name: safe(fam.mother_name),
+                                mother_contact: safe(fam.mother_contact),
+                                spouse_name: safe(fam.spouse_name),
+                                spouse_contact: safe(fam.spouse_contact),
+                                number_of_children: fam.number_of_children ?? 0,
+                                children_names: safe(fam.children_names),
+                                address: safe(fam.address),
+                            }
+                        };
+                    });
 
                 setMembers(membersWithFamily);
 
@@ -101,7 +119,7 @@ const FamilyInformation = () => {
         member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (member.MemberFamily?.father_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+        (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     const getStatusColor = (status) => {
@@ -179,17 +197,19 @@ const FamilyInformation = () => {
     const handleExport = () => {
         // Prepare data for export
         const exportData = filteredMembers.map(member => {
+            const safe = (v) => (v === null || v === undefined || String(v).trim() === '' ? 'N/A' : v);
             const familyProfile = member.MemberFamily || {};
+            const children = (() => { try { const val = familyProfile.children_names; if (!val || val === 'N/A') return 'N/A'; const arr = typeof val === 'string' ? JSON.parse(val) : val; return Array.isArray(arr) && arr.length ? arr.join(', ') : 'N/A'; } catch { return 'N/A'; } })();
             return {
                 'First Name': member.first_name,
                 'Last Name': member.last_name,
                 'Email': member.email,
-                'Father Name': familyProfile.father_name || 'N/A',
-                'Mother Name': familyProfile.mother_name || 'N/A',
-                'Spouse Name': familyProfile.spouse_name || 'N/A',
-                'Children Details': familyProfile.children_details || 'N/A',
-                'Contact Number': member.contact_no || 'N/A',
-                'Address': `${member.address || ''}, ${member.city || ''}, ${member.state || ''} ${member.zip_code || ''}`.trim(),
+                'Father Name': safe(familyProfile.father_name),
+                'Mother Name': safe(familyProfile.mother_name),
+                'Spouse Name': safe(familyProfile.spouse_name),
+                'Children Details': children,
+                'Contact Number': safe(member.contact_no),
+                'Address': (() => { const a = safe(member.address); const c = safe(member.city); const s = safe(member.state); const z = safe(member.zip_code); if ([a,c,s,z].every(v => v === 'N/A')) return 'N/A'; return `${a === 'N/A' ? '' : a}${c==='N/A'?'':`, ${c}`}${s==='N/A'?'':`, ${s}`} ${z==='N/A'?'':z}`.trim(); })(),
                 'Status': member.status
             };
         });
@@ -541,8 +561,8 @@ const FamilyInformation = () => {
                                                     primary="Children"
                                                     secondary={
                                                         selectedMember.MemberFamily?.children_names
-                                                            ? JSON.parse(selectedMember.MemberFamily.children_names).join(', ')
-                                                            : 'Not provided'
+                                                            ? (() => { try { const val = selectedMember.MemberFamily.children_names; if (val === 'N/A') return 'N/A'; const arr = typeof val === 'string' ? JSON.parse(val) : val; return Array.isArray(arr) ? arr.join(', ') : 'N/A'; } catch { return 'N/A'; } })()
+                                                            : 'N/A'
                                                     }
                                                 />
                                             </ListItem>

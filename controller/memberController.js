@@ -208,7 +208,7 @@ const registerMember = async (req, res) => {
                 if (profile.business_registration_type && profile.business_registration_type !== 'Others') {
                     normalizedBusinessRegistrationType = profile.business_registration_type;
                 } else if (profile.business_registration_type === 'Others' && profile.business_registration_type_other) {
-                    normalizedBusinessRegistrationType = profile.business_registration_type_other.trim();
+                    normalizedBusinessRegistrationType = profile.business_registration_type_other;
                 }
             }
 
@@ -222,6 +222,7 @@ const registerMember = async (req, res) => {
 
                 // Self-employed and Business fields
                 business_registration_type: normalizedBusinessRegistrationType,
+                business_registration_type_other: profile.business_registration_type_other || null,
                 about: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.about : null,
                 branch_name: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.branch_name) : [profile.branch_name],
                 company_address: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.address) : [profile.company_address],
@@ -275,17 +276,17 @@ const registerMember = async (req, res) => {
 
             const familyPayload = {
                 member_id: newMember.mid,
-                father_name,
-                father_contact,
-                mother_name,
-                mother_contact,
-                address: family_address,
+                father_name: (father_name && String(father_name).trim()) || 'N/A',
+                father_contact: (father_contact && String(father_contact).trim()) || 'N/A',
+                mother_name: (mother_name && String(mother_name).trim()) || 'N/A',
+                mother_contact: (mother_contact && String(mother_contact).trim()) || 'N/A',
+                address: (family_address && String(family_address).trim()) || 'N/A',
             };
 
             if (marital_status?.toLowerCase().trim() === 'married') {
-                familyPayload.spouse_name = spouse_name;
-                familyPayload.spouse_contact = spouse_contact;
-                familyPayload.number_of_children = number_of_children;
+                familyPayload.spouse_name = (spouse_name && String(spouse_name).trim()) || 'N/A';
+                familyPayload.spouse_contact = (spouse_contact && String(spouse_contact).trim()) || 'N/A';
+                familyPayload.number_of_children = Number.isFinite(Number(number_of_children)) ? Number(number_of_children) : 0;
 
                 if (
                     number_of_children > 0 &&
@@ -293,6 +294,8 @@ const registerMember = async (req, res) => {
                     children_names.length === Number(number_of_children)
                 ) {
                     familyPayload.children_names = JSON.stringify(children_names);
+                } else {
+                    familyPayload.children_names = 'N/A';
                 }
             }
 
@@ -723,8 +726,7 @@ const scheduleExpirationCheck = () => {
 };
 
 const updateBusinessProfile = async (req, res) => {
-    console.log('Request body:', req.body);
-    console.log('Request files:', req.files);
+    const registrationTypeOptions = ["Proprietor", "Partnership", "Private Limited", "Others"];
     const t = await BusinessProfile.sequelize.transaction();
     try {
         const { id } = req.params;
@@ -834,6 +836,29 @@ const updateBusinessProfile = async (req, res) => {
         // Normalize business_type for conditional fields
         const newBusinessType = (businessData.business_type || profile.business_type || '').toString().toLowerCase();
 
+        // FIXED: Handle business_registration_type and business_registration_type_other properly
+        let normalizedUpdateBusinessRegistrationType = profile.business_registration_type;
+        let businessRegistrationTypeOther = profile.business_registration_type_other;
+
+        if (newBusinessType === 'self-employed' || newBusinessType === 'business') {
+            const incomingRegType = (businessData.business_registration_type || '').toString();
+            
+            if (incomingRegType === 'Others') {
+                // If selecting "Others", use the other field value
+                normalizedUpdateBusinessRegistrationType = 'Others';
+                businessRegistrationTypeOther = businessData.business_registration_type_other || '';
+            } else if (incomingRegType && registrationTypeOptions.includes(incomingRegType)) {
+                // If selecting a standard type, set it and clear the other field
+                normalizedUpdateBusinessRegistrationType = incomingRegType;
+                businessRegistrationTypeOther = null; // Clear the other field when not using "Others"
+            }
+            // If incomingRegType is empty, keep the existing values
+        } else {
+            // For salary type, clear these fields
+            normalizedUpdateBusinessRegistrationType = null;
+            businessRegistrationTypeOther = null;
+        }
+
         // Build update payload
         const updatePayload = {
             member_id: businessData.member_id || profile.member_id,
@@ -851,48 +876,25 @@ const updateBusinessProfile = async (req, res) => {
                 ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
                 : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
             business_work_contract: Array.isArray(businessData.branches) ? businessData.branches.map(branch => branch.business_work_contract) : [profile.business_work_contract],
-            // Self-employed fields
-            business_registration_type: newBusinessType === 'self-employed'
-                ? (businessData.business_registration_type || profile.business_registration_type)
-                : (newBusinessType !== profile.business_type ? null : profile.business_registration_type),
+            
+            // FIXED: Business registration type fields
+            business_registration_type: normalizedUpdateBusinessRegistrationType,
+            business_registration_type_other: businessRegistrationTypeOther,
+            
             about: newBusinessType === 'self-employed'
                 ? (businessData.about || businessData.description || profile.about)
                 : (newBusinessType !== profile.business_type ? null : profile.about),
-            // branch_name: newBusinessType === 'self-employed'
-            //     ? (businessData.branch_name || profile.branch_name)
-            //     : (newBusinessType !== profile.business_type ? null : profile.branch_name),
-            // company_address: newBusinessType === 'self-employed'
-            //     ? (businessData.company_address || businessData.businessAddress || profile.company_address)
-            //     : (newBusinessType !== profile.business_type ? null : profile.company_address),
-            // city: newBusinessType === 'self-employed'
-            //     ? (businessData.city || profile.city)
-            //     : (newBusinessType !== profile.business_type ? null : profile.city),
-            // state: newBusinessType === 'self-employed'
-            //     ? (businessData.state || profile.state)
-            //     : (newBusinessType !== profile.business_type ? null : profile.state),
-            // zip_code: newBusinessType === 'self-employed'
-            //     ? (businessData.zip_code || profile.zip_code)
-            //     : (newBusinessType !== profile.business_type ? null : profile.zip_code),
-            business_starting_year: newBusinessType === 'self-employed'
-                ? (businessData.business_starting_year || businessData.startingYear || profile.business_starting_year)
-                : (newBusinessType !== profile.business_type ? null : profile.business_starting_year),
-            // business_work_contract: newBusinessType === 'self-employed'
-            //     ? (businessData.business_work_contract || profile.business_work_contract)
-            //     : (newBusinessType !== profile.business_type ? null : profile.business_work_contract),
-
+            
             // Salary-specific fields
             designation: newBusinessType === 'salary'
                 ? (businessData.designation || profile.designation)
                 : (newBusinessType !== profile.business_type ? null : profile.designation),
-            // location: newBusinessType === 'salary'
-            //     ? (businessData.location || profile.location)
-            //     : (newBusinessType !== profile.business_type ? null : profile.location),
+            
             location: businessData.location || profile.location,
             experience: businessData.experience || profile.experience,
-            // Common fields
+            
             // Common fields
             staff_size: businessData.staff_size || profile.staff_size,
-            // email: businessData.email || businessData.businessEmail || profile.email,
             source: businessData.source || profile.source,
             tags: businessData.tags || profile.tags,
             website: businessData.website || profile.website,
@@ -915,6 +917,8 @@ const updateBusinessProfile = async (req, res) => {
                 delete updatePayload[key];
             }
         });
+
+        console.log('Update payload:', updatePayload); // Debug log
 
         await profile.update(updatePayload, { transaction: t });
         await t.commit();
@@ -978,20 +982,22 @@ const updateFamilyDetails = async (req, res) => {
         // Build payload
         const familyPayload = {
             member_id,
-            father_name,
-            father_contact,
-            mother_name,
-            mother_contact,
-            address
+            father_name: (father_name && String(father_name).trim()) || 'N/A',
+            father_contact: (father_contact && String(father_contact).trim()) || 'N/A',
+            mother_name: (mother_name && String(mother_name).trim()) || 'N/A',
+            mother_contact: (mother_contact && String(mother_contact).trim()) || 'N/A',
+            address: (address && String(address).trim()) || 'N/A'
         };
 
         if (marital_status?.toLowerCase().trim() === 'married') {
-            familyPayload.spouse_name = spouse_name;
-            familyPayload.spouse_contact = spouse_contact;
-            familyPayload.number_of_children = number_of_children;
+            familyPayload.spouse_name = (spouse_name && String(spouse_name).trim()) || 'N/A';
+            familyPayload.spouse_contact = (spouse_contact && String(spouse_contact).trim()) || 'N/A';
+            familyPayload.number_of_children = Number.isFinite(Number(number_of_children)) ? Number(number_of_children) : 0;
 
             if (number_of_children > 0 && Array.isArray(children_names)) {
                 familyPayload.children_names = JSON.stringify(children_names);
+            } else {
+                familyPayload.children_names = 'N/A';
             }
         }
 
@@ -1137,38 +1143,57 @@ const addBusinessProfileForMember = async (req, res) => {
                 ? /\.(mp4|mov|avi|mkv)$/i.test(gallery_paths[0]) ? 'video' : 'image'
                 : null;
 
-            // Set status: if no prior business for this member and it's been >= 5 days since member created, default to Pending
-            let statusForNewBusiness = 'Approved';
-            const daysSinceMemberCreated = daysBetween(member.createdAt, new Date());
-            if (daysSinceMemberCreated >= 5) {
-                statusForNewBusiness = 'Pending';
+            // Handle category logic (same as registerMember)
+            let category_id = profile.category_id ? Number(profile.category_id) : null;
+            if (category_id) {
+                const existingCategory = await Categories.findByPk(category_id);
+                if (!existingCategory) category_id = null;
+            }
+            if (!category_id && profile.new_category_name && String(profile.new_category_name).trim()) {
+                const name = String(profile.new_category_name).trim();
+                const existingByName = await Categories.findOne({ where: { category_name: name } });
+                const createdOrExisting = existingByName || await Categories.create({ category_name: name }, { transaction: t });
+                category_id = createdOrExisting.cid;
             }
 
+            // Normalize business_registration_type - handle "Others" case (same as registerMember)
+            let normalizedBusinessRegistrationType = null;
+            if (profile.business_type === 'self-employed' || profile.business_type === 'business') {
+                if (profile.business_registration_type && profile.business_registration_type !== 'Others') {
+                    normalizedBusinessRegistrationType = profile.business_registration_type;
+                } else if (profile.business_registration_type === 'Others' && profile.business_registration_type_other) {
+                    normalizedBusinessRegistrationType = profile.business_registration_type_other.trim();
+                }
+            }
+
+            // Create business profile with same structure as registerMember
             const newProfile = await BusinessProfile.create({
                 member_id: member.mid,
                 company_name: profile.company_name,
                 business_type: profile.business_type,
                 salary: profile.salary,
-                category_id: profile.category_id ? Number(profile.category_id) : null,
+                category_id,
 
-                // Self-employed fields
-                business_registration_type: profile.business_type === 'self-employed' ? profile.business_registration_type : null,
-                about: profile.business_type === 'self-employed' ? profile.about : null,
-                company_address: profile.business_type === 'self-employed' ? profile.company_address : null,
-                city: profile.business_type === 'self-employed' ? profile.city : null,
-                state: profile.business_type === 'self-employed' ? profile.state : null,
-                zip_code: profile.business_type === 'self-employed' ? profile.zip_code : null,
-                business_starting_year: profile.business_type === 'self-employed' ? profile.business_starting_year : null,
-                business_work_contract: profile.business_type === 'self-employed' ? profile.business_work_contract : null,
+                // Self-employed and Business fields
+                business_registration_type: normalizedBusinessRegistrationType,
+                about: (profile.business_type === 'self-employed' || profile.business_type === 'business') ? profile.about : null,
+                branch_name: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.branch_name) : [profile.branch_name],
+                company_address: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.address) : [profile.company_address],
+                city: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.city) : [profile.city],
+                state: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.state) : [profile.state],
+                zip_code: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.zip_code) : [profile.zip_code],
+                email: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.email) : [profile.email],
+                business_work_contract: Array.isArray(profile.branches) ? profile.branches.map(branch => branch.business_work_contract) : [profile.business_work_contract],
 
-                // Salary-specific fields
+                // Business-specific fields
+                staff_size: profile.business_type === 'business' ? profile.staff_size : null,
+
+                // Salary fields
                 designation: profile.business_type === 'salary' ? profile.designation : null,
-                location: profile.business_type === 'salary' ? profile.location : null,
-                experience: profile.business_type === 'salary' ? profile.experience : null,
+                location: Array.isArray(profile.location) ? profile.location : [profile.location],
+                experience: profile.experience || null,
 
-                // Common optional fields
-                staff_size: profile.staff_size || null,
-                email: Array.isArray(profile.email) ? profile.email[0] : profile.email,
+                // Common fields
                 source: profile.source || null,
                 tags: profile.tags || null,
                 website: profile.website || null,
@@ -1182,7 +1207,7 @@ const addBusinessProfileForMember = async (req, res) => {
                 business_profile_image,
                 media_gallery: gallery_paths.join(','),
                 media_gallery_type: gallery_type,
-                status: statusForNewBusiness,
+                status: "Approved",
             }, { transaction: t });
 
             createdProfiles.push(newProfile.get({ plain: true }));
@@ -1199,10 +1224,12 @@ const addBusinessProfileForMember = async (req, res) => {
     } catch (error) {
         await t.rollback();
 
-        // Cleanup uploaded files if error occurs
+        // Cleanup uploaded files if error occurs (same as registerMember)
         if (req.files) {
             Object.values(req.files).flat().forEach(file => {
-                if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
             });
         }
 
@@ -1421,18 +1448,6 @@ const addFamilyForMember = async (req, res) => {
     const t = await MemberFamily.sequelize.transaction();
     try {
         const { member_id } = req.params;
-        const {
-            father_name,
-            father_contact,
-            mother_name,
-            mother_contact,
-            spouse_name,
-            spouse_contact,
-            number_of_children,
-            children_names = [],
-            address,
-            marital_status
-        } = req.body;
 
         // Check if member exists
         const member = await Member.findByPk(member_id);
@@ -1458,24 +1473,62 @@ const addFamilyForMember = async (req, res) => {
             });
         }
 
-        // Build family payload
+        // Parse family_details (same as registerMember)
+        let family_details = {};
+        if (typeof req.body.family_details === 'string') {
+            family_details = JSON.parse(req.body.family_details);
+        } else {
+            family_details = req.body.family_details || {};
+        }
+
+        if (Object.keys(family_details).length === 0) {
+            await t.rollback();
+            return res.status(400).json({
+                success: false,
+                msg: 'Family details are required',
+            });
+        }
+
+        // Extract family details (same structure as registerMember)
+        const {
+            father_name,
+            father_contact,
+            mother_name,
+            mother_contact,
+            spouse_name,
+            spouse_contact,
+            number_of_children,
+            address: family_address,
+            children_names = []
+        } = family_details;
+
+        // Get marital_status from member record
+        const { marital_status } = member;
+
+        // Build family payload (same logic as registerMember)
         const familyPayload = {
-            member_id,
-            father_name: father_name || null,
-            father_contact: father_contact || null,
-            mother_name: mother_name || null,
-            mother_contact: mother_contact || null,
-            address: address || null,
+            member_id: member.mid,
+            father_name: (father_name && String(father_name).trim()) || 'N/A',
+            father_contact: (father_contact && String(father_contact).trim()) || 'N/A',
+            mother_name: (mother_name && String(mother_name).trim()) || 'N/A',
+            mother_contact: (mother_contact && String(mother_contact).trim()) || 'N/A',
+            address: (family_address && String(family_address).trim()) || 'N/A',
         };
 
-        // Add spouse and children details if married
-        if (marital_status && marital_status.toLowerCase().trim() === 'married') {
-            familyPayload.spouse_name = spouse_name || null;
-            familyPayload.spouse_contact = spouse_contact || null;
-            familyPayload.number_of_children = number_of_children || 0;
+        // Add spouse and children details if married (same logic as registerMember)
+        if (marital_status?.toLowerCase().trim() === 'married') {
+            familyPayload.spouse_name = (spouse_name && String(spouse_name).trim()) || 'N/A';
+            familyPayload.spouse_contact = (spouse_contact && String(spouse_contact).trim()) || 'N/A';
+            familyPayload.number_of_children = Number.isFinite(Number(number_of_children)) ? Number(number_of_children) : 0;
 
-            if (number_of_children > 0 && Array.isArray(children_names) && children_names.length > 0) {
+            if (
+                number_of_children > 0 &&
+                Array.isArray(children_names) &&
+                children_names.length === Number(number_of_children)
+            ) {
                 familyPayload.children_names = JSON.stringify(children_names);
+            } else {
+                familyPayload.children_names = 'N/A';
             }
         }
 
@@ -1500,6 +1553,7 @@ const addFamilyForMember = async (req, res) => {
         });
     }
 };
+
 
 module.exports = {
     registerMember,

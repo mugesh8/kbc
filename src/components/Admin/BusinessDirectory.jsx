@@ -315,6 +315,9 @@ const BusinessDirectoryForm = () => {
   const [removedMediaGallery, setRemovedMediaGallery] = useState([]);
   const [mediaPreview, setMediaPreview] = useState({ isOpen: false, media: null, type: 'image' });
 
+  // Business registration type options
+  const registrationTypeOptions = ["Proprietor", "Partnership", "Private Limited", "Others"];
+
   const [formData, setFormData] = useState({
     business_type: 'self-employed',
     company_name: '',
@@ -351,9 +354,6 @@ const BusinessDirectoryForm = () => {
       zip_code: ''
     }]
   });
-
-  // Business registration type options
-  const registrationTypeOptions = ["Proprietor", "Partnership", "Private Limited", "Others"];
 
   // Branch management handlers - matching ProfilePage structure
   const handleAddBranch = useCallback(() => {
@@ -579,9 +579,11 @@ const BusinessDirectoryForm = () => {
       }];
     }
 
-    // Determine registration type
+    // FIXED: Determine registration type - check if it's "Others" and has other value
     let business_registration_type = apiData.business_registration_type || '';
-    let business_registration_type_other = '';
+    let business_registration_type_other = apiData.business_registration_type_other || '';
+    
+    // If business_registration_type is not in the predefined options, treat it as "Others"
     if (business_registration_type && !registrationTypeOptions.includes(business_registration_type)) {
       business_registration_type_other = business_registration_type;
       business_registration_type = 'Others';
@@ -813,6 +815,9 @@ const BusinessDirectoryForm = () => {
         business_registration_type: formData.business_registration_type === 'Others' 
           ? formData.business_registration_type_other 
           : formData.business_registration_type,
+        business_registration_type_other: formData.business_registration_type === 'Others' 
+          ? formData.business_registration_type_other 
+          : '',
         experience: formData.experience || '',
         staff_size: formData.staff_size || '',
         about: formData.about || '',
@@ -1151,6 +1156,7 @@ const BusinessDirectoryForm = () => {
                         value={formData.business_registration_type_other}
                         onChange={handleInputChange}
                         size="medium"
+                        placeholder="Enter your registration type"
                       />
                     </Grid>
                   )}

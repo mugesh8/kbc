@@ -1097,31 +1097,27 @@ const FamilyDetails = React.memo(({
               onChange={createNumericInputChangeHandler('mother_contact')}
             />
           </div>
+          {/* Show spouse fields only for Married and Widowed */}
+          {formData.marital_status && (formData.marital_status === 'Married' || formData.marital_status === 'Widowed') && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <NameAutocompleteField
+                label="Spouse Name"
+                nameValue={formData.spouse_name}
+                contactValue={formData.spouse_contact}
+                suggestionsSource={memberSuggestions}
+                onNameChange={(val) => handleNameChange('spouse', 'name', val)}
+                onContactChange={(val) => handleNameChange('spouse', 'phone', val)}
+              />
+              <InputField
+                label="Spouse Contact"
+                name="spouse_contact"
+                placeholder="Enter spouse's contact number"
+                value={formData.spouse_contact}
+                onChange={createNumericInputChangeHandler('spouse_contact')}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <NameAutocompleteField
-              label="Spouse Name"
-              nameValue={formData.spouse_name}
-              contactValue={formData.spouse_contact}
-              suggestionsSource={memberSuggestions}
-              onNameChange={(val) => handleNameChange('spouse', 'name', val)}
-              onContactChange={(val) => handleNameChange('spouse', 'phone', val)}
-            />
-            <InputField
-              label="Spouse Contact"
-              name="spouse_contact"
-              placeholder="Enter spouse's contact number"
-              value={formData.spouse_contact}
-              onChange={createNumericInputChangeHandler('spouse_contact')}
-            />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <InputField
-              label="Number of Children"
-              name="number_of_children"
-              placeholder="Enter number of children"
-              value={formData.number_of_children}
-              onChange={createInputChangeHandler('number_of_children')}
-            />
             <InputField
               label="Family Address"
               name="family_address"
@@ -1129,18 +1125,31 @@ const FamilyDetails = React.memo(({
               value={formData.family_address}
               onChange={createInputChangeHandler('family_address')}
             />
+            {/* Show children fields only for Married and Widowed */}
+            {formData.marital_status && (formData.marital_status === 'Married' || formData.marital_status === 'Widowed') && (
+              <InputField
+                label="Number of Children"
+                name="number_of_children"
+                placeholder="Enter number of children"
+                value={formData.number_of_children}
+                onChange={createInputChangeHandler('number_of_children')}
+              />
+            )}
           </div>
-          <div className="mb-6">
-            <label className="block text-gray-800 text-sm font-semibold mb-2">Children Names</label>
-            <textarea
-              placeholder="Enter children names (separated by comma)"
-              rows={4}
-              name="children_names"
-              value={formData.children_names}
-              onChange={createInputChangeHandler('children_names')}
-              className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 resize-none bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
-            />
-          </div>
+          {/* Show children names only for Married and Widowed */}
+          {formData.marital_status && (formData.marital_status === 'Married' || formData.marital_status === 'Widowed') && (
+            <div className="mb-6">
+              <label className="block text-gray-800 text-sm font-semibold mb-2">Children Names</label>
+              <textarea
+                placeholder="Enter children names (separated by comma)"
+                rows={4}
+                name="children_names"
+                value={formData.children_names}
+                onChange={createInputChangeHandler('children_names')}
+                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 resize-none bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm"
+              />
+            </div>
+          )}
           
           {/* Terms and Conditions */}
           <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-100">
