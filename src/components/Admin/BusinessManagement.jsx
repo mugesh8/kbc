@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Box,
     Typography,
@@ -50,10 +50,6 @@ import {
     ExpandMore,
     ExpandLess,
     InsertDriveFile as InsertDriveFileIcon,
-    Facebook,
-    Instagram,
-    Twitter,
-    YouTube,
     Add,
     CloudUpload
 } from '@mui/icons-material';
@@ -945,6 +941,7 @@ const BusinessProfileModal = ({
 
 const BusinessManagement = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
     const [groupedBusinesses, setGroupedBusinesses] = useState({});
     const [loading, setLoading] = useState(true);
@@ -960,6 +957,172 @@ const BusinessManagement = () => {
     const [addBusinessModalOpen, setAddBusinessModalOpen] = useState(false);
     const [categories, setCategories] = useState([]);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [statusFilter, setStatusFilter] = useState('All');
+    
+    // State for admin permissions
+    const [permissions, setPermissions] = useState({
+        canView: false,
+        canAdd: false,
+        canEdit: false,
+        canDelete: false
+    });
+    
+    // State for permission loading
+    const [permissionLoading, setPermissionLoading] = useState(true);
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+    const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
+
+    // Check URL parameters on component mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(location.search);
+        const tab = urlParams.get('tab');
+        
+        if (tab === 'pending') {
+            setActiveTab('pending');
+        }
+    }, [location.search]);
+
+    // Fetch admin permissions
+    useEffect(() => {
+        const fetchAdminPermissions = async () => {
+            try {
+                setPermissionLoading(true);
+                const role = localStorage.getItem('adminRole');
+                const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
+                
+                if (role === 'community' && storedToken) {
+                    // Helper to decode JWT payload safely
+                    const decodeJwt = (token) => {
+                        try {
+                            const payload = token.split('.')[1];
+                            const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+                            return JSON.parse(decodeURIComponent(escape(json)));
+                        } catch (e) {
+                            try {
+                                const json = atob(token.split('.')[1]);
+                                return JSON.parse(json);
+                            } catch {
+                                return null;
+                            }
+                        }
+                    };
+
+                    const decoded = decodeJwt(storedToken);
+                    if (decoded && decoded.id) {
+                        const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.role) {
+                                // Parse role data - it comes as a JSON string from the database
+                                let rolesArray = [];
+                                try {
+                                  if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                                    rolesArray = JSON.parse(data.role);
+                                  } else if (Array.isArray(data.role)) {
+                                    rolesArray = data.role;
+                                  } else {
+                                    rolesArray = [data.role];
+                                  }
+                                } catch (e) {
+                                  console.error('Error parsing roles:', e);
+                                  rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                                }
+                                
+                                // Find the Business Management role (case insensitive)
+                                const businessRole = rolesArray.find(r => 
+                                    r.toLowerCase().includes('business management')
+                                );
+                                
+                                if (businessRole) {
+                                    // Check if it has specific permissions
+                                    if (businessRole.includes('--')) {
+                                        const permissionsStr = businessRole.split('--')[1].trim();
+                                        const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+                                        
+                                        setPermissions({
+                                            canView: permissionList.includes('view'),
+                                            canAdd: permissionList.includes('add'),
+                                            canEdit: permissionList.includes('edit'),
+                                            canDelete: permissionList.includes('delete')
+                                        });
+                                    } else {
+                                        // Only "Business Management" without specific permissions -> only view
+                                        setPermissions({
+                                            canView: true,
+                                            canAdd: false,
+                                            canEdit: false,
+                                            canDelete: false
+                                        });
+                                    }
+                                } else {
+                                    // No Business Management role found - default to no permissions
+                                    setPermissions({
+                                        canView: false,
+                                        canAdd: false,
+                                        canEdit: false,
+                                        canDelete: false
+                                    });
+                                }
+                            }
+                        } else {
+                            // Failed to fetch admin data - default to view permission for safety
+                            console.error('Failed to fetch admin data');
+                            setPermissions({
+                                canView: true,
+                                canAdd: false,
+                                canEdit: false,
+                                canDelete: false
+                            });
+                        }
+                    } else {
+                        // Failed to decode token - default to view permission for safety
+                        console.error('Failed to decode token');
+                        setPermissions({
+                            canView: true,
+                            canAdd: false,
+                            canEdit: false,
+                            canDelete: false
+                        });
+                    }
+                } else if (role === 'super') {
+                    // Super admin has all permissions
+                    setPermissions({
+                        canView: true,
+                        canAdd: true,
+                        canEdit: true,
+                        canDelete: true
+                    });
+                } else {
+                    // No role found - default to no permissions
+                    setPermissions({
+                        canView: false,
+                        canAdd: false,
+                        canEdit: false,
+                        canDelete: false
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching admin permissions:', err);
+                // Default to view permission for safety in case of errors
+                setPermissions({
+                    canView: true,
+                    canAdd: false,
+                    canEdit: false,
+                    canDelete: false
+                });
+            } finally {
+                setPermissionLoading(false);
+            }
+        };
+
+        fetchAdminPermissions();
+    }, []);
 
     // Fetch categories
     useEffect(() => {
@@ -1044,10 +1207,6 @@ const BusinessManagement = () => {
         return arr.length > 0 ? arr[0] : '';
     };
 
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
-
     // Fetch all business profiles
     useEffect(() => {
         const fetchBusinessProfiles = async () => {
@@ -1091,8 +1250,14 @@ const BusinessManagement = () => {
             }
         };
 
-        fetchBusinessProfiles();
-    }, []);
+        // Only fetch if admin has view permission
+        if (!permissionLoading && permissions.canView) {
+            fetchBusinessProfiles();
+        } else if (!permissionLoading && !permissions.canView) {
+            setLoading(false);
+            setError('You do not have permission to view business management');
+        }
+    }, [permissions.canView, permissionLoading]);
 
     // Refresh business profiles after adding new one
     const refreshBusinessProfiles = () => {
@@ -1166,7 +1331,7 @@ const BusinessManagement = () => {
 
     const filteredGroups = tabbedGroups.filter(group => {
         const searchLower = searchTerm.toLowerCase();
-        return (
+        const matchesSearch = (
             group.member.first_name?.toLowerCase().includes(searchLower) ||
             group.member.last_name?.toLowerCase().includes(searchLower) ||
             group.member.email?.toLowerCase().includes(searchLower) ||
@@ -1176,6 +1341,40 @@ const BusinessManagement = () => {
                 (business.role || '').toLowerCase().includes(searchLower)
             )
         );
+        
+        const matchesStatus = statusFilter === 'All' || group.member.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    }).sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (sortBy) {
+            case 'name':
+                aValue = `${a.member.first_name} ${a.member.last_name}`.toLowerCase();
+                bValue = `${b.member.first_name} ${b.member.last_name}`.toLowerCase();
+                break;
+            case 'company':
+                aValue = a.businesses[0]?.company_name?.toLowerCase() || '';
+                bValue = b.businesses[0]?.company_name?.toLowerCase() || '';
+                break;
+            case 'type':
+                aValue = a.businesses[0]?.business_type?.toLowerCase() || '';
+                bValue = b.businesses[0]?.business_type?.toLowerCase() || '';
+                break;
+            case 'status':
+                aValue = a.member.status || '';
+                bValue = b.member.status || '';
+                break;
+            default:
+                aValue = a.member.first_name?.toLowerCase() || '';
+                bValue = b.member.first_name?.toLowerCase() || '';
+        }
+        
+        if (sortOrder === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
+        }
     });
 
     const getStatusColor = (status) => {
@@ -1188,15 +1387,19 @@ const BusinessManagement = () => {
     };
 
     const handleEditBusiness = (business) => {
+        if (!permissions.canEdit) return;
         navigate(`/admin/BusinessDirectory/${business.id}`);
     };
 
     const handleAddBusiness = (member) => {
+        if (!permissions.canAdd) return;
         setSelectedMember(member);
         setAddBusinessModalOpen(true);
     };
 
     const handleViewMember = async (member) => {
+        if (!permissions.canView) return;
+        
         setSelectedMember(member);
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -1222,6 +1425,8 @@ const BusinessManagement = () => {
     };
 
     const handleDeleteClick = (business) => {
+        if (!permissions.canDelete) return;
+        
         setSelectedMember({
             ...groupedBusinesses[business.mid].member,
             businessToDelete: business
@@ -1230,7 +1435,7 @@ const BusinessManagement = () => {
     };
 
     const handleDeleteConfirm = async () => {
-        if (!selectedMember || !selectedMember.businessToDelete) return;
+        if (!selectedMember || !selectedMember.businessToDelete || !permissions.canDelete) return;
 
         try {
             const response = await fetch(`${baseurl}/api/business/delete/${selectedMember.businessToDelete.id}`, {
@@ -1305,6 +1510,44 @@ const BusinessManagement = () => {
     const totalBusinesses = Object.values(groupedBusinesses).reduce(
         (total, group) => total + group.businesses.length, 0
     );
+
+    // Show loading state while checking permissions
+    if (permissionLoading) {
+        return (
+            <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                        Checking permissions...
+                    </Typography>
+                </Card>
+            </Box>
+        );
+    }
+
+    // If admin doesn't have view permission, show access denied message
+    if (!permissions.canView) {
+        return (
+            <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+                <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4 }}>
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: '#f44336', mb: 2 }}>
+                            Access Denied
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                            You do not have permission to view the Business Management module.
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+                            onClick={() => navigate('/admin/dashboard')}
+                        >
+                            Back to Dashboard
+                        </Button>
+                    </Box>
+                </Card>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
@@ -1403,6 +1646,7 @@ const BusinessManagement = () => {
                         <Button
                             variant="outlined"
                             startIcon={<FilterList />}
+                            onClick={() => setFilterDialogOpen(true)}
                             sx={{
                                 color: '#666',
                                 borderColor: '#ddd',
@@ -1411,15 +1655,29 @@ const BusinessManagement = () => {
                         >
                             Filter
                         </Button>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <InputLabel>Sort by</InputLabel>
+                            <Select
+                                value={sortBy}
+                                label="Sort by"
+                                onChange={(e) => setSortBy(e.target.value)}
+                            >
+                                <MenuItem value="name">Member Name</MenuItem>
+                                <MenuItem value="company">Company Name</MenuItem>
+                                <MenuItem value="type">Business Type</MenuItem>
+                                <MenuItem value="status">Status</MenuItem>
+                            </Select>
+                        </FormControl>
                         <Button
                             variant="outlined"
+                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                             sx={{
                                 color: '#666',
                                 borderColor: '#ddd',
                                 whiteSpace: 'nowrap'
                             }}
                         >
-                            Sort by
+                            {sortOrder === 'asc' ? '↑' : '↓'}
                         </Button>
                     </Box>
 
@@ -1509,17 +1767,19 @@ const BusinessManagement = () => {
                                                 <TableCell>
                                                     <Stack direction="row" spacing={0.5}>
                                                         {/* Add Business Button */}
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{ color: '#4CAF50' }}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleAddBusiness(group.member);
-                                                            }}
-                                                            title="Add Business Profile"
-                                                        >
-                                                            <Add fontSize="small" />
-                                                        </IconButton>
+                                                        {permissions.canAdd && (
+                                                            <IconButton
+                                                                size="small"
+                                                                sx={{ color: '#4CAF50' }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleAddBusiness(group.member);
+                                                                }}
+                                                                title="Add Business Profile"
+                                                            >
+                                                                <Add fontSize="small" />
+                                                            </IconButton>
+                                                        )}
                                                         <IconButton
                                                             size="small"
                                                             sx={{ color: '#666' }}
@@ -1597,18 +1857,20 @@ const BusinessManagement = () => {
                                                                                     display: 'flex',
                                                                                     gap: 0.5
                                                                                 }}>
-                                                                                    <IconButton
-                                                                                        size="small"
-                                                                                        sx={{ 
-                                                                                            color: isDisabled ? '#ccc' : '#666',
-                                                                                            pointerEvents: isDisabled ? 'none' : 'auto'
-                                                                                        }}
-                                                                                        onClick={() => handleEditBusiness(business)}
-                                                                                        disabled={isDisabled}
-                                                                                    >
-                                                                                        <Edit fontSize="small" />
-                                                                                    </IconButton>
-                                    
+                                                                                    {permissions.canEdit && (
+                                                                                        <IconButton
+                                                                                            size="small"
+                                                                                            sx={{ 
+                                                                                                color: isDisabled ? '#ccc' : '#666',
+                                                                                                pointerEvents: isDisabled ? 'none' : 'auto'
+                                                                                            }}
+                                                                                            onClick={() => handleEditBusiness(business)}
+                                                                                            disabled={isDisabled}
+                                                                                        >
+                                                                                            <Edit fontSize="small" />
+                                                                                        </IconButton>
+                                                                                    )}
+                                                                                    {permissions.canDelete && (
                                                                                         <IconButton
                                                                                             size="small"
                                                                                             sx={{ 
@@ -1623,6 +1885,7 @@ const BusinessManagement = () => {
                                                                                         >
                                                                                             <Delete fontSize="small" />
                                                                                         </IconButton>
+                                                                                    )}
                                                                                 </Box>
 
                                                                                 <Typography
@@ -2627,6 +2890,34 @@ const BusinessManagement = () => {
                     >
                         Close
                     </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Filter Dialog */}
+            <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Filter Businesses</DialogTitle>
+                <DialogContent>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <InputLabel>Status</InputLabel>
+                                <Select
+                                    value={statusFilter}
+                                    label="Status"
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <MenuItem value="All">All</MenuItem>
+                                    <MenuItem value="Approved">Approved</MenuItem>
+                                    <MenuItem value="Pending">Pending</MenuItem>
+                                    <MenuItem value="Rejected">Rejected</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
                 </DialogActions>
             </Dialog>
 

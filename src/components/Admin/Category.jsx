@@ -11,7 +11,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   IconButton,
   Dialog,
   DialogTitle,
@@ -50,13 +49,155 @@ const Category = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
+  
+  // State for admin permissions
+  const [permissions, setPermissions] = useState({
+    canView: false,
+    canAdd: false,
+    canEdit: false,
+    canDelete: false
+  });
+  
+  // State for permission loading
+  const [permissionLoading, setPermissionLoading] = useState(true);
 
-  // Fetch categories data
+  // Fetch admin permissions
   useEffect(() => {
-    fetchCategories();
+    const fetchAdminPermissions = async () => {
+      try {
+        setPermissionLoading(true);
+        const role = localStorage.getItem('adminRole');
+        const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
+        
+        if (role === 'community' && storedToken) {
+          // Helper to decode JWT payload safely
+          const decodeJwt = (token) => {
+            try {
+              const payload = token.split('.')[1];
+              const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+              return JSON.parse(decodeURIComponent(escape(json)));
+            } catch (e) {
+              try {
+                const json = atob(token.split('.')[1]);
+                return JSON.parse(json);
+              } catch {
+                return null;
+              }
+            }
+          };
+
+          const decoded = decodeJwt(storedToken);
+          
+          if (decoded && decoded.id) {
+            const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
+            
+            if (res.ok) {
+              const data = await res.json();
+              
+              if (data && data.role) {
+                // Find the Category role (case insensitive)
+                const categoryRole = data.role.find(r => {
+                  const roleLower = r.toLowerCase();
+                  return roleLower.includes('category') || roleLower.includes('categories');
+                });
+                
+                if (categoryRole) {
+                  // Check if it has specific permissions
+                  if (categoryRole.includes('--')) {
+                    const permissionsStr = categoryRole.split('--')[1].trim();
+                    const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+                    
+                    setPermissions({
+                      canView: true, // If they have any category permission, they can view
+                      canAdd: permissionList.includes('add'),
+                      canEdit: permissionList.includes('edit'),
+                      canDelete: permissionList.includes('delete')
+                    });
+                  } else {
+                    // Only "Category" without specific permissions -> only view
+                    setPermissions({
+                      canView: true,
+                      canAdd: false,
+                      canEdit: false,
+                      canDelete: false
+                    });
+                  }
+                } else {
+                  // No Category role found - default to no permissions
+                  setPermissions({
+                    canView: false,
+                    canAdd: false,
+                    canEdit: false,
+                    canDelete: false
+                  });
+                }
+              }
+            } else {
+              // Failed to fetch admin data - default to view permission for safety
+              console.error('Failed to fetch admin data');
+              setPermissions({
+                canView: true,
+                canAdd: false,
+                canEdit: false,
+                canDelete: false
+              });
+            }
+          } else {
+            // Failed to decode token - default to view permission for safety
+            console.error('Failed to decode token');
+            setPermissions({
+              canView: true,
+              canAdd: false,
+              canEdit: false,
+              canDelete: false
+            });
+          }
+        } else if (role === 'super') {
+          // Super admin has all permissions
+          setPermissions({
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true
+          });
+        } else {
+          // No role found - default to no permissions
+          setPermissions({
+            canView: false,
+            canAdd: false,
+            canEdit: false,
+            canDelete: false
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching admin permissions:', err);
+        // Default to view permission for safety in case of errors
+        setPermissions({
+          canView: true,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false
+        });
+      } finally {
+        setPermissionLoading(false);
+      }
+    };
+
+    fetchAdminPermissions();
   }, []);
 
+  // Fetch categories when permissions are loaded
+  useEffect(() => {
+    // Only fetch if admin has view permission
+    if (!permissionLoading && permissions.canView) {
+      fetchCategories();
+    } else if (!permissionLoading && !permissions.canView) {
+      setLoading(false);
+      setError('You do not have permission to view category management');
+    }
+  }, [permissions.canView, permissionLoading]);
+
+  // Fetch categories data
   const fetchCategories = async () => {
     try {
       setLoading(true);
@@ -137,7 +278,7 @@ const Category = () => {
     if (!validateForm()) return;
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
       const url = selectedCategory 
         ? `${baseurl}/api/category/update/${selectedCategory.cid}`
         : `${baseurl}/api/category/register`;
@@ -177,7 +318,7 @@ const Category = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
       const response = await fetch(`${baseurl}/api/category/delete/${selectedCategory.cid}`, {
         method: 'DELETE',
         headers: {
@@ -225,6 +366,45 @@ const Category = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
+  // Show loading state while checking permissions
+  if (permissionLoading) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4, textAlign: 'center' }}>
+          <CircularProgress size={24} sx={{ mb: 2 }} />
+          <Typography variant="h6">
+            Checking permissions...
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+
+  // If admin doesn't have view permission, show access denied message
+  if (!permissions.canView) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4 }}>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h4" sx={{ fontWeight: 600, color: '#f44336', mb: 2 }}>
+              Access Denied
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              You do not have permission to view the Category Management module.
+            </Typography>
+            <Button 
+              variant="contained" 
+              sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+              onClick={() => window.location.reload()}
+            >
+              Refresh Page
+            </Button>
+          </Box>
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
@@ -246,20 +426,22 @@ const Category = () => {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => handleOpenDialog()}
-              sx={{
-                backgroundColor: '#4CAF50',
-                '&:hover': { backgroundColor: '#45a049' },
-                px: 3,
-                py: 1.5,
-                fontWeight: 600
-              }}
-            >
-              Add Category
-            </Button>
+            {permissions.canAdd && (
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => handleOpenDialog()}
+                sx={{
+                  backgroundColor: '#4CAF50',
+                  '&:hover': { backgroundColor: '#45a049' },
+                  px: 3,
+                  py: 1.5,
+                  fontWeight: 600
+                }}
+              >
+                Add Category
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<FileDownload />}
@@ -320,19 +502,19 @@ const Category = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
                       <CircularProgress size={24} />
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
                       <Typography color="error">{error}</Typography>
                     </TableCell>
                   </TableRow>
                 ) : filteredCategories.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
                       <Typography>No categories found</Typography>
                     </TableCell>
                   </TableRow>
@@ -351,20 +533,25 @@ const Category = () => {
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.5}>
-                          <IconButton
-                            size="small"
-                            sx={{ color: '#666' }}
-                            onClick={() => handleViewCategory(category)}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            sx={{ color: '#666' }}
-                            onClick={() => handleOpenDialog(category)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
+                          {permissions.canView && (
+                            <IconButton
+                              size="small"
+                              sx={{ color: '#666' }}
+                              onClick={() => handleViewCategory(category)}
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canEdit && (
+                            <IconButton
+                              size="small"
+                              sx={{ color: '#666' }}
+                              onClick={() => handleOpenDialog(category)}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canDelete && (
                             <IconButton
                               size="small"
                               sx={{ color: '#f44336' }}
@@ -372,6 +559,7 @@ const Category = () => {
                             >
                               <Delete fontSize="small" />
                             </IconButton>
+                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>

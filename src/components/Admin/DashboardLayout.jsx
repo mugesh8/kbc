@@ -25,6 +25,7 @@ import Category from './Category';
 import AddBusinessForm from './AddBusinessForm';
 import CommunityAdmin from './CommunityAdmin';
 import AddCommunityAdmin from './AddCommunityAdmin';
+import EditCommunityAdmin from './EditCommunityAdmin';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -181,6 +182,14 @@ const DashboardLayout = () => {
               element={
                 <ProtectedRoute type="admin">
                   <AddCommunityAdmin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="CommunityAdmin/Edit/:id"
+              element={
+                <ProtectedRoute type="admin">
+                  <EditCommunityAdmin />
                 </ProtectedRoute>
               }
             />

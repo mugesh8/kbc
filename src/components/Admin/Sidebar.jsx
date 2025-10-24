@@ -36,6 +36,8 @@ const Sidebar = ({ open, onClose }) => {
   const [adminName, setAdminName] = useState('Admin User');
   const [adminEmail, setAdminEmail] = useState('admin@businessdir.com');
   const [adminRole, setAdminRole] = useState('');
+  const [adminRoles, setAdminRoles] = useState([]); // Store specific roles
+  const [permissions, setPermissions] = useState({}); // Store parsed permissions
 
   useEffect(() => {
     const loadAdminInfo = async () => {
@@ -68,9 +70,41 @@ const Sidebar = ({ open, onClose }) => {
             const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
             if (res.ok) {
               const data = await res.json();
-              if (data && (data.username || data.email)) {
+              if (data) {
                 setAdminName(data.username || 'Community Admin');
                 setAdminEmail(data.email || adminEmail);
+                // Parse role data - it comes as a JSON string from the database
+                let rolesArray = [];
+                if (data.role) {
+                  try {
+                    // If it's a JSON string, parse it
+                    if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                      rolesArray = JSON.parse(data.role);
+                    } else if (Array.isArray(data.role)) {
+                      rolesArray = data.role;
+                    } else {
+                      rolesArray = [data.role];
+                    }
+                  } catch (e) {
+                    console.error('Error parsing roles:', e);
+                    rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                  }
+                }
+                setAdminRoles(rolesArray);
+                
+                // Parse permissions
+                const parsedPermissions = {};
+                rolesArray.forEach(role => {
+                  if (typeof role === 'string' && role.includes('--')) {
+                    const [roleName, permissionsStr] = role.split('--');
+                    const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+                    parsedPermissions[roleName.trim()] = permissionList;
+                  } else if (typeof role === 'string') {
+                    // If no specific permissions, just mark as having the role
+                    parsedPermissions[role] = ['view'];
+                  }
+                });
+                setPermissions(parsedPermissions);
               }
             }
           } else if (decoded && decoded.email) {
@@ -87,28 +121,105 @@ const Sidebar = ({ open, onClose }) => {
               const p = data.data;
               setAdminName(p.username || 'Admin User');
               setAdminEmail(p.email || adminEmail);
+              // Super admin has all roles and permissions
+              setAdminRoles(['super_admin']);
+              setPermissions({ 
+                'super_admin': ['view', 'add', 'edit', 'delete', 'manage'] 
+              });
             }
           }
         }
       } catch (err) {
         // Silently ignore; fallback values will be shown
+        console.error('Error loading admin info:', err);
+        // Ensure adminRoles remains an array even on error
+        setAdminRoles([]);
       }
     };
 
     loadAdminInfo();
   }, []);
 
+  // Function to check if admin has a specific role
+  const hasRole = (roleName) => {
+    if (adminRole !== 'community') return true; // Super admin has all permissions
+    
+    // Ensure adminRoles is an array before calling .some()
+    if (!Array.isArray(adminRoles) || adminRoles.length === 0) {
+      return false;
+    }
+    
+    // Check for exact match or partial match
+    return adminRoles.some(role => {
+      // Ensure role is a string before calling string methods
+      if (typeof role !== 'string') return false;
+      
+      const roleLower = role.toLowerCase();
+      const roleNameLower = roleName.toLowerCase();
+      
+      // Check if the role contains the role name (for partial matches)
+      if (roleLower.includes(roleNameLower)) {
+        return true;
+      }
+      
+      // Extract the base role name (before "--") and check for exact match
+      const baseRole = role.split('--')[0].trim().toLowerCase();
+      return baseRole === roleNameLower;
+    });
+  };
+
+  // Function to check if admin has a specific permission for a role
+  const hasPermission = (roleName, permission) => {
+    if (adminRole !== 'community') return true; // Super admin has all permissions
+    
+    // Ensure adminRoles is an array before calling .find()
+    if (!Array.isArray(adminRoles) || adminRoles.length === 0) {
+      return false;
+    }
+    
+    // Find the role that matches the role name
+    const role = adminRoles.find(r => {
+      // Ensure r is a string before calling string methods
+      if (typeof r !== 'string') return false;
+      
+      const roleLower = r.toLowerCase();
+      const roleNameLower = roleName.toLowerCase();
+      
+      // Check if the role contains the role name (for partial matches)
+      if (roleLower.includes(roleNameLower)) {
+        return true;
+      }
+      
+      // Extract the base role name (before "--") and check for exact match
+      const baseRole = r.split('--')[0].trim().toLowerCase();
+      return baseRole === roleNameLower;
+    });
+    
+    if (!role) return false;
+    
+    // If the role has specific permissions
+    if (typeof role === 'string' && role.includes('--')) {
+      const permissionsStr = role.split('--')[1].trim();
+      const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+      return permissionList.includes(permission.toLowerCase());
+    }
+    
+    // If no specific permissions, assume view permission
+    return permission === 'view';
+  };
+
+  // Define menu items with role requirements
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: 'dashboard' },
-    { text: 'Member Management', icon: <PeopleIcon />, path: 'MemberManagement' },
-    { text: 'Category', icon: <PeopleIcon />, path: 'Category' },
-    { text: 'Business Directory', icon: <BusinessIcon />, path: 'BusinessManagement' },
-    { text: 'Family Information', icon: <FamilyRestroomIcon />, path: 'FamilyInformation' },
-    { text: 'Referral System', icon: <ShareIcon />, path: 'ReferralSystem' },
-    { text: 'Review Testimonials', icon: <RateReviewIcon />, path: 'ReviewTestimonals' },
-    // Only show Community Admin option for super admins, not for community admins
-    ...(adminRole !== 'community' ? [{ text: 'Community Admin', icon: <AdminPanelSettingsIcon />, path: 'CommunityAdmin' }] : []),
-  ];
+    { text: 'Dashboard', icon: <DashboardIcon />, path: 'dashboard', alwaysShow: true },
+    { text: 'Member Management', icon: <PeopleIcon />, path: 'MemberManagement', role: 'Member Management' },
+    { text: 'Category', icon: <PeopleIcon />, path: 'Category', role: 'Category' },
+    { text: 'Business Directory', icon: <BusinessIcon />, path: 'BusinessManagement', role: 'Business Management' },
+    { text: 'Family Information', icon: <FamilyRestroomIcon />, path: 'FamilyInformation', role: 'Family Information' },
+    { text: 'Referral System', icon: <ShareIcon />, path: 'ReferralSystem', role: 'Referral System' },
+    { text: 'Review Testimonials', icon: <RateReviewIcon />, path: 'ReviewTestimonals', role: 'Review Testimonials' },
+    // Only show Community Admin option for super admins
+    ...(adminRole !== 'community' ? [{ text: 'Community Admin', icon: <AdminPanelSettingsIcon />, path: 'CommunityAdmin', alwaysShow: true }] : []),
+  ].filter(item => item.alwaysShow || hasRole(item.role));
 
   const getCurrentRoute = () => {
     const path = location.pathname;
@@ -149,16 +260,25 @@ const Sidebar = ({ open, onClose }) => {
             <BusinessIcon sx={{ color: 'white' }} />
           </Avatar>
           <Box sx={{
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'left',
-  }}>
+            color: 'white',
+            fontWeight: 'bold',
+            textAlign: 'left',
+          }}>
             <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
               Business Directory
             </Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
               Admin Panel
             </Typography>
+            {adminRole && (
+              <Typography variant="caption" sx={{ 
+                color: 'rgba(255,255,255,0.7)', 
+                display: 'block',
+                mt: 0.5
+              }}>
+                {adminRole === 'super' ? 'Super Admin' : 'Community Admin'}
+              </Typography>
+            )}
           </Box>
         </Box>
         {isMobile && (
@@ -214,6 +334,15 @@ const Sidebar = ({ open, onClose }) => {
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
               {adminEmail}
             </Typography>
+            {Array.isArray(adminRoles) && adminRoles.length > 0 && adminRole === 'community' && (
+              <Typography variant="caption" sx={{ 
+                color: 'rgba(255,255,255,0.6)', 
+                display: 'block',
+                fontSize: '0.7rem'
+              }}>
+                {adminRoles.length} role{adminRoles.length !== 1 ? 's' : ''}
+              </Typography>
+            )}
           </Box>
         </Box>
 

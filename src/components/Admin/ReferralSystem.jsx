@@ -310,6 +310,10 @@ const ReferralSystemComponent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
   const itemsPerPage = 5;
   const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
@@ -483,17 +487,56 @@ const ReferralSystemComponent = () => {
     });
   };
 
-  // Filter and paginate referral data
+  // Filter, sort and paginate referral data
   const filteredReferralData = referralData.filter(member => {
     if (!member) return false;
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       (member.first_name?.toLowerCase().includes(searchLower)) ||
       (member.last_name?.toLowerCase().includes(searchLower)) ||
       (member.email?.toLowerCase().includes(searchLower)) ||
       (member.Referral?.referral_name?.toLowerCase().includes(searchLower)) ||
       (member.Referral?.referral_code?.toLowerCase().includes(searchLower))
     );
+    
+    const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    let aValue, bValue;
+    
+    switch (sortBy) {
+      case 'name':
+        aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+        bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+        break;
+      case 'email':
+        aValue = a.email?.toLowerCase() || '';
+        bValue = b.email?.toLowerCase() || '';
+        break;
+      case 'referrer':
+        aValue = a.Referral?.referral_name?.toLowerCase() || '';
+        bValue = b.Referral?.referral_name?.toLowerCase() || '';
+        break;
+      case 'code':
+        aValue = a.Referral?.referral_code?.toLowerCase() || '';
+        bValue = b.Referral?.referral_code?.toLowerCase() || '';
+        break;
+
+      case 'status':
+        aValue = a.status || '';
+        bValue = b.status || '';
+        break;
+      default:
+        aValue = a.first_name?.toLowerCase() || '';
+        bValue = b.first_name?.toLowerCase() || '';
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
   });
 
   // Pagination calculations
@@ -612,6 +655,7 @@ const ReferralSystemComponent = () => {
             <Button
               variant="outlined"
               startIcon={<FilterListIcon />}
+              onClick={() => setFilterDialogOpen(true)}
               sx={{
                 color: '#666',
                 borderColor: '#ddd',
@@ -620,15 +664,30 @@ const ReferralSystemComponent = () => {
             >
               Filter
             </Button>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Sort by</InputLabel>
+              <Select
+                value={sortBy}
+                label="Sort by"
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value="name">Member Name</MenuItem>
+                <MenuItem value="email">Email</MenuItem>
+                <MenuItem value="referrer">Referrer</MenuItem>
+                <MenuItem value="code">Referral Code</MenuItem>
+                <MenuItem value="status">Status</MenuItem>
+              </Select>
+            </FormControl>
             <Button
               variant="outlined"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               sx={{
                 color: '#666',
                 borderColor: '#ddd',
                 whiteSpace: 'nowrap'
               }}
             >
-              Sort by
+              {sortOrder === 'asc' ? '↑' : '↓'}
             </Button>
           </Box>
 
@@ -769,6 +828,35 @@ const ReferralSystemComponent = () => {
           </Box>
         </CardContent>
       </Card>
+      
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Filter Referrals</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="All">All</MenuItem>
+                  <MenuItem value="Approved">Approved</MenuItem>
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="Rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
+        </DialogActions>
+      </Dialog>
+      
       <ViewModal
         open={viewModalOpen}
         onClose={handleViewModalClose}

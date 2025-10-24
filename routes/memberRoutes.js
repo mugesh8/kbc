@@ -19,6 +19,7 @@ router.get('/member/:id', memberController.getMemberById);
 router.put('/member/update/:id', uploadBusinessProfileMedia, memberController.updateMember);
 router.put('/business-profile/update/:id', uploadBusinessProfileMedia, memberController.updateBusinessProfile);
 router.put('/family-details/update/:id', memberController.updateFamilyDetails);
+router.post('/member/family/add', memberController.addFamilyDetails);
 
 router.delete('/member/delete/:id', memberController.deleteMember);
 router.delete('/business/delete/:id', memberController.deleteBusinessProfile);

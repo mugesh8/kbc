@@ -20,7 +20,15 @@ import {
   Grid,
   CircularProgress,
   Card,
-  CardContent
+  CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import { Search, Visibility, Close, FilterList, FileDownload } from '@mui/icons-material';
 import * as XLSX from 'xlsx'; // Import the Excel library
@@ -33,6 +41,9 @@ const ReviewsTestimonialsManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reviewsData, setReviewsData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('reviewer');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   const tabs = ['All Reviews', 'Pending', 'Approved', 'Rejected'];
 
@@ -142,6 +153,36 @@ const ReviewsTestimonialsManagement = () => {
     const matchesSearch = review.reviewer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       review.business.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesTab && matchesSearch;
+  }).sort((a, b) => {
+    let aValue, bValue;
+    
+    switch (sortBy) {
+      case 'reviewer':
+        aValue = a.reviewer.toLowerCase();
+        bValue = b.reviewer.toLowerCase();
+        break;
+      case 'business':
+        aValue = a.business.toLowerCase();
+        bValue = b.business.toLowerCase();
+        break;
+      case 'rating':
+        aValue = a.rating;
+        bValue = b.rating;
+        break;
+      case 'status':
+        aValue = a.status;
+        bValue = b.status;
+        break;
+      default:
+        aValue = a.reviewer.toLowerCase();
+        bValue = b.reviewer.toLowerCase();
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
   });
 
   const handleViewReview = (review) => {
@@ -242,6 +283,7 @@ const ReviewsTestimonialsManagement = () => {
               <Button
                 variant="outlined"
                 startIcon={<FilterList />}
+                onClick={() => setFilterDialogOpen(true)}
                 sx={{
                   color: '#666',
                   borderColor: '#ddd',
@@ -250,15 +292,29 @@ const ReviewsTestimonialsManagement = () => {
               >
                 Filter
               </Button>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Sort by</InputLabel>
+                <Select
+                  value={sortBy}
+                  label="Sort by"
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <MenuItem value="reviewer">Reviewer</MenuItem>
+                  <MenuItem value="business">Business</MenuItem>
+                  <MenuItem value="rating">Rating</MenuItem>
+                  <MenuItem value="status">Status</MenuItem>
+                </Select>
+              </FormControl>
               <Button
                 variant="outlined"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 sx={{
                   color: '#666',
                   borderColor: '#ddd',
                   whiteSpace: 'nowrap'
                 }}
               >
-                Sort by
+                {sortOrder === 'asc' ? '↑' : '↓'}
               </Button>
             </Box>
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -378,6 +434,37 @@ const ReviewsTestimonialsManagement = () => {
           </TableContainer>
         </CardContent>
       </Card>
+
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Filter Reviews</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={activeTab === 'All Reviews' ? 'All' : activeTab}
+                  label="Status"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setActiveTab(value === 'All' ? 'All Reviews' : value);
+                  }}
+                >
+                  <MenuItem value="All">All Reviews</MenuItem>
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="Approved">Approved</MenuItem>
+                  <MenuItem value="Rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
+        </DialogActions>
+      </Dialog>
 
       <Modal open={isModalOpen} onClose={handleCloseModal}>
         <Box sx={modalStyle}>

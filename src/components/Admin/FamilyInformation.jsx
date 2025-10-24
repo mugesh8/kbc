@@ -31,6 +31,12 @@ import {
     ListItemText,
     ListItemIcon,
     Chip,
+    Snackbar,
+    Alert,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import {
     Search,
@@ -50,21 +56,247 @@ import {
 import baseurl from '../Baseurl/baseurl';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import * as XLSX from 'xlsx';
+import AddFamilyDetailsForm from './AddFamilyDetailsForm';
+import MemberSelectionDialog from './MemberSelectionDialog';
 
 const FamilyInformation = () => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [members, setMembers] = useState([]);
+    const [allMembers, setAllMembers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+    const [sortBy, setSortBy] = useState('name');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [addFamilyDialogOpen, setAddFamilyDialogOpen] = useState(false);
+    const [memberSelectionDialogOpen, setMemberSelectionDialogOpen] = useState(false);
+    const [selectedMemberForFamily, setSelectedMemberForFamily] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
     const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
+    
+    // State for admin permissions
+    const [permissions, setPermissions] = useState({
+        canView: false,
+        canAdd: false,
+        canEdit: false,
+        canDelete: false
+    });
+    
+    // State for permission loading
+    const [permissionLoading, setPermissionLoading] = useState(true);
+
+    // Helper function to safely handle null/undefined/empty values
+    const safeValue = (value) => {
+        return (value === null || value === undefined || String(value).trim() === '') ? 'N/A' : value;
+    };
+
+    // Helper function to safely parse children names
+    const parseChildrenNames = (childrenNames) => {
+        if (!childrenNames || childrenNames === 'N/A') return 'N/A';
+        try {
+            const parsed = typeof childrenNames === 'string' ? JSON.parse(childrenNames) : childrenNames;
+            return Array.isArray(parsed) && parsed.length ? parsed.join(', ') : 'N/A';
+        } catch {
+            return 'N/A';
+        }
+    };
+
+    // Fetch admin permissions
+    useEffect(() => {
+        const fetchAdminPermissions = async () => {
+            try {
+                setPermissionLoading(true);
+                const role = localStorage.getItem('adminRole');
+                const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
+                
+                if (role === 'community' && storedToken) {
+                    // Helper to decode JWT payload safely
+                    const decodeJwt = (token) => {
+                        try {
+                            const payload = token.split('.')[1];
+                            const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+                            return JSON.parse(decodeURIComponent(escape(json)));
+                        } catch (e) {
+                            try {
+                                const json = atob(token.split('.')[1]);
+                                return JSON.parse(json);
+                            } catch {
+                                return null;
+                            }
+                        }
+                    };
+
+                    const decoded = decodeJwt(storedToken);
+                    if (decoded && decoded.id) {
+                        const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.role) {
+                                // Parse role data - it comes as a JSON string from the database
+                                let rolesArray = [];
+                                try {
+                                  if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                                    rolesArray = JSON.parse(data.role);
+                                  } else if (Array.isArray(data.role)) {
+                                    rolesArray = data.role;
+                                  } else {
+                                    rolesArray = [data.role];
+                                  }
+                                } catch (e) {
+                                  console.error('Error parsing roles:', e);
+                                  rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                                }
+                                
+                                // Find the Family Information role (case insensitive)
+                                const familyRole = rolesArray.find(r => 
+                                    r.toLowerCase().includes('family information')
+                                );
+                                
+                                if (familyRole) {
+                                    // Check if it has specific permissions
+                                    if (familyRole.includes('--')) {
+                                        const permissionsStr = familyRole.split('--')[1].trim();
+                                        const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+                                        
+                                        setPermissions({
+                                            canView: permissionList.includes('view'),
+                                            canAdd: permissionList.includes('add'),
+                                            canEdit: permissionList.includes('edit'),
+                                            canDelete: permissionList.includes('delete')
+                                        });
+                                    } else {
+                                        // Only "Family Information" without specific permissions -> only view
+                                        setPermissions({
+                                            canView: true,
+                                            canAdd: false,
+                                            canEdit: false,
+                                            canDelete: false
+                                        });
+                                    }
+                                } else {
+                                    // No Family Information role found - default to no permissions
+                                    setPermissions({
+                                        canView: false,
+                                        canAdd: false,
+                                        canEdit: false,
+                                        canDelete: false
+                                    });
+                                }
+                            }
+                        } else {
+                            // Failed to fetch admin data - default to view permission for safety
+                            console.error('Failed to fetch admin data');
+                            setPermissions({
+                                canView: true,
+                                canAdd: false,
+                                canEdit: false,
+                                canDelete: false
+                            });
+                        }
+                    } else {
+                        // Failed to decode token - default to view permission for safety
+                        console.error('Failed to decode token');
+                        setPermissions({
+                            canView: true,
+                            canAdd: false,
+                            canEdit: false,
+                            canDelete: false
+                        });
+                    }
+                } else if (role === 'super') {
+                    // Super admin has all permissions
+                    setPermissions({
+                        canView: true,
+                        canAdd: true,
+                        canEdit: true,
+                        canDelete: true
+                    });
+                } else {
+                    // No role found - default to no permissions
+                    setPermissions({
+                        canView: false,
+                        canAdd: false,
+                        canEdit: false,
+                        canDelete: false
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching admin permissions:', err);
+                // Default to view permission for safety in case of errors
+                setPermissions({
+                    canView: true,
+                    canAdd: false,
+                    canEdit: false,
+                    canDelete: false
+                });
+            } finally {
+                setPermissionLoading(false);
+            }
+        };
+
+        fetchAdminPermissions();
+    }, []);
+
+    // Get members without family details for the dropdown
+    const getMembersWithoutFamily = () => {
+        return allMembers.filter(member => !member.MemberFamily);
+    };
+
+    const handleAddFamilySuccess = () => {
+        setSnackbar({
+            open: true,
+            message: 'Family details added successfully!',
+            severity: 'success'
+        });
+        
+        // Refresh the members list
+        const fetchMembers = async () => {
+            try {
+                const response = await fetch(`${baseurl}/api/member/all`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    setAllMembers(data.data || []);
+                    
+                    const membersWithFamily = (data.data || [])
+                        .filter(member => member.MemberFamily !== null)
+                        .map(member => {
+                            const fam = member.MemberFamily || {};
+                            return {
+                                ...member,
+                                MemberFamily: {
+                                    ...fam,
+                                    father_name: safeValue(fam.father_name),
+                                    father_contact: safeValue(fam.father_contact),
+                                    mother_name: safeValue(fam.mother_name),
+                                    mother_contact: safeValue(fam.mother_contact),
+                                    spouse_name: safeValue(fam.spouse_name),
+                                    spouse_contact: safeValue(fam.spouse_contact),
+                                    number_of_children: fam.number_of_children ?? 0,
+                                    children_names: safeValue(fam.children_names),
+                                    address: safeValue(fam.address),
+                                }
+                            };
+                        });
+
+                    setMembers(membersWithFamily);
+                }
+            } catch (err) {
+                console.error('Error refreshing members:', err);
+            }
+        };
+        
+        fetchMembers();
+    };
 
     // Fetch members data and filter only those with family profiles
     useEffect(() => {
@@ -78,25 +310,27 @@ const FamilyInformation = () => {
                     throw new Error(data.msg || 'Failed to fetch members');
                 }
 
-                // Filter members to only include those with family profiles
+                // Store all members for adding family details
+                setAllMembers(data.data || []);
+
+                // Filter members to only include those with family profiles and safely handle data
                 const membersWithFamily = (data.data || [])
                     .filter(member => member.MemberFamily !== null)
                     .map(member => {
                         const fam = member.MemberFamily || {};
-                        const safe = (v) => (v === null || v === undefined || String(v).trim() === '' ? 'N/A' : v);
                         return {
                             ...member,
                             MemberFamily: {
                                 ...fam,
-                                father_name: safe(fam.father_name),
-                                father_contact: safe(fam.father_contact),
-                                mother_name: safe(fam.mother_name),
-                                mother_contact: safe(fam.mother_contact),
-                                spouse_name: safe(fam.spouse_name),
-                                spouse_contact: safe(fam.spouse_contact),
+                                father_name: safeValue(fam.father_name),
+                                father_contact: safeValue(fam.father_contact),
+                                mother_name: safeValue(fam.mother_name),
+                                mother_contact: safeValue(fam.mother_contact),
+                                spouse_name: safeValue(fam.spouse_name),
+                                spouse_contact: safeValue(fam.spouse_contact),
                                 number_of_children: fam.number_of_children ?? 0,
-                                children_names: safe(fam.children_names),
-                                address: safe(fam.address),
+                                children_names: safeValue(fam.children_names),
+                                address: safeValue(fam.address),
                             }
                         };
                     });
@@ -111,16 +345,60 @@ const FamilyInformation = () => {
             }
         };
 
-        fetchMembers();
-    }, []);
+        // Only fetch if admin has view permission
+        if (!permissionLoading && permissions.canView) {
+            fetchMembers();
+        } else if (!permissionLoading && !permissions.canView) {
+            setLoading(false);
+            setError('You do not have permission to view family information');
+        }
+    }, [permissions.canView, permissionLoading]);
 
-    // Filter members based on search term
-    const filteredMembers = members.filter(member =>
-        member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Filter and sort members
+    const filteredMembers = members.filter(member => {
+        const matchesSearch = member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    }).sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (sortBy) {
+            case 'name':
+                aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+                bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+                break;
+            case 'father':
+                aValue = a.MemberFamily?.father_name?.toLowerCase() || '';
+                bValue = b.MemberFamily?.father_name?.toLowerCase() || '';
+                break;
+            case 'mother':
+                aValue = a.MemberFamily?.mother_name?.toLowerCase() || '';
+                bValue = b.MemberFamily?.mother_name?.toLowerCase() || '';
+                break;
+            case 'spouse':
+                aValue = a.MemberFamily?.spouse_name?.toLowerCase() || '';
+                bValue = b.MemberFamily?.spouse_name?.toLowerCase() || '';
+                break;
+            case 'status':
+                aValue = a.status || '';
+                bValue = b.status || '';
+                break;
+            default:
+                aValue = a.first_name?.toLowerCase() || '';
+                bValue = b.first_name?.toLowerCase() || '';
+        }
+        
+        if (sortOrder === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
+        }
+    });
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -197,19 +475,32 @@ const FamilyInformation = () => {
     const handleExport = () => {
         // Prepare data for export
         const exportData = filteredMembers.map(member => {
-            const safe = (v) => (v === null || v === undefined || String(v).trim() === '' ? 'N/A' : v);
             const familyProfile = member.MemberFamily || {};
-            const children = (() => { try { const val = familyProfile.children_names; if (!val || val === 'N/A') return 'N/A'; const arr = typeof val === 'string' ? JSON.parse(val) : val; return Array.isArray(arr) && arr.length ? arr.join(', ') : 'N/A'; } catch { return 'N/A'; } })();
+            
+            // Helper function to format address
+            const formatAddress = () => {
+                const address = safeValue(member.address);
+                const city = safeValue(member.city);
+                const state = safeValue(member.state);
+                const zipCode = safeValue(member.zip_code);
+                
+                if ([address, city, state, zipCode].every(val => val === 'N/A')) {
+                    return 'N/A';
+                }
+                
+                return `${address === 'N/A' ? '' : address}${city === 'N/A' ? '' : `, ${city}`}${state === 'N/A' ? '' : `, ${state}`} ${zipCode === 'N/A' ? '' : zipCode}`.trim();
+            };
+
             return {
                 'First Name': member.first_name,
                 'Last Name': member.last_name,
                 'Email': member.email,
-                'Father Name': safe(familyProfile.father_name),
-                'Mother Name': safe(familyProfile.mother_name),
-                'Spouse Name': safe(familyProfile.spouse_name),
-                'Children Details': children,
-                'Contact Number': safe(member.contact_no),
-                'Address': (() => { const a = safe(member.address); const c = safe(member.city); const s = safe(member.state); const z = safe(member.zip_code); if ([a,c,s,z].every(v => v === 'N/A')) return 'N/A'; return `${a === 'N/A' ? '' : a}${c==='N/A'?'':`, ${c}`}${s==='N/A'?'':`, ${s}`} ${z==='N/A'?'':z}`.trim(); })(),
+                'Father Name': safeValue(familyProfile.father_name),
+                'Mother Name': safeValue(familyProfile.mother_name),
+                'Spouse Name': safeValue(familyProfile.spouse_name),
+                'Children Details': parseChildrenNames(familyProfile.children_names),
+                'Contact Number': safeValue(member.contact_no),
+                'Address': formatAddress(),
                 'Status': member.status
             };
         });
@@ -224,6 +515,44 @@ const FamilyInformation = () => {
         // Generate file and trigger download
         XLSX.writeFile(wb, `families_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
+
+    // Show loading state while checking permissions
+    if (permissionLoading) {
+        return (
+            <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                        Checking permissions...
+                    </Typography>
+                </Card>
+            </Box>
+        );
+    }
+
+    // If admin doesn't have view permission, show access denied message
+    if (!permissions.canView) {
+        return (
+            <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+                <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4 }}>
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 600, color: '#f44336', mb: 2 }}>
+                            Access Denied
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                            You do not have permission to view the Family Information module.
+                        </Typography>
+                        <Button 
+                            variant="contained" 
+                            sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+                            onClick={() => navigate('/admin/dashboard')}
+                        >
+                            Back to Dashboard
+                        </Button>
+                    </Box>
+                </Card>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
@@ -252,6 +581,33 @@ const FamilyInformation = () => {
                     </Box>
 
                     <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
+                        {permissions.canAdd && (
+                            <Button
+                                variant="contained"
+                                startIcon={<PersonAdd />}
+                                onClick={() => {
+                                    const membersWithoutFamily = getMembersWithoutFamily();
+                                    if (membersWithoutFamily.length === 0) {
+                                        setSnackbar({
+                                            open: true,
+                                            message: 'All members already have family details',
+                                            severity: 'info'
+                                        });
+                                        return;
+                                    }
+                                    setMemberSelectionDialogOpen(true);
+                                }}
+                                sx={{
+                                    backgroundColor: '#4CAF50',
+                                    '&:hover': { backgroundColor: '#45a049' },
+                                    px: 3,
+                                    py: 1.5,
+                                    fontWeight: 600
+                                }}
+                            >
+                                Add Family Details
+                            </Button>
+                        )}
                         <Button
                             variant="outlined"
                             startIcon={<FileDownload />}
@@ -300,6 +656,7 @@ const FamilyInformation = () => {
                         <Button
                             variant="outlined"
                             startIcon={<FilterList />}
+                            onClick={() => setFilterDialogOpen(true)}
                             sx={{
                                 color: '#666',
                                 borderColor: '#ddd',
@@ -308,15 +665,30 @@ const FamilyInformation = () => {
                         >
                             Filter
                         </Button>
+                        <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <InputLabel>Sort by</InputLabel>
+                            <Select
+                                value={sortBy}
+                                label="Sort by"
+                                onChange={(e) => setSortBy(e.target.value)}
+                            >
+                                <MenuItem value="name">Member Name</MenuItem>
+                                <MenuItem value="father">Father Name</MenuItem>
+                                <MenuItem value="mother">Mother Name</MenuItem>
+                                <MenuItem value="spouse">Spouse Name</MenuItem>
+                                <MenuItem value="status">Status</MenuItem>
+                            </Select>
+                        </FormControl>
                         <Button
                             variant="outlined"
+                            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                             sx={{
                                 color: '#666',
                                 borderColor: '#ddd',
                                 whiteSpace: 'nowrap'
                             }}
                         >
-                            Sort by
+                            {sortOrder === 'asc' ? '↑' : '↓'}
                         </Button>
                     </Box>
 
@@ -349,6 +721,18 @@ const FamilyInformation = () => {
                                     <TableRow>
                                         <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                                             <Typography>No families found</Typography>
+                                            {permissions.canAdd && getMembersWithoutFamily().length > 0 && (
+                                                <Button
+                                                    variant="outlined"
+                                                    startIcon={<PersonAdd />}
+                                                    onClick={() => {
+                                                        setMemberSelectionDialogOpen(true);
+                                                    }}
+                                                    sx={{ mt: 2 }}
+                                                >
+                                                    Add Family Details to Existing Member
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -384,19 +768,19 @@ const FamilyInformation = () => {
                                                 {!isSmall && (
                                                     <TableCell>
                                                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                            {familyProfile.father_name || 'N/A'}
+                                                            {familyProfile.father_name}
                                                         </Typography>
                                                     </TableCell>
                                                 )}
                                                 <TableCell>
                                                     <Typography variant="body2">
-                                                        {familyProfile.mother_name || 'N/A'}
+                                                        {familyProfile.mother_name}
                                                     </Typography>
                                                 </TableCell>
                                                 {!isMobile && (
                                                     <TableCell>
                                                         <Typography variant="body2">
-                                                            {familyProfile.spouse_name || 'N/A'}
+                                                            {familyProfile.spouse_name}
                                                         </Typography>
                                                     </TableCell>
                                                 )}
@@ -409,13 +793,16 @@ const FamilyInformation = () => {
                                                         >
                                                             <Visibility fontSize="small" />
                                                         </IconButton>
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{ color: '#666' }}
-                                                            onClick={() => handleEditFamily(member)}
-                                                        >
-                                                            <Edit fontSize="small" />
-                                                        </IconButton>
+                                                        {permissions.canEdit && (
+                                                            <IconButton
+                                                                size="small"
+                                                                sx={{ color: '#666' }}
+                                                                onClick={() => handleEditFamily(member)}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                        {permissions.canDelete && (
                                                             <IconButton
                                                                 size="small"
                                                                 sx={{ color: '#666' }}
@@ -423,6 +810,7 @@ const FamilyInformation = () => {
                                                             >
                                                                 <Delete fontSize="small" />
                                                             </IconButton>
+                                                        )}
                                                     </Stack>
                                                 </TableCell>
                                             </TableRow>
@@ -459,6 +847,34 @@ const FamilyInformation = () => {
                     </Box>
                 </CardContent>
             </Card>
+
+            {/* Filter Dialog */}
+            <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Filter Families</DialogTitle>
+                <DialogContent>
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12}>
+                            <FormControl fullWidth>
+                                <InputLabel>Status</InputLabel>
+                                <Select
+                                    value={statusFilter}
+                                    label="Status"
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                >
+                                    <MenuItem value="All">All</MenuItem>
+                                    <MenuItem value="Approved">Approved</MenuItem>
+                                    <MenuItem value="Pending">Pending</MenuItem>
+                                    <MenuItem value="Rejected">Rejected</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
+                </DialogActions>
+            </Dialog>
 
             {/* View Family Dialog */}
             <Dialog
@@ -538,32 +954,28 @@ const FamilyInformation = () => {
                                                 <ListItemIcon><Person color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Father's Name"
-                                                    secondary={selectedMember.MemberFamily?.father_name || 'Not provided'}
+                                                    secondary={selectedMember.MemberFamily?.father_name}
                                                 />
                                             </ListItem>
                                             <ListItem>
                                                 <ListItemIcon><Person color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Mother's Name"
-                                                    secondary={selectedMember.MemberFamily?.mother_name || 'Not provided'}
+                                                    secondary={selectedMember.MemberFamily?.mother_name}
                                                 />
                                             </ListItem>
                                             <ListItem>
                                                 <ListItemIcon><FamilyRestroom color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Spouse Name"
-                                                    secondary={selectedMember.MemberFamily?.spouse_name || 'Not provided'}
+                                                    secondary={selectedMember.MemberFamily?.spouse_name}
                                                 />
                                             </ListItem>
                                             <ListItem>
                                                 <ListItemIcon><FamilyRestroom color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Children"
-                                                    secondary={
-                                                        selectedMember.MemberFamily?.children_names
-                                                            ? (() => { try { const val = selectedMember.MemberFamily.children_names; if (val === 'N/A') return 'N/A'; const arr = typeof val === 'string' ? JSON.parse(val) : val; return Array.isArray(arr) ? arr.join(', ') : 'N/A'; } catch { return 'N/A'; } })()
-                                                            : 'N/A'
-                                                    }
+                                                    secondary={parseChildrenNames(selectedMember.MemberFamily?.children_names)}
                                                 />
                                             </ListItem>
                                         </List>
@@ -581,14 +993,14 @@ const FamilyInformation = () => {
                                                 <ListItemIcon><Email color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Email"
-                                                    secondary={selectedMember.email || 'Not provided'}
+                                                    secondary={safeValue(selectedMember.email)}
                                                 />
                                             </ListItem>
                                             <ListItem>
                                                 <ListItemIcon><Phone color="action" /></ListItemIcon>
                                                 <ListItemText
                                                     primary="Contact Number"
-                                                    secondary={selectedMember.contact_no || 'Not provided'}
+                                                    secondary={safeValue(selectedMember.contact_no)}
                                                 />
                                             </ListItem>
                                             <ListItem>
@@ -597,8 +1009,8 @@ const FamilyInformation = () => {
                                                     primary="Address"
                                                     secondary={
                                                         selectedMember.address
-                                                            ? `${selectedMember.address}, ${selectedMember.city}, ${selectedMember.state} ${selectedMember.zip_code}`
-                                                            : 'Not provided'
+                                                            ? `${safeValue(selectedMember.address)}, ${safeValue(selectedMember.city)}, ${safeValue(selectedMember.state)} ${safeValue(selectedMember.zip_code)}`
+                                                            : 'N/A'
                                                     }
                                                 />
                                             </ListItem>
@@ -610,6 +1022,29 @@ const FamilyInformation = () => {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Member Selection Dialog */}
+            <MemberSelectionDialog
+                open={memberSelectionDialogOpen}
+                onClose={() => setMemberSelectionDialogOpen(false)}
+                members={getMembersWithoutFamily()}
+                onSelectMember={(member) => {
+                    setSelectedMemberForFamily(member);
+                    setAddFamilyDialogOpen(true);
+                }}
+            />
+
+            {/* Add Family Details Dialog */}
+            <AddFamilyDetailsForm
+                open={addFamilyDialogOpen}
+                onClose={() => {
+                    setAddFamilyDialogOpen(false);
+                    setSelectedMemberForFamily(null);
+                }}
+                memberId={selectedMemberForFamily?.mid}
+                memberName={selectedMemberForFamily?.first_name}
+                onSuccess={handleAddFamilySuccess}
+            />
 
             {/* Delete Confirmation Dialog */}
             <Dialog
@@ -664,6 +1099,17 @@ const FamilyInformation = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+            >
+                <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

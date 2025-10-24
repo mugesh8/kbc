@@ -43,7 +43,9 @@ import {
   Select,
   MenuItem,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Search,
@@ -106,6 +108,9 @@ const MemberManagement = () => {
     unpaidMembers: 0
   });
   const [statusFilter, setStatusFilter] = useState('All');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -113,6 +118,17 @@ const MemberManagement = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
   const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
+  
+  // State for admin permissions
+  const [permissions, setPermissions] = useState({
+    canView: false,
+    canAdd: false,
+    canEdit: false,
+    canDelete: false
+  });
+  
+  // State for permission loading
+  const [permissionLoading, setPermissionLoading] = useState(true);
 
   // Check URL parameters on component mount
   useEffect(() => {
@@ -130,6 +146,142 @@ const MemberManagement = () => {
       setStatusFilter('Rejected');
     }
   }, [location.search]);
+
+  // Fetch admin permissions
+  useEffect(() => {
+    const fetchAdminPermissions = async () => {
+      try {
+        setPermissionLoading(true);
+        const role = localStorage.getItem('adminRole');
+        const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
+        
+        if (role === 'community' && storedToken) {
+          // Helper to decode JWT payload safely
+          const decodeJwt = (token) => {
+            try {
+              const payload = token.split('.')[1];
+              const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+              return JSON.parse(decodeURIComponent(escape(json)));
+            } catch (e) {
+              try {
+                const json = atob(token.split('.')[1]);
+                return JSON.parse(json);
+              } catch {
+                return null;
+              }
+            }
+          };
+
+          const decoded = decodeJwt(storedToken);
+          if (decoded && decoded.id) {
+            const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.role) {
+                // Parse role data - it comes as a JSON string from the database
+                let rolesArray = [];
+                try {
+                  if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                    rolesArray = JSON.parse(data.role);
+                  } else if (Array.isArray(data.role)) {
+                    rolesArray = data.role;
+                  } else {
+                    rolesArray = [data.role];
+                  }
+                } catch (e) {
+                  console.error('Error parsing roles:', e);
+                  rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                }
+                
+                // Find the Member Management role (case insensitive)
+                const memberRole = rolesArray.find(r => 
+                  r.toLowerCase().includes('member management')
+                );
+                
+                if (memberRole) {
+                  // Check if it has specific permissions
+                  if (memberRole.includes('--')) {
+                    const permissionsStr = memberRole.split('--')[1].trim();
+                    const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
+                    
+                    setPermissions({
+                      canView: permissionList.includes('view'),
+                      canAdd: permissionList.includes('add'),
+                      canEdit: permissionList.includes('edit'),
+                      canDelete: permissionList.includes('delete')
+                    });
+                  } else {
+                    // Only "Member Management" without specific permissions -> only view
+                    setPermissions({
+                      canView: true,
+                      canAdd: false,
+                      canEdit: false,
+                      canDelete: false
+                    });
+                  }
+                } else {
+                  // No Member Management role found - default to no permissions
+                  setPermissions({
+                    canView: false,
+                    canAdd: false,
+                    canEdit: false,
+                    canDelete: false
+                  });
+                }
+              }
+            } else {
+              // Failed to fetch admin data - default to view permission for safety
+              console.error('Failed to fetch admin data');
+              setPermissions({
+                canView: true,
+                canAdd: false,
+                canEdit: false,
+                canDelete: false
+              });
+            }
+          } else {
+            // Failed to decode token - default to view permission for safety
+            console.error('Failed to decode token');
+            setPermissions({
+              canView: true,
+              canAdd: false,
+              canEdit: false,
+              canDelete: false
+            });
+          }
+        } else if (role === 'super') {
+          // Super admin has all permissions
+          setPermissions({
+            canView: true,
+            canAdd: true,
+            canEdit: true,
+            canDelete: true
+          });
+        } else {
+          // No role found - default to no permissions
+          setPermissions({
+            canView: false,
+            canAdd: false,
+            canEdit: false,
+            canDelete: false
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching admin permissions:', err);
+        // Default to view permission for safety in case of errors
+        setPermissions({
+          canView: true,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false
+        });
+      } finally {
+        setPermissionLoading(false);
+      }
+    };
+
+    fetchAdminPermissions();
+  }, []);
 
   // Fetch members data
   useEffect(() => {
@@ -169,8 +321,14 @@ const MemberManagement = () => {
       }
     };
 
-    fetchMembers();
-  }, []);
+    // Only fetch if admin has view permission
+    if (!permissionLoading && permissions.canView) {
+      fetchMembers();
+    } else if (!permissionLoading && !permissions.canView) {
+      setLoading(false);
+      setError('You do not have permission to view member management');
+    }
+  }, [permissions.canView, permissionLoading]);
 
   // Update stats data to use real data
   const statsData = [
@@ -216,7 +374,7 @@ const MemberManagement = () => {
     }
   ];
 
-  // Filter members based on search term and status
+  // Filter and sort members
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,6 +383,37 @@ const MemberManagement = () => {
     const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
     
     return matchesSearch && matchesStatus;
+  }).sort((a, b) => {
+    let aValue, bValue;
+    
+    switch (sortBy) {
+      case 'name':
+        aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+        bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+        break;
+      case 'email':
+        aValue = a.email?.toLowerCase() || '';
+        bValue = b.email?.toLowerCase() || '';
+        break;
+      case 'status':
+        aValue = a.status || '';
+        bValue = b.status || '';
+        break;
+
+      case 'accessLevel':
+        aValue = a.access_level || '';
+        bValue = b.access_level || '';
+        break;
+      default:
+        aValue = a.first_name?.toLowerCase() || '';
+        bValue = b.first_name?.toLowerCase() || '';
+    }
+    
+    if (sortOrder === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
   });
 
   const handleTabChange = (event, newValue) => {
@@ -235,6 +424,7 @@ const MemberManagement = () => {
   };
 
   const handleAddMember = () => {
+    if (!permissions.canAdd) return;
     navigate('/admin/AddMembers');
   };
 
@@ -263,6 +453,14 @@ const MemberManagement = () => {
     }
   };
 
+  const getPaidStatusIcon = (paidStatus) => {
+    switch (paidStatus) {
+      case 'Paid': return <Paid />;
+      case 'Unpaid': return <MoneyOff />;
+      default: return <Payment />;
+    }
+  };
+
   const getProMemberColor = (proStatus) => {
     switch (proStatus) {
       case 'Pro': return '#FF9800';
@@ -272,10 +470,13 @@ const MemberManagement = () => {
   };
 
   const handleEditMember = (member) => {
+    if (!permissions.canEdit) return;
     navigate(`/admin/EditMember/${member.mid}`);
   };
 
   const handleViewMember = async (member) => {
+    if (!permissions.canView) return;
+    
     try {
       // Fetch complete member details with all personal information
       const response = await fetch(`${baseurl}/api/member/${member.mid}`);
@@ -432,11 +633,15 @@ const MemberManagement = () => {
   };
 
   const handleDeleteClick = (member) => {
+    if (!permissions.canDelete) return;
+    
     setSelectedMember(member);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
+    if (!selectedMember || !permissions.canDelete) return;
+
     try {
       const response = await fetch(`${baseurl}/api/member/delete/${selectedMember.mid}`, {
         method: 'DELETE',
@@ -529,6 +734,19 @@ const MemberManagement = () => {
     }
   };
 
+  // Get forum memberships
+  const getForumMemberships = (member) => {
+    const forums = [];
+    if (member.Arakattalai === 'Yes') forums.push('Arakattalai');
+    if (member.KNS_Member === 'Yes') forums.push('KNS');
+    if (member.KBN_Member === 'Yes') forums.push('KBN');
+    if (member.BNI === 'Yes') forums.push('BNI');
+    if (member.Rotary === 'Yes') forums.push('Rotary');
+    if (member.Lions === 'Yes') forums.push('Lions');
+    if (member.Other_forum) forums.push(member.Other_forum);
+    return forums.length > 0 ? forums.join(', ') : 'None';
+  };
+
   // Custom styled input field for view mode
   const ViewField = ({ label, value, icon }) => (
     <Box sx={{ mb: 2 }}>
@@ -593,6 +811,44 @@ const MemberManagement = () => {
     </Box>
   );
 
+  // Show loading state while checking permissions
+  if (permissionLoading) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Checking permissions...
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+
+  // If admin doesn't have view permission, show access denied message
+  if (!permissions.canView) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+        <Card sx={{ borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', p: 4 }}>
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h4" sx={{ fontWeight: 600, color: '#f44336', mb: 2 }}>
+              Access Denied
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              You do not have permission to view the Member Management module.
+            </Typography>
+            <Button 
+              variant="contained" 
+              sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+              onClick={() => navigate('/admin/dashboard')}
+            >
+              Back to Dashboard
+            </Button>
+          </Box>
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
       {/* Header */}
@@ -620,20 +876,22 @@ const MemberManagement = () => {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
-            <Button
-              variant="contained"
-              startIcon={<PersonAdd />}
-              onClick={handleAddMember}
-              sx={{
-                backgroundColor: '#4CAF50',
-                '&:hover': { backgroundColor: '#45a049' },
-                px: 3,
-                py: 1.5,
-                fontWeight: 600
-              }}
-            >
-              Add Member
-            </Button>
+            {permissions.canAdd && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAdd />}
+                onClick={handleAddMember}
+                sx={{
+                  backgroundColor: '#4CAF50',
+                  '&:hover': { backgroundColor: '#45a049' },
+                  px: 3,
+                  py: 1.5,
+                  fontWeight: 600
+                }}
+              >
+                Add Member
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<FileDownload />}
@@ -754,6 +1012,7 @@ const MemberManagement = () => {
             <Button
               variant="outlined"
               startIcon={<FilterList />}
+              onClick={() => setFilterDialogOpen(true)}
               sx={{
                 color: '#666',
                 borderColor: '#ddd',
@@ -762,15 +1021,29 @@ const MemberManagement = () => {
             >
               Filter
             </Button>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Sort by</InputLabel>
+              <Select
+                value={sortBy}
+                label="Sort by"
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value="name">Name</MenuItem>
+                <MenuItem value="email">Email</MenuItem>
+                <MenuItem value="status">Status</MenuItem>
+                <MenuItem value="accessLevel">Access Level</MenuItem>
+              </Select>
+            </FormControl>
             <Button
               variant="outlined"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               sx={{
                 color: '#666',
                 borderColor: '#ddd',
                 whiteSpace: 'nowrap'
               }}
             >
-              Sort by
+              {sortOrder === 'asc' ? '↑' : '↓'}
             </Button>
           </Box>
 
@@ -847,6 +1120,7 @@ const MemberManagement = () => {
                               <Chip
                                 label={member.paid_status || 'Unpaid'}
                                 size="small"
+                                icon={getPaidStatusIcon(member.paid_status)}
                                 sx={{
                                   backgroundColor: getPaidStatusColor(member.paid_status),
                                   color: 'white',
@@ -927,20 +1201,25 @@ const MemberManagement = () => {
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={0.5}>
-                          <IconButton
-                            size="small"
-                            sx={{ color: '#666' }}
-                            onClick={() => handleViewMember(member)}
-                          >
-                            <Visibility fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            sx={{ color: '#666' }}
-                            onClick={() => handleEditMember(member)}
-                          >
-                            <Edit fontSize="small" />
-                          </IconButton>
+                          {permissions.canView && (
+                            <IconButton
+                              size="small"
+                              sx={{ color: '#666' }}
+                              onClick={() => handleViewMember(member)}
+                            >
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canEdit && (
+                            <IconButton
+                              size="small"
+                              sx={{ color: '#666' }}
+                              onClick={() => handleEditMember(member)}
+                            >
+                              <Edit fontSize="small" />
+                            </IconButton>
+                          )}
+                          {permissions.canDelete && (
                             <IconButton
                               size="small"
                               sx={{ color: '#666' }}
@@ -948,6 +1227,7 @@ const MemberManagement = () => {
                             >
                               <Delete fontSize="small" />
                             </IconButton>
+                          )}
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -983,6 +1263,34 @@ const MemberManagement = () => {
           </Box>
         </CardContent>
       </Card>
+
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Filter Members</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="All">All</MenuItem>
+                  <MenuItem value="Approved">Approved</MenuItem>
+                  <MenuItem value="Pending">Pending</MenuItem>
+                  <MenuItem value="Rejected">Rejected</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Enhanced View Member Dialog - Matching Profile Page Personal Details */}
       <Dialog
@@ -1505,6 +1813,34 @@ const MemberManagement = () => {
             </Box>
           )}
         </DialogContent>
+
+        <DialogActions sx={{ p: 2, backgroundColor: '#f5f5f5' }}>
+          <Button
+            onClick={() => setViewDialogOpen(false)}
+            sx={{
+              color: '#666',
+              '&:hover': { backgroundColor: '#f5f5f5' }
+            }}
+          >
+            Close
+          </Button>
+          {permissions.canEdit && (
+            <Button
+              variant="contained"
+              startIcon={<Edit />}
+              onClick={() => {
+                setViewDialogOpen(false);
+                handleEditMember(selectedMember);
+              }}
+              sx={{
+                backgroundColor: '#4CAF50',
+                '&:hover': { backgroundColor: '#45a049' }
+              }}
+            >
+              Edit Member
+            </Button>
+          )}
+        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}

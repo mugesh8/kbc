@@ -22,7 +22,11 @@ const CommunityAdmin = db.define('CommunityAdmin', {
     password: {
         type: DataTypes.STRING,
         allowNull: false,
-    }
+    },
+    role: {
+    type: DataTypes.JSON, // Store multiple roles as JSON array (["admin", "editor"])
+    allowNull: true,
+  },
 }, {
     tableName: 'community_admin',
     timestamps: true,

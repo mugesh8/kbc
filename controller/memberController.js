@@ -986,35 +986,145 @@ const updateFamilyDetails = async (req, res) => {
             father_contact: (father_contact && String(father_contact).trim()) || 'N/A',
             mother_name: (mother_name && String(mother_name).trim()) || 'N/A',
             mother_contact: (mother_contact && String(mother_contact).trim()) || 'N/A',
-            address: (address && String(address).trim()) || 'N/A'
+            address: (address && String(address).trim()) || 'N/A',
         };
 
+        // Handle spouse and children for married members
         if (marital_status?.toLowerCase().trim() === 'married') {
             familyPayload.spouse_name = (spouse_name && String(spouse_name).trim()) || 'N/A';
             familyPayload.spouse_contact = (spouse_contact && String(spouse_contact).trim()) || 'N/A';
             familyPayload.number_of_children = Number.isFinite(Number(number_of_children)) ? Number(number_of_children) : 0;
 
-            if (number_of_children > 0 && Array.isArray(children_names)) {
+            if (
+                number_of_children > 0 &&
+                Array.isArray(children_names) &&
+                children_names.length === Number(number_of_children)
+            ) {
                 familyPayload.children_names = JSON.stringify(children_names);
             } else {
                 familyPayload.children_names = 'N/A';
             }
         }
 
-        // Update or create based on existing record
+        let result;
         if (existingFamily) {
+            // Update existing family record
             await existingFamily.update(familyPayload, { transaction: t });
+            result = await MemberFamily.findOne({
+                where: { member_id },
+                transaction: t
+            });
         } else {
-            await MemberFamily.create(familyPayload, { transaction: t });
+            // Create new family record
+            result = await MemberFamily.create(familyPayload, { transaction: t });
         }
 
         await t.commit();
-        return res.status(200).json({ success: true, message: 'Family details saved successfully' });
+
+        res.status(200).json({
+            success: true,
+            msg: existingFamily ? 'Family details updated successfully' : 'Family details added successfully',
+            data: result
+        });
 
     } catch (error) {
         await t.rollback();
-        console.error('Family update failed:', error);
-        return res.status(500).json({ success: false, message: 'Failed to save family details', error: error.message });
+        console.error('Error updating/creating family details:', error);
+        res.status(500).json({
+            success: false,
+            msg: 'Failed to update family details',
+            error: error.message
+        });
+    }
+};
+
+// Add family details to a member (for members without existing family records)
+const addFamilyDetails = async (req, res) => {
+    const t = await MemberFamily.sequelize.transaction();
+    try {
+        const {
+            member_id,
+            father_name,
+            father_contact,
+            mother_name,
+            mother_contact,
+            spouse_name,
+            spouse_contact,
+            number_of_children,
+            children_names,
+            address
+        } = req.body;
+
+        // Check if member exists
+        const member = await Member.findByPk(member_id);
+        if (!member) {
+            await t.rollback();
+            return res.status(404).json({
+                success: false,
+                msg: 'Member not found'
+            });
+        }
+
+        // Check if family record already exists
+        const existingFamily = await MemberFamily.findOne({
+            where: { member_id },
+            transaction: t
+        });
+
+        if (existingFamily) {
+            await t.rollback();
+            return res.status(400).json({
+                success: false,
+                msg: 'Family details already exist for this member. Use update instead.'
+            });
+        }
+
+        // Build payload
+        const familyPayload = {
+            member_id,
+            father_name: (father_name && String(father_name).trim()) || 'N/A',
+            father_contact: (father_contact && String(father_contact).trim()) || 'N/A',
+            mother_name: (mother_name && String(mother_name).trim()) || 'N/A',
+            mother_contact: (mother_contact && String(mother_contact).trim()) || 'N/A',
+            address: (address && String(address).trim()) || 'N/A',
+        };
+
+        // Handle spouse and children for married members
+        if (member.marital_status?.toLowerCase().trim() === 'married') {
+            familyPayload.spouse_name = (spouse_name && String(spouse_name).trim()) || 'N/A';
+            familyPayload.spouse_contact = (spouse_contact && String(spouse_contact).trim()) || 'N/A';
+            familyPayload.number_of_children = Number.isFinite(Number(number_of_children)) ? Number(number_of_children) : 0;
+
+            if (
+                number_of_children > 0 &&
+                Array.isArray(children_names) &&
+                children_names.length === Number(number_of_children)
+            ) {
+                familyPayload.children_names = JSON.stringify(children_names);
+            } else {
+                familyPayload.children_names = 'N/A';
+            }
+        }
+
+        // Create new family record
+        const newFamily = await MemberFamily.create(familyPayload, { transaction: t });
+
+        await t.commit();
+
+        res.status(201).json({
+            success: true,
+            msg: 'Family details added successfully',
+            data: newFamily
+        });
+
+    } catch (error) {
+        await t.rollback();
+        console.error('Error adding family details:', error);
+        res.status(500).json({
+            success: false,
+            msg: 'Failed to add family details',
+            error: error.message
+        });
     }
 };
 
@@ -1566,6 +1676,7 @@ module.exports = {
     deleteMember,
     updateBusinessProfile,
     updateFamilyDetails,
+    addFamilyDetails,
     deleteBusinessProfile,
     deleteFamily,
     addBusinessProfileForMember,
