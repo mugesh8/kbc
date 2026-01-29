@@ -658,8 +658,9 @@ const BusinessListing = () => {
 
   // Helper: Build Google Maps URL for an address string
   const buildMapsUrl = (addressString) => {
-    if (!addressString) return '#';
-    const query = encodeURIComponent(addressString.trim());
+    const str = addressString == null ? '' : String(addressString);
+    if (!str.trim()) return '#';
+    const query = encodeURIComponent(str.trim());
     return `https://www.google.com/maps/search/?api=1&query=${query}`;
   };
 
@@ -678,7 +679,10 @@ const BusinessListing = () => {
       businessProfile?.state || '',
       businessProfile?.zip_code || ''
     ].filter(Boolean);
-    if (parts.length === 0 && businessProfile?.location) return businessProfile.location;
+    if (parts.length === 0 && businessProfile?.location) {
+      const loc = businessProfile.location;
+      return typeof loc === 'string' ? loc : (typeof loc === 'object' && loc !== null ? [loc.address, loc.city, loc.state, loc.zip_code].filter(Boolean).join(', ') : '');
+    }
     return parts.join(', ');
   };
 

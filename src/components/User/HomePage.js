@@ -298,9 +298,9 @@ const HomePage = () => {
     new Set(
       businesses
         .flatMap((b) =>
-          (b?.tags || '')
+          (typeof b?.tags === 'string' ? b.tags : (Array.isArray(b?.tags) ? b.tags.join(',') : ''))
             .split(',')
-            .map((t) => t.trim())
+            .map((t) => String(t).trim())
             .filter((t) => t)
         )
     )
@@ -309,20 +309,20 @@ const HomePage = () => {
   const uniqueLocations = Array.from(
     new Set(
       businesses
-        .map((b) => (b?.city || b?.location || '').trim())
+        .map((b) => String(b?.city ?? b?.location ?? '').trim())
         .filter((v) => v)
     )
   );
 
   const tagSuggestions = tagInput
     ? uniqueTags
-      .filter((t) => t.toLowerCase().startsWith(tagInput.toLowerCase()))
+      .filter((t) => String(t).toLowerCase().startsWith(String(tagInput).toLowerCase()))
       .slice(0, 8)
     : [];
 
   const locationSuggestions = searchLocation
     ? uniqueLocations
-      .filter((l) => l.toLowerCase().startsWith(searchLocation.toLowerCase()))
+      .filter((l) => String(l).toLowerCase().startsWith(String(searchLocation).toLowerCase()))
       .slice(0, 8)
     : [];
 
@@ -611,11 +611,11 @@ const HomePage = () => {
               const selectedCategory = categoriesData.find((c) => c.category_name === appliedCategory);
               matchCategory = selectedCategory ? Number(b?.category_id) === Number(selectedCategory.cid) : false;
             }
-            const tagText = (b?.tags || '').toLowerCase();
-            const nameText = (b?.company_name || '').toLowerCase();
-            const typeText = (b?.business_type || '').toLowerCase();
-            const appliedTags = appliedTag ? appliedTag.split(',').map(t => t.trim().toLowerCase()) : [];
-            const searchQueryLower = searchQuery.toLowerCase().trim();
+            const tagText = String(b?.tags ?? '').toLowerCase();
+            const nameText = String(b?.company_name ?? '').toLowerCase();
+            const typeText = String(b?.business_type ?? '').toLowerCase();
+            const appliedTags = appliedTag ? String(appliedTag).split(',').map(t => String(t).trim().toLowerCase()) : [];
+            const searchQueryLower = String(searchQuery ?? '').toLowerCase().trim();
 
             // Match selected tags
             const matchSelectedTags = appliedTags.length === 0 || appliedTags.some(tag =>
@@ -632,11 +632,11 @@ const HomePage = () => {
 
             // Handle "Near Me" location filtering
             let matchLocation = true;
-            if (appliedLocation && appliedLocation.toLowerCase().trim() === 'near me') {
+            if (appliedLocation && String(appliedLocation).toLowerCase().trim() === 'near me') {
               if (userCity) {
                 // Filter businesses by user's city
-                const businessCity = (b?.city || '').toLowerCase();
-                const businessLocation = (b?.location || '').toLowerCase();
+                const businessCity = String(b?.city ?? '').toLowerCase();
+                const businessLocation = String(b?.location ?? '').toLowerCase();
                 const userCityLower = userCity.toLowerCase();
 
                 matchLocation = businessCity.includes(userCityLower) ||
@@ -648,9 +648,9 @@ const HomePage = () => {
                 console.log('Near Me selected but no user city available');
                 matchLocation = false; // Don't show any if no city detected
               }
-            } else if (appliedLocation && appliedLocation.trim() !== '') {
-              const locText = (b?.city || b?.location || '').toLowerCase();
-              const searchLocLower = appliedLocation.toLowerCase().trim();
+            } else if (appliedLocation && String(appliedLocation).trim() !== '') {
+              const locText = String(b?.city ?? b?.location ?? '').toLowerCase();
+              const searchLocLower = String(appliedLocation).toLowerCase().trim();
               matchLocation = locText.includes(searchLocLower);
               console.log(`Location filter: "${searchLocLower}" in "${locText}" = ${matchLocation}`);
             } else {
@@ -685,8 +685,8 @@ const HomePage = () => {
                   const ratingValue = averageRating;
                   return (
                     <div key={business.id} className="bg-white rounded-3xl shadow-md hover:shadow-lg transition duration-300 overflow-hidden">
-                      <Link to={`/details/${business.id}`}>
-                        <div className="relative">
+                      <div className="relative">
+                        <Link to={`/details/${business.id}`} className="block">
                           {/* Green header section */}
                           <div
                             className="h-32 w-full bg-green-600 flex items-center justify-center bg-cover bg-no-repeat bg-center"
@@ -694,7 +694,6 @@ const HomePage = () => {
                               backgroundImage: imageUrl ? `url(${imageUrl})` : "url('/fallback.png')",
                             }}
                           ></div>
-
 
                           {/* Avatar and member name positioned on the right side between green and white sections */}
                           <div className="absolute right-6 top-20 flex flex-col items-end z-10">
@@ -712,7 +711,7 @@ const HomePage = () => {
                             )}
                           </div>
 
-                          {/* Content section with left alignment */}
+                          {/* Content section with left alignment - all inside Link */}
                           <div className="px-3 sm:px-4 pt-10 sm:pt-12 pb-3 text-left">
                             <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 mb-2 text-left">{title}</h3>
                             <p className="text-gray-600 text-sm sm:text-base mb-3 text-left">{subtitle}</p>
@@ -740,40 +739,36 @@ const HomePage = () => {
                               </div>
                             </div>
                             <div className="text-gray-700 mb-3 sm:mb-4 text-left text-xs sm:text-sm">Best time to contact : <span className="font-medium">{business?.best_contact_time || 'Morning'}</span></div>
-                            <div className="flex items-center gap-2">
-                              <button className="inline-flex items-center px-4 sm:px-7 py-1.5 sm:py-2 rounded-full bg-green-600 text-white text-xs sm:text-sm font-medium hover:bg-green-700 transition"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  navigate(`/details/${business.id}`);
-                                }}
-                              >
-                                View
-                              </button>
+                          </div>
+                        </Link>
 
-                              {/* Phone and WhatsApp icons */}
-                              <div className="flex items-center gap-2 ml-auto">
-                                <a
-                                  href={`tel:${business.business_work_contract || business.phone || ''}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-blue-600 hover:text-blue-800 transition-colors"
-                                  title="Call"
-                                >
-                                  <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </a>
-                                <a
-                                  href='#'
-                                  className="text-green-600 hover:text-green-800 transition-colors"
-                                  onClick={(e) => e.stopPropagation()}
-                                  title="WhatsApp"
-                                >
-                                  <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                                </a>
-                              </div>
-                            </div>
+                        {/* Action buttons outside Link to avoid nested <a> */}
+                        <div className="px-3 sm:px-4 pb-3 flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center px-4 sm:px-7 py-1.5 sm:py-2 rounded-full bg-green-600 text-white text-xs sm:text-sm font-medium hover:bg-green-700 transition"
+                            onClick={() => navigate(`/details/${business.id}`)}
+                          >
+                            View
+                          </button>
+                          <div className="flex items-center gap-2 ml-auto">
+                            <a
+                              href={`tel:${business.business_work_contract || business.phone || ''}`}
+                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              title="Call"
+                            >
+                              <PhoneIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </a>
+                            <button
+                              type="button"
+                              className="text-green-600 hover:text-green-800 transition-colors p-0 border-0 bg-transparent cursor-pointer"
+                              title="WhatsApp"
+                            >
+                              <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </button>
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     </div>
                   );
                 })}
