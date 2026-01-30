@@ -92,6 +92,8 @@ import {
 import baseurl from '../Baseurl/baseurl';
 import * as XLSX from 'xlsx';
 
+const MEMBERS_PAGE_SIZE = 10;
+
 const MemberManagement = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,11 +116,12 @@ const MemberManagement = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [page, setPage] = useState(1);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
   const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
-  
+
   // State for admin permissions
   const [permissions, setPermissions] = useState({
     canView: false,
@@ -126,7 +129,7 @@ const MemberManagement = () => {
     canEdit: false,
     canDelete: false
   });
-  
+
   // State for permission loading
   const [permissionLoading, setPermissionLoading] = useState(true);
 
@@ -134,7 +137,7 @@ const MemberManagement = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const tab = urlParams.get('tab');
-    
+
     if (tab === 'pending') {
       setActiveTab(2); // Pending tab index
       setStatusFilter('Pending');
@@ -154,7 +157,7 @@ const MemberManagement = () => {
         setPermissionLoading(true);
         const role = localStorage.getItem('adminRole');
         const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
-        
+
         if (role === 'community' && storedToken) {
           // Helper to decode JWT payload safely
           const decodeJwt = (token) => {
@@ -192,18 +195,18 @@ const MemberManagement = () => {
                   console.error('Error parsing roles:', e);
                   rolesArray = Array.isArray(data.role) ? data.role : [data.role];
                 }
-                
+
                 // Find the Member Management role (case insensitive)
-                const memberRole = rolesArray.find(r => 
+                const memberRole = rolesArray.find(r =>
                   r.toLowerCase().includes('member management')
                 );
-                
+
                 if (memberRole) {
                   // Check if it has specific permissions
                   if (memberRole.includes('--')) {
                     const permissionsStr = memberRole.split('--')[1].trim();
                     const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
-                    
+
                     setPermissions({
                       canView: permissionList.includes('view'),
                       canAdd: permissionList.includes('add'),
@@ -379,13 +382,13 @@ const MemberManagement = () => {
     const matchesSearch = member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
     let aValue, bValue;
-    
+
     switch (sortBy) {
       case 'name':
         aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -408,13 +411,38 @@ const MemberManagement = () => {
         aValue = a.first_name?.toLowerCase() || '';
         bValue = b.first_name?.toLowerCase() || '';
     }
-    
+
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : -1;
     } else {
       return aValue < bValue ? 1 : -1;
     }
   });
+
+  // Paginate: show MEMBERS_PAGE_SIZE (10) per page
+  const totalFiltered = filteredMembers.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / MEMBERS_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIndex = (currentPage - 1) * MEMBERS_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + MEMBERS_PAGE_SIZE, totalFiltered);
+
+  // Reset to page 1 when filters/search/tab change (not when only page changes)
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, activeTab, sortBy, sortOrder]);
+
+  // Keep page in valid range when total pages shrinks (e.g. after filter)
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
+
+  const handlePageChange = (event, newPage) => {
+    if (typeof newPage === 'number' && newPage >= 1) {
+      setPage(Math.min(newPage, totalPages));
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -476,12 +504,12 @@ const MemberManagement = () => {
 
   const handleViewMember = async (member) => {
     if (!permissions.canView) return;
-    
+
     try {
       // Fetch complete member details with all personal information
       const response = await fetch(`${baseurl}/api/member/${member.mid}`);
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         // Transform the API data to match the profile page structure
         const completeMemberData = transformMemberApiData(data.data);
@@ -507,7 +535,7 @@ const MemberManagement = () => {
     let city = '';
     let state = '';
     let pinCode = '';
-    
+
     if (apiData.address) {
       streetAddress = apiData.address;
     }
@@ -565,7 +593,7 @@ const MemberManagement = () => {
       access_level: apiData.access_level,
       paid_status: apiData.paid_status,
       pro: apiData.pro,
-      
+
       // Personal details matching profile page structure
       personal: {
         fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
@@ -619,14 +647,14 @@ const MemberManagement = () => {
         createdAt: apiData.createdAt || '',
         updatedAt: apiData.updatedAt || '',
       },
-      
+
       // System info
       application_id: apiData.application_id,
       join_date: apiData.join_date,
       updatedAt: apiData.updatedAt,
       membership_valid_until: apiData.membership_valid_until,
       rejection_reason: apiData.rejection_reason,
-      
+
       // Additional fields from API
       ...apiData
     };
@@ -634,7 +662,7 @@ const MemberManagement = () => {
 
   const handleDeleteClick = (member) => {
     if (!permissions.canDelete) return;
-    
+
     setSelectedMember(member);
     setDeleteDialogOpen(true);
   };
@@ -755,10 +783,10 @@ const MemberManagement = () => {
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {icon && React.cloneElement(icon, { sx: { color: 'text.secondary', fontSize: '1rem' } })}
-        <Typography variant="body1" sx={{ 
-          p: 1, 
-          backgroundColor: 'grey.50', 
-          borderRadius: 1, 
+        <Typography variant="body1" sx={{
+          p: 1,
+          backgroundColor: 'grey.50',
+          borderRadius: 1,
           flex: 1,
           minHeight: '40px',
           display: 'flex',
@@ -778,10 +806,10 @@ const MemberManagement = () => {
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {icon && React.cloneElement(icon, { sx: { color: 'text.secondary', fontSize: '1rem' } })}
-        <Typography variant="body1" sx={{ 
-          p: 1, 
-          backgroundColor: 'grey.50', 
-          borderRadius: 1, 
+        <Typography variant="body1" sx={{
+          p: 1,
+          backgroundColor: 'grey.50',
+          borderRadius: 1,
           flex: 1,
           minHeight: '40px',
           display: 'flex',
@@ -802,8 +830,8 @@ const MemberManagement = () => {
           {label}
         </Typography>
       </Box>
-      <Chip 
-        label={checked ? 'Yes' : 'No'} 
+      <Chip
+        label={checked ? 'Yes' : 'No'}
         size="small"
         color={checked ? 'success' : 'default'}
         variant={checked ? 'filled' : 'outlined'}
@@ -836,8 +864,8 @@ const MemberManagement = () => {
             <Typography variant="body1" color="text.secondary">
               You do not have permission to view the Member Management module.
             </Typography>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
               onClick={() => navigate('/admin/dashboard')}
             >
@@ -1080,7 +1108,7 @@ const MemberManagement = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredMembers.map((member) => (
+                  filteredMembers.slice(startIndex, endIndex).map((member) => (
                     <TableRow key={member.id} sx={{ '&:hover': { backgroundColor: '#f9f9f9' } }}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -1247,12 +1275,19 @@ const MemberManagement = () => {
             gap: { xs: 2, md: 0 }
           }}>
             <Typography variant="body2" color="text.secondary">
-              Showing {filteredMembers.length} of {members.length} members
+              {totalFiltered === 0
+                ? 'Showing 0 members'
+                : `Showing ${startIndex + 1}-${endIndex} of ${totalFiltered} members (${MEMBERS_PAGE_SIZE} per page)`}
             </Typography>
             <Pagination
-              count={Math.ceil(members.length / 10)}
-              page={1}
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
               color="primary"
+              showFirstButton
+              showLastButton
+              siblingCount={1}
+              boundaryCount={1}
               sx={{
                 '& .MuiPaginationItem-root.Mui-selected': {
                   backgroundColor: '#4CAF50',
@@ -1368,16 +1403,16 @@ const MemberManagement = () => {
                     />
                     <Chip
                       label={selectedMember.paid_status || 'Unpaid'}
-                      sx={{ 
-                        bgcolor: getPaidStatusColor(selectedMember.paid_status), 
-                        color: 'white', 
+                      sx={{
+                        bgcolor: getPaidStatusColor(selectedMember.paid_status),
+                        color: 'white',
                         fontWeight: 600,
                       }}
                     />
                     {selectedMember.pro === 'Pro' && (
-                      <Chip 
-                        label="Pro Member" 
-                        sx={{ bgcolor: '#FF9800', color: 'white', fontWeight: 600 }} 
+                      <Chip
+                        label="Pro Member"
+                        sx={{ bgcolor: '#FF9800', color: 'white', fontWeight: 600 }}
                       />
                     )}
                   </Box>
@@ -1391,40 +1426,40 @@ const MemberManagement = () => {
                     <Typography variant="h6" fontWeight={600} color="primary" gutterBottom>
                       Personal Details
                     </Typography>
-                    
+
                     {/* Basic Information Grid - 3 columns matching profile page */}
                     <Grid container spacing={3} sx={{ mb: 3 }}>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Full Name" 
-                          value={selectedMember.personal?.fullName} 
+                        <ViewField
+                          label="Full Name"
+                          value={selectedMember.personal?.fullName}
                           icon={<Person />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Email" 
-                          value={selectedMember.personal?.email} 
+                        <ViewField
+                          label="Email"
+                          value={selectedMember.personal?.email}
                           icon={<Email />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Phone Number" 
-                          value={selectedMember.personal?.phone} 
+                        <ViewField
+                          label="Phone Number"
+                          value={selectedMember.personal?.phone}
                           icon={<Phone />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Date of Birth" 
-                          value={formatDate(selectedMember.personal?.dateOfBirth)} 
+                        <ViewField
+                          label="Date of Birth"
+                          value={formatDate(selectedMember.personal?.dateOfBirth)}
                           icon={<Cake />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Gender" 
+                        <ViewSelectField
+                          label="Gender"
                           value={selectedMember.personal?.gender}
                           options={[
                             { value: 'Male', label: 'Male' },
@@ -1434,15 +1469,15 @@ const MemberManagement = () => {
                           icon={<Transgender />}
                         />
                         {selectedMember.personal?.gender === 'Other' && (
-                          <ViewField 
-                            label="Specify Gender" 
-                            value={selectedMember.personal?.genderOther} 
+                          <ViewField
+                            label="Specify Gender"
+                            value={selectedMember.personal?.genderOther}
                           />
                         )}
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Marital Status" 
+                        <ViewSelectField
+                          label="Marital Status"
                           value={selectedMember.personal?.maritalStatus}
                           options={[
                             { value: 'single', label: 'Single' },
@@ -1454,8 +1489,8 @@ const MemberManagement = () => {
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Kootam" 
+                        <ViewSelectField
+                          label="Kootam"
                           value={selectedMember.personal?.kootam}
                           options={[
                             { value: 'Agamudayar', label: 'Agamudayar' },
@@ -1468,15 +1503,15 @@ const MemberManagement = () => {
                           icon={<Groups />}
                         />
                         {selectedMember.personal?.kootam === 'Others' && (
-                          <ViewField 
-                            label="Specify Kootam" 
-                            value={selectedMember.personal?.kootamOther} 
+                          <ViewField
+                            label="Specify Kootam"
+                            value={selectedMember.personal?.kootamOther}
                           />
                         )}
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Kovil" 
+                        <ViewSelectField
+                          label="Kovil"
                           value={selectedMember.personal?.kovil}
                           options={[
                             { value: 'Madurai Meenakshi Amman', label: 'Madurai Meenakshi Amman' },
@@ -1489,31 +1524,31 @@ const MemberManagement = () => {
                           icon={<CorporateFare />}
                         />
                         {selectedMember.personal?.kovil === 'Others' && (
-                          <ViewField 
-                            label="Specify Kovil" 
-                            value={selectedMember.personal?.kovilOther} 
+                          <ViewField
+                            label="Specify Kovil"
+                            value={selectedMember.personal?.kovilOther}
                           />
                         )}
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Status" 
+                        <ViewSelectField
+                          label="Status"
                           value={selectedMember.personal?.status}
                           options={['Approved', 'Pending', 'Rejected']}
                           icon={<BadgeIcon />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Access Level" 
+                        <ViewSelectField
+                          label="Access Level"
                           value={selectedMember.personal?.accessLevel}
                           options={['Basic', 'Premium', 'Admin']}
                           icon={<Shield />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Paid Status" 
+                        <ViewSelectField
+                          label="Paid Status"
                           value={selectedMember.personal?.paidStatus}
                           options={['Paid', 'Unpaid']}
                           icon={<Payment />}
@@ -1527,28 +1562,28 @@ const MemberManagement = () => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={12}>
-                        <ViewField 
-                          label="Street Address" 
-                          value={selectedMember.personal?.streetAddress} 
+                        <ViewField
+                          label="Street Address"
+                          value={selectedMember.personal?.streetAddress}
                           icon={<LocationOn />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="City" 
-                          value={selectedMember.personal?.city} 
+                        <ViewField
+                          label="City"
+                          value={selectedMember.personal?.city}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="State" 
-                          value={selectedMember.personal?.state} 
+                        <ViewField
+                          label="State"
+                          value={selectedMember.personal?.state}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Pin Code" 
-                          value={selectedMember.personal?.pinCode} 
+                        <ViewField
+                          label="Pin Code"
+                          value={selectedMember.personal?.pinCode}
                         />
                       </Grid>
                     </Grid>
@@ -1559,56 +1594,56 @@ const MemberManagement = () => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Aadhaar Number" 
-                          value={selectedMember.personal?.aadhaar} 
+                        <ViewField
+                          label="Aadhaar Number"
+                          value={selectedMember.personal?.aadhaar}
                           icon={<BadgeIcon />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Blood Group" 
-                          value={selectedMember.personal?.bloodGroup} 
+                        <ViewField
+                          label="Blood Group"
+                          value={selectedMember.personal?.bloodGroup}
                           icon={<Bloodtype />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Alternative Contact" 
-                          value={selectedMember.personal?.alternativeContact} 
+                        <ViewField
+                          label="Alternative Contact"
+                          value={selectedMember.personal?.alternativeContact}
                           icon={<Phone />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Secondary Email" 
-                          value={selectedMember.personal?.secondaryEmail} 
+                        <ViewField
+                          label="Secondary Email"
+                          value={selectedMember.personal?.secondaryEmail}
                           icon={<Email />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Emergency Contact Name" 
-                          value={selectedMember.personal?.emergencyContact} 
+                        <ViewField
+                          label="Emergency Contact Name"
+                          value={selectedMember.personal?.emergencyContact}
                           icon={<Emergency />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Emergency Contact Number" 
-                          value={selectedMember.personal?.emergencyPhone} 
+                        <ViewField
+                          label="Emergency Contact Number"
+                          value={selectedMember.personal?.emergencyPhone}
                           icon={<Phone />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewSelectField 
-                          label="Best Time to Contact" 
+                        <ViewSelectField
+                          label="Best Time to Contact"
                           value={selectedMember.personal?.bestTimeToContact}
                           options={[
-                            'Business Hours (9 AM - 5 PM)', 
-                            'Morning (6 AM - 12 PM)', 
-                            'Afternoon (12 PM - 6 PM)', 
-                            'Evening (6 PM - 10 PM)', 
+                            'Business Hours (9 AM - 5 PM)',
+                            'Morning (6 AM - 12 PM)',
+                            'Afternoon (12 PM - 6 PM)',
+                            'Evening (6 PM - 10 PM)',
                             'Anytime'
                           ]}
                           icon={<Schedule />}
@@ -1622,51 +1657,51 @@ const MemberManagement = () => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Website" 
-                          value={selectedMember.personal?.website} 
+                        <ViewField
+                          label="Website"
+                          value={selectedMember.personal?.website}
                           icon={<Language />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="LinkedIn" 
-                          value={selectedMember.personal?.linkedin} 
+                        <ViewField
+                          label="LinkedIn"
+                          value={selectedMember.personal?.linkedin}
                           icon={<Work />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="LinkedIn Profile" 
-                          value={selectedMember.personal?.linkedinProfile} 
+                        <ViewField
+                          label="LinkedIn Profile"
+                          value={selectedMember.personal?.linkedinProfile}
                           icon={<Work />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Facebook" 
-                          value={selectedMember.personal?.facebook} 
+                        <ViewField
+                          label="Facebook"
+                          value={selectedMember.personal?.facebook}
                           icon={<Public />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Instagram" 
-                          value={selectedMember.personal?.instagram} 
+                        <ViewField
+                          label="Instagram"
+                          value={selectedMember.personal?.instagram}
                           icon={<Public />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Twitter" 
-                          value={selectedMember.personal?.twitter} 
+                        <ViewField
+                          label="Twitter"
+                          value={selectedMember.personal?.twitter}
                           icon={<Public />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="YouTube" 
-                          value={selectedMember.personal?.youtube} 
+                        <ViewField
+                          label="YouTube"
+                          value={selectedMember.personal?.youtube}
                           icon={<Public />}
                         />
                       </Grid>
@@ -1678,51 +1713,51 @@ const MemberManagement = () => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="Arakattalai" 
+                        <ViewToggleField
+                          label="Arakattalai"
                           checked={selectedMember.personal?.Arakattalai === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="KNS Member" 
+                        <ViewToggleField
+                          label="KNS Member"
                           checked={selectedMember.personal?.KNS_Member === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="KBN Member" 
+                        <ViewToggleField
+                          label="KBN Member"
                           checked={selectedMember.personal?.KBN_Member === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="BNI" 
+                        <ViewToggleField
+                          label="BNI"
                           checked={selectedMember.personal?.BNI === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="Rotary" 
+                        <ViewToggleField
+                          label="Rotary"
                           checked={selectedMember.personal?.Rotary === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewToggleField 
-                          label="Lions" 
+                        <ViewToggleField
+                          label="Lions"
                           checked={selectedMember.personal?.Lions === 'Yes'}
                           icon={<Groups />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Other Forum" 
-                          value={selectedMember.personal?.Other_forum} 
+                        <ViewField
+                          label="Other Forum"
+                          value={selectedMember.personal?.Other_forum}
                           icon={<Groups />}
                         />
                       </Grid>
@@ -1736,16 +1771,16 @@ const MemberManagement = () => {
                         </Typography>
                         <Grid container spacing={3}>
                           <Grid item xs={12} sm={6} md={4}>
-                            <ViewField 
-                              label="Referral Name" 
-                              value={selectedMember.personal?.referralName} 
+                            <ViewField
+                              label="Referral Name"
+                              value={selectedMember.personal?.referralName}
                               icon={<Person />}
                             />
                           </Grid>
                           <Grid item xs={12} sm={6} md={4}>
-                            <ViewField 
-                              label="Referral Code" 
-                              value={selectedMember.personal?.referralCode} 
+                            <ViewField
+                              label="Referral Code"
+                              value={selectedMember.personal?.referralCode}
                               icon={<BadgeIcon />}
                             />
                           </Grid>
@@ -1759,31 +1794,31 @@ const MemberManagement = () => {
                     </Typography>
                     <Grid container spacing={3}>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Join Date" 
-                          value={formatDate(selectedMember.personal?.joinDate)} 
+                        <ViewField
+                          label="Join Date"
+                          value={formatDate(selectedMember.personal?.joinDate)}
                           icon={<CalendarToday />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Last Updated" 
-                          value={formatDate(selectedMember.personal?.updatedAt)} 
+                        <ViewField
+                          label="Last Updated"
+                          value={formatDate(selectedMember.personal?.updatedAt)}
                           icon={<CalendarToday />}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6} md={4}>
-                        <ViewField 
-                          label="Application ID" 
-                          value={selectedMember.application_id} 
+                        <ViewField
+                          label="Application ID"
+                          value={selectedMember.application_id}
                           icon={<BadgeIcon />}
                         />
                       </Grid>
                       {selectedMember.personal?.paidStatus === 'Paid' && selectedMember.membership_valid_until && (
                         <Grid item xs={12} sm={6} md={4}>
-                          <ViewField 
-                            label="Membership Valid Until" 
-                            value={formatDate(selectedMember.membership_valid_until)} 
+                          <ViewField
+                            label="Membership Valid Until"
+                            value={formatDate(selectedMember.membership_valid_until)}
                             icon={<CalendarToday />}
                           />
                         </Grid>
@@ -1798,9 +1833,9 @@ const MemberManagement = () => {
                         </Typography>
                         <Grid container spacing={3}>
                           <Grid item xs={12}>
-                            <ViewField 
-                              label="Rejection Reason" 
-                              value={selectedMember.rejection_reason} 
+                            <ViewField
+                              label="Rejection Reason"
+                              value={selectedMember.rejection_reason}
                               icon={<Warning />}
                             />
                           </Grid>

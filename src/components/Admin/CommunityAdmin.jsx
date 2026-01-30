@@ -96,7 +96,7 @@ const CommunityAdmin = () => {
     if (!roleString || typeof roleString !== 'string') {
       return { roleName: 'Unknown Role', permissions: [] };
     }
-    
+
     const parts = roleString.split(' -- ');
     const roleName = parts[0] || 'Unknown Role';
     let permissions = [];
@@ -145,7 +145,7 @@ const CommunityAdmin = () => {
             roles = Array.isArray(admin.role) ? admin.role : [admin.role];
           }
         }
-        
+
         // Parse roles to extract permissions
         const parsedRoles = roles.map(roleStr => {
           return parseRoleString(roleStr);
@@ -246,6 +246,11 @@ const CommunityAdmin = () => {
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   // Calculate paginated admins
   const paginatedAdmins = filteredAdmins.slice(
@@ -567,13 +572,19 @@ const CommunityAdmin = () => {
             gap: { xs: 2, md: 0 }
           }}>
             <Typography variant="body2" color="text.secondary">
-              Showing {paginatedAdmins.length} of {filteredAdmins.length} admins (Page {page} of {Math.ceil(filteredAdmins.length / rowsPerPage)})
+              {filteredAdmins.length === 0
+                ? 'Showing 0 admins'
+                : `Showing ${(page - 1) * rowsPerPage + 1}-${Math.min(page * rowsPerPage, filteredAdmins.length)} of ${filteredAdmins.length} admins (${rowsPerPage} per page)`}
             </Typography>
             <Pagination
               count={Math.ceil(filteredAdmins.length / rowsPerPage)}
               page={page}
               onChange={handleChangePage}
               color="primary"
+              showFirstButton
+              showLastButton
+              siblingCount={1}
+              boundaryCount={1}
               sx={{
                 '& .MuiPaginationItem-root.Mui-selected': {
                   backgroundColor: '#4CAF50',

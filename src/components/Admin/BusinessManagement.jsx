@@ -58,6 +58,8 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import baseurl from '../Baseurl/baseurl';
 import * as XLSX from 'xlsx';
 
+const BUSINESS_PAGE_SIZE = 10;
+
 // TagsInput Component (without label) - same behavior as in AddMembersForm
 const TagsInput = ({ tags = [], onAdd, onRemove, suggestions = [] }) => {
     const [inputValue, setInputValue] = React.useState('');
@@ -107,15 +109,15 @@ const TagsInput = ({ tags = [], onAdd, onRemove, suggestions = [] }) => {
                             gap: '4px'
                         }}>
                             {tag}
-                            <button 
-                                type="button" 
-                                style={{ 
-                                    color: '#166534', 
-                                    background: 'none', 
-                                    border: 'none', 
+                            <button
+                                type="button"
+                                style={{
+                                    color: '#166534',
+                                    background: 'none',
+                                    border: 'none',
                                     cursor: 'pointer',
                                     fontSize: '16px'
-                                }} 
+                                }}
                                 onClick={() => onRemove && onRemove(idx)}
                             >
                                 ×
@@ -285,7 +287,7 @@ const BusinessProfileModal = ({
     };
 
     const handleBranchChange = (branchId, field, value) => {
-        setBranches(prev => prev.map(branch => 
+        setBranches(prev => prev.map(branch =>
             branch.id === branchId ? { ...branch, [field]: value } : branch
         ));
     };
@@ -361,10 +363,10 @@ const BusinessProfileModal = ({
         }
 
         // Validate at least one branch has address data
-        const hasValidBranch = branches && branches.some(branch => 
+        const hasValidBranch = branches && branches.some(branch =>
             branch.company_address && branch.city && branch.state && branch.zip_code
         );
-        
+
         if (!hasValidBranch) {
             alert('At least one branch with complete address information is required');
             return;
@@ -471,9 +473,9 @@ const BusinessProfileModal = ({
             fullWidth
             scroll="paper"
         >
-            <DialogTitle sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
+            <DialogTitle sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 bgcolor: '#4CAF50',
                 color: 'white'
@@ -785,7 +787,7 @@ const BusinessProfileModal = ({
                                             }}
                                         />
                                     </Grid>
-                                    
+
                                     <Grid item xs={12} sm={4}>
                                         <TextField
                                             fullWidth
@@ -961,7 +963,8 @@ const BusinessManagement = () => {
     const [sortBy, setSortBy] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
     const [statusFilter, setStatusFilter] = useState('All');
-    
+    const [page, setPage] = useState(1);
+
     // State for admin permissions
     const [permissions, setPermissions] = useState({
         canView: false,
@@ -969,7 +972,7 @@ const BusinessManagement = () => {
         canEdit: false,
         canDelete: false
     });
-    
+
     // State for permission loading
     const [permissionLoading, setPermissionLoading] = useState(true);
 
@@ -982,7 +985,7 @@ const BusinessManagement = () => {
     useEffect(() => {
         const urlParams = new URLSearchParams(location.search);
         const tab = urlParams.get('tab');
-        
+
         if (tab === 'pending') {
             setActiveTab('pending');
         }
@@ -995,7 +998,7 @@ const BusinessManagement = () => {
                 setPermissionLoading(true);
                 const role = localStorage.getItem('adminRole');
                 const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
-                
+
                 if (role === 'community' && storedToken) {
                     // Helper to decode JWT payload safely
                     const decodeJwt = (token) => {
@@ -1022,29 +1025,29 @@ const BusinessManagement = () => {
                                 // Parse role data - it comes as a JSON string from the database
                                 let rolesArray = [];
                                 try {
-                                  if (typeof data.role === 'string' && data.role.startsWith('[')) {
-                                    rolesArray = JSON.parse(data.role);
-                                  } else if (Array.isArray(data.role)) {
-                                    rolesArray = data.role;
-                                  } else {
-                                    rolesArray = [data.role];
-                                  }
+                                    if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                                        rolesArray = JSON.parse(data.role);
+                                    } else if (Array.isArray(data.role)) {
+                                        rolesArray = data.role;
+                                    } else {
+                                        rolesArray = [data.role];
+                                    }
                                 } catch (e) {
-                                  console.error('Error parsing roles:', e);
-                                  rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                                    console.error('Error parsing roles:', e);
+                                    rolesArray = Array.isArray(data.role) ? data.role : [data.role];
                                 }
-                                
+
                                 // Find the Business Management role (case insensitive)
-                                const businessRole = rolesArray.find(r => 
+                                const businessRole = rolesArray.find(r =>
                                     r.toLowerCase().includes('business management')
                                 );
-                                
+
                                 if (businessRole) {
                                     // Check if it has specific permissions
                                     if (businessRole.includes('--')) {
                                         const permissionsStr = businessRole.split('--')[1].trim();
                                         const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
-                                        
+
                                         setPermissions({
                                             canView: permissionList.includes('view'),
                                             canAdd: permissionList.includes('add'),
@@ -1197,7 +1200,7 @@ const BusinessManagement = () => {
                 }
                 return [String(parsed ?? '')];
             }
-        } catch (_) {}
+        } catch (_) { }
         if (value === undefined || value === null || value === '') return [];
         return [String(value)];
     };
@@ -1315,13 +1318,13 @@ const BusinessManagement = () => {
     const tabbedGroups = Object.values(groupedBusinesses)
         .map(group => {
             let filteredBusinesses = group.businesses;
-            
+
             if (activeTab === 'pending') {
-                filteredBusinesses = group.businesses.filter(b => 
+                filteredBusinesses = group.businesses.filter(b =>
                     (b.status || '').toLowerCase() === 'pending'
                 );
             }
-            
+
             return {
                 ...group,
                 businesses: filteredBusinesses
@@ -1341,13 +1344,13 @@ const BusinessManagement = () => {
                 (business.role || '').toLowerCase().includes(searchLower)
             )
         );
-        
+
         const matchesStatus = statusFilter === 'All' || group.member.status === statusFilter;
-        
+
         return matchesSearch && matchesStatus;
     }).sort((a, b) => {
         let aValue, bValue;
-        
+
         switch (sortBy) {
             case 'name':
                 aValue = `${a.member.first_name} ${a.member.last_name}`.toLowerCase();
@@ -1369,13 +1372,40 @@ const BusinessManagement = () => {
                 aValue = a.member.first_name?.toLowerCase() || '';
                 bValue = b.member.first_name?.toLowerCase() || '';
         }
-        
+
         if (sortOrder === 'asc') {
             return aValue > bValue ? 1 : -1;
         } else {
             return aValue < bValue ? 1 : -1;
         }
     });
+
+    // Pagination logic
+    const totalFiltered = filteredGroups.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / BUSINESS_PAGE_SIZE));
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (currentPage - 1) * BUSINESS_PAGE_SIZE;
+    const endIndex = Math.min(startIndex + BUSINESS_PAGE_SIZE, totalFiltered);
+    const paginatedGroups = filteredGroups.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters/search/tab change
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, statusFilter, activeTab, sortBy, sortOrder]);
+
+    // Keep page in valid range when total pages shrinks
+    useEffect(() => {
+        if (totalPages > 0 && page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [totalPages, page]);
+
+    const handlePageChange = (event, newPage) => {
+        if (typeof newPage === 'number' && newPage >= 1) {
+            setPage(Math.min(newPage, totalPages));
+        }
+    };
+
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -1399,7 +1429,7 @@ const BusinessManagement = () => {
 
     const handleViewMember = async (member) => {
         if (!permissions.canView) return;
-        
+
         setSelectedMember(member);
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -1426,7 +1456,7 @@ const BusinessManagement = () => {
 
     const handleDeleteClick = (business) => {
         if (!permissions.canDelete) return;
-        
+
         setSelectedMember({
             ...groupedBusinesses[business.mid].member,
             businessToDelete: business
@@ -1536,8 +1566,8 @@ const BusinessManagement = () => {
                         <Typography variant="body1" color="text.secondary">
                             You do not have permission to view the Business Management module.
                         </Typography>
-                        <Button 
-                            variant="contained" 
+                        <Button
+                            variant="contained"
                             sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
                             onClick={() => navigate('/admin/dashboard')}
                         >
@@ -1712,7 +1742,7 @@ const BusinessManagement = () => {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredGroups.map((group) => (
+                                    paginatedGroups.map((group) => (
                                         <React.Fragment key={group.member.mid}>
                                             <TableRow
                                                 sx={{
@@ -1835,7 +1865,7 @@ const BusinessManagement = () => {
                                                             <Grid container spacing={2}>
                                                                 {group.businesses.map((business) => {
                                                                     const isDisabled = activeTab === 'all' && business.status === 'Pending';
-                                                                    
+
                                                                     return (
                                                                         <Grid item xs={12} md={6} key={business.id}>
                                                                             <Paper
@@ -1860,7 +1890,7 @@ const BusinessManagement = () => {
                                                                                     {permissions.canEdit && (
                                                                                         <IconButton
                                                                                             size="small"
-                                                                                            sx={{ 
+                                                                                            sx={{
                                                                                                 color: isDisabled ? '#ccc' : '#666',
                                                                                                 pointerEvents: isDisabled ? 'none' : 'auto'
                                                                                             }}
@@ -1873,7 +1903,7 @@ const BusinessManagement = () => {
                                                                                     {permissions.canDelete && (
                                                                                         <IconButton
                                                                                             size="small"
-                                                                                            sx={{ 
+                                                                                            sx={{
                                                                                                 color: isDisabled ? '#ccc' : '#f44336',
                                                                                                 pointerEvents: isDisabled ? 'none' : 'auto'
                                                                                             }}
@@ -2044,12 +2074,19 @@ const BusinessManagement = () => {
                         gap: { xs: 2, md: 0 }
                     }}>
                         <Typography variant="body2" color="text.secondary">
-                            Showing {filteredGroups.length} of {Object.keys(groupedBusinesses).length} members
+                            {totalFiltered === 0
+                                ? 'Showing 0 businesses'
+                                : `Showing ${startIndex + 1}-${endIndex} of ${totalFiltered} businesses (${BUSINESS_PAGE_SIZE} per page)`}
                         </Typography>
                         <Pagination
-                            count={Math.ceil(Object.keys(groupedBusinesses).length / 10)}
-                            page={1}
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
                             color="primary"
+                            showFirstButton
+                            showLastButton
+                            siblingCount={1}
+                            boundaryCount={1}
                             sx={{
                                 '& .MuiPaginationItem-root.Mui-selected': {
                                     backgroundColor: '#4CAF50',
@@ -2654,7 +2691,7 @@ const BusinessManagement = () => {
                                                                         gap: 1.5,
                                                                         flex: 1
                                                                     }}>
-                                                                                {business.media_gallery.split(',').map((media, idx) => {
+                                                                        {business.media_gallery.split(',').map((media, idx) => {
                                                                             const isImage = /\.(jpeg|jpg|png|gif|webp)$/i.test(media);
                                                                             const isVideo = /\.(mp4|mov|avi|mkv|webm)$/i.test(media);
 

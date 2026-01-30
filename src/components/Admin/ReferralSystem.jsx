@@ -206,12 +206,12 @@ const ViewModal = ({ open, onClose, member }) => {
 
       <DialogActions sx={{ px: 3, py: 2, bgcolor: '#f0f0f0' }}>
         <Button variant="outlined" onClick={onClose} sx={{
-                          bgcolor: '#4CAF50',
-                          minWidth: 120,
-                          '&:hover': { bgcolor: '#45a049' },
-                          color: "#fff",
-                           py: 1.5, px: 4 
-                      }}>Close</Button>
+          bgcolor: '#4CAF50',
+          minWidth: 120,
+          '&:hover': { bgcolor: '#45a049' },
+          color: "#fff",
+          py: 1.5, px: 4
+        }}>Close</Button>
       </DialogActions>
     </Dialog>
   );
@@ -315,7 +315,7 @@ const ReferralSystemComponent = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [statusFilter, setStatusFilter] = useState('All');
   const [page, setPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
   const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
 
   // Fetch referral data from API
@@ -498,13 +498,13 @@ const ReferralSystemComponent = () => {
       (member.Referral?.referral_name?.toLowerCase().includes(searchLower)) ||
       (member.Referral?.referral_code?.toLowerCase().includes(searchLower))
     );
-    
+
     const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
     let aValue, bValue;
-    
+
     switch (sortBy) {
       case 'name':
         aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -531,7 +531,7 @@ const ReferralSystemComponent = () => {
         aValue = a.first_name?.toLowerCase() || '';
         bValue = b.first_name?.toLowerCase() || '';
     }
-    
+
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : -1;
     } else {
@@ -549,6 +549,11 @@ const ReferralSystemComponent = () => {
   const handlePageChange = (event, value) => {
     setPage(value);
   };
+
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, sortBy, sortOrder]);
 
   if (loading) {
     return (
@@ -775,19 +780,19 @@ const ReferralSystemComponent = () => {
                           >
                             <InfoIcon sx={{ fontSize: 16 }} />
                           </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDelete(member)}
-                              sx={{
-                                backgroundColor: '#F44336',
-                                color: 'white',
-                                width: 32,
-                                height: 32,
-                                '&:hover': { backgroundColor: '#D32F2F' }
-                              }}
-                            >
-                              <DeleteIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDelete(member)}
+                            sx={{
+                              backgroundColor: '#F44336',
+                              color: 'white',
+                              width: 32,
+                              height: 32,
+                              '&:hover': { backgroundColor: '#D32F2F' }
+                            }}
+                          >
+                            <DeleteIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -808,19 +813,22 @@ const ReferralSystemComponent = () => {
             }}
           >
             <Typography variant="body2" sx={{ color: '#666' }}>
-              Showing {paginatedData.length} of {filteredReferralData.length} entries
+              {filteredReferralData.length === 0
+                ? 'Showing 0 entries'
+                : `Showing ${(page - 1) * itemsPerPage + 1}-${Math.min(page * itemsPerPage, filteredReferralData.length)} of ${filteredReferralData.length} entries (${itemsPerPage} per page)`}
             </Typography>
             <Pagination
               count={pageCount}
               page={page}
               onChange={handlePageChange}
-              size="small"
+              color="primary"
+              showFirstButton
+              showLastButton
+              siblingCount={1}
+              boundaryCount={1}
               sx={{
-                '& .MuiPaginationItem-root': {
-                  fontSize: '14px'
-                },
-                '& .Mui-selected': {
-                  backgroundColor: '#4CAF50 !important',
+                '& .MuiPaginationItem-root.Mui-selected': {
+                  backgroundColor: '#4CAF50',
                   color: 'white'
                 }
               }}
@@ -828,7 +836,7 @@ const ReferralSystemComponent = () => {
           </Box>
         </CardContent>
       </Card>
-      
+
       {/* Filter Dialog */}
       <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Filter Referrals</DialogTitle>
@@ -856,7 +864,7 @@ const ReferralSystemComponent = () => {
           <Button onClick={() => setFilterDialogOpen(false)} variant="contained">Apply</Button>
         </DialogActions>
       </Dialog>
-      
+
       <ViewModal
         open={viewModalOpen}
         onClose={handleViewModalClose}

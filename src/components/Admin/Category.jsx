@@ -21,7 +21,8 @@ import {
   Chip,
   Stack,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Pagination
 } from '@mui/material';
 import {
   Search,
@@ -34,6 +35,8 @@ import {
 } from '@mui/icons-material';
 import baseurl from '../Baseurl/baseurl';
 import * as XLSX from 'xlsx';
+
+const CATEGORY_PAGE_SIZE = 10;
 
 const Category = () => {
   const [categories, setCategories] = useState([]);
@@ -49,7 +52,8 @@ const Category = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  
+  const [page, setPage] = useState(1);
+
   // State for admin permissions
   const [permissions, setPermissions] = useState({
     canView: false,
@@ -57,7 +61,7 @@ const Category = () => {
     canEdit: false,
     canDelete: false
   });
-  
+
   // State for permission loading
   const [permissionLoading, setPermissionLoading] = useState(true);
 
@@ -68,7 +72,7 @@ const Category = () => {
         setPermissionLoading(true);
         const role = localStorage.getItem('adminRole');
         const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
-        
+
         if (role === 'community' && storedToken) {
           // Helper to decode JWT payload safely
           const decodeJwt = (token) => {
@@ -87,26 +91,26 @@ const Category = () => {
           };
 
           const decoded = decodeJwt(storedToken);
-          
+
           if (decoded && decoded.id) {
             const res = await fetch(`${baseurl}/api/community_admin/${decoded.id}`);
-            
+
             if (res.ok) {
               const data = await res.json();
-              
+
               if (data && data.role) {
                 // Find the Category role (case insensitive)
                 const categoryRole = data.role.find(r => {
                   const roleLower = r.toLowerCase();
                   return roleLower.includes('category') || roleLower.includes('categories');
                 });
-                
+
                 if (categoryRole) {
                   // Check if it has specific permissions
                   if (categoryRole.includes('--')) {
                     const permissionsStr = categoryRole.split('--')[1].trim();
                     const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
-                    
+
                     setPermissions({
                       canView: true, // If they have any category permission, they can view
                       canAdd: permissionList.includes('add'),
@@ -222,6 +226,32 @@ const Category = () => {
     category.category_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination logic
+  const totalFiltered = filteredCategories.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / CATEGORY_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIndex = (currentPage - 1) * CATEGORY_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + CATEGORY_PAGE_SIZE, totalFiltered);
+  const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  // Keep page in valid range
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
+
+  const handlePageChange = (event, newPage) => {
+    if (typeof newPage === 'number' && newPage >= 1) {
+      setPage(Math.min(newPage, totalPages));
+    }
+  };
+
   const handleOpenDialog = (category = null) => {
     if (category) {
       setFormData({ category_name: category.category_name });
@@ -263,13 +293,13 @@ const Category = () => {
 
   const validateForm = () => {
     const errors = {};
-    
+
     if (!formData.category_name.trim()) {
       errors.category_name = 'Category name is required';
     } else if (formData.category_name.trim().length < 2) {
       errors.category_name = 'Category name must be at least 2 characters long';
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -279,7 +309,7 @@ const Category = () => {
 
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
-      const url = selectedCategory 
+      const url = selectedCategory
         ? `${baseurl}/api/category/update/${selectedCategory.cid}`
         : `${baseurl}/api/category/register`;
 
@@ -392,8 +422,8 @@ const Category = () => {
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
               You do not have permission to view the Category Management module.
             </Typography>
-            <Button 
-              variant="contained" 
+            <Button
+              variant="contained"
               sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
               onClick={() => window.location.reload()}
             >
@@ -519,11 +549,11 @@ const Category = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCategories.map((category, index) => (
+                  paginatedCategories.map((category, index) => (
                     <TableRow key={category.cid} sx={{ '&:hover': { backgroundColor: '#f9f9f9' } }}>
                       <TableCell>
                         <Typography variant="body2">
-                          {index + 1}
+                          {startIndex + index + 1}
                         </Typography>
                       </TableCell>
                       <TableCell>
@@ -568,6 +598,38 @@ const Category = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Pagination */}
+          <Box sx={{
+            p: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 2, md: 0 }
+          }}>
+            <Typography variant="body2" color="text.secondary">
+              {totalFiltered === 0
+                ? 'Showing 0 categories'
+                : `Showing ${startIndex + 1}-${endIndex} of ${totalFiltered} categories (${CATEGORY_PAGE_SIZE} per page)`}
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+              siblingCount={1}
+              boundaryCount={1}
+              sx={{
+                '& .MuiPaginationItem-root.Mui-selected': {
+                  backgroundColor: '#4CAF50',
+                  color: 'white'
+                }
+              }}
+            />
+          </Box>
         </CardContent>
       </Card>
 
@@ -649,15 +711,15 @@ const Category = () => {
 
       {/* Snackbar for notifications */}
       {snackbar.open && (
-        <Alert 
-          severity={snackbar.severity} 
+        <Alert
+          severity={snackbar.severity}
           onClose={handleCloseSnackbar}
-          sx={{ 
-            position: 'fixed', 
-            bottom: 16, 
-            right: 16, 
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
             minWidth: 300,
-            zIndex: 9999 
+            zIndex: 9999
           }}
         >
           {snackbar.message}

@@ -28,11 +28,14 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Pagination
 } from '@mui/material';
 import { Search, Visibility, Close, FilterList, FileDownload } from '@mui/icons-material';
 import * as XLSX from 'xlsx'; // Import the Excel library
 import baseurl from '../Baseurl/baseurl';
+
+const REVIEW_PAGE_SIZE = 10;
 
 const ReviewsTestimonialsManagement = () => {
   const [activeTab, setActiveTab] = useState('All Reviews');
@@ -44,6 +47,7 @@ const ReviewsTestimonialsManagement = () => {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [sortBy, setSortBy] = useState('reviewer');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [page, setPage] = useState(1);
 
   const tabs = ['All Reviews', 'Pending', 'Approved', 'Rejected'];
 
@@ -155,7 +159,7 @@ const ReviewsTestimonialsManagement = () => {
     return matchesTab && matchesSearch;
   }).sort((a, b) => {
     let aValue, bValue;
-    
+
     switch (sortBy) {
       case 'reviewer':
         aValue = a.reviewer.toLowerCase();
@@ -177,13 +181,39 @@ const ReviewsTestimonialsManagement = () => {
         aValue = a.reviewer.toLowerCase();
         bValue = b.reviewer.toLowerCase();
     }
-    
+
     if (sortOrder === 'asc') {
       return aValue > bValue ? 1 : -1;
     } else {
       return aValue < bValue ? 1 : -1;
     }
   });
+
+  // Pagination logic
+  const totalFiltered = filteredReviews.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / REVIEW_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIndex = (currentPage - 1) * REVIEW_PAGE_SIZE;
+  const endIndex = Math.min(startIndex + REVIEW_PAGE_SIZE, totalFiltered);
+  const paginatedReviews = filteredReviews.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, activeTab, sortBy, sortOrder]);
+
+  // Keep page in valid range
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [totalPages, page]);
+
+  const handlePageChange = (event, newPage) => {
+    if (typeof newPage === 'number' && newPage >= 1) {
+      setPage(Math.min(newPage, totalPages));
+    }
+  };
 
   const handleViewReview = (review) => {
     setSelectedReview(review);
@@ -350,7 +380,7 @@ const ReviewsTestimonialsManagement = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredReviews.map((row) => (
+                {paginatedReviews.map((row) => (
                   <TableRow key={row.id} sx={{ '&:hover': { backgroundColor: '#f5f5f5' } }}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -432,6 +462,38 @@ const ReviewsTestimonialsManagement = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Pagination */}
+          <Box sx={{
+            p: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 2, md: 0 }
+          }}>
+            <Typography variant="body2" color="text.secondary">
+              {totalFiltered === 0
+                ? 'Showing 0 reviews'
+                : `Showing ${startIndex + 1}-${endIndex} of ${totalFiltered} reviews (${REVIEW_PAGE_SIZE} per page)`}
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={currentPage}
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+              siblingCount={1}
+              boundaryCount={1}
+              sx={{
+                '& .MuiPaginationItem-root.Mui-selected': {
+                  backgroundColor: '#4CAF50',
+                  color: 'white'
+                }
+              }}
+            />
+          </Box>
         </CardContent>
       </Card>
 

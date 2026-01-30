@@ -8,7 +8,7 @@ import {
     CardContent,
     Grid,
     TextField,
-    InputAdornment,  
+    InputAdornment,
     Table,
     TableBody,
     TableCell,
@@ -59,6 +59,8 @@ import * as XLSX from 'xlsx';
 import AddFamilyDetailsForm from './AddFamilyDetailsForm';
 import MemberSelectionDialog from './MemberSelectionDialog';
 
+const FAMILY_PAGE_SIZE = 10;
+
 const FamilyInformation = () => {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
@@ -82,7 +84,8 @@ const FamilyInformation = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
     const adminRole = typeof window !== 'undefined' ? localStorage.getItem('adminRole') : null;
-    
+    const [page, setPage] = useState(1);
+
     // State for admin permissions
     const [permissions, setPermissions] = useState({
         canView: false,
@@ -90,7 +93,7 @@ const FamilyInformation = () => {
         canEdit: false,
         canDelete: false
     });
-    
+
     // State for permission loading
     const [permissionLoading, setPermissionLoading] = useState(true);
 
@@ -117,7 +120,7 @@ const FamilyInformation = () => {
                 setPermissionLoading(true);
                 const role = localStorage.getItem('adminRole');
                 const storedToken = localStorage.getItem('adminToken') || localStorage.getItem('accessToken');
-                
+
                 if (role === 'community' && storedToken) {
                     // Helper to decode JWT payload safely
                     const decodeJwt = (token) => {
@@ -144,29 +147,29 @@ const FamilyInformation = () => {
                                 // Parse role data - it comes as a JSON string from the database
                                 let rolesArray = [];
                                 try {
-                                  if (typeof data.role === 'string' && data.role.startsWith('[')) {
-                                    rolesArray = JSON.parse(data.role);
-                                  } else if (Array.isArray(data.role)) {
-                                    rolesArray = data.role;
-                                  } else {
-                                    rolesArray = [data.role];
-                                  }
+                                    if (typeof data.role === 'string' && data.role.startsWith('[')) {
+                                        rolesArray = JSON.parse(data.role);
+                                    } else if (Array.isArray(data.role)) {
+                                        rolesArray = data.role;
+                                    } else {
+                                        rolesArray = [data.role];
+                                    }
                                 } catch (e) {
-                                  console.error('Error parsing roles:', e);
-                                  rolesArray = Array.isArray(data.role) ? data.role : [data.role];
+                                    console.error('Error parsing roles:', e);
+                                    rolesArray = Array.isArray(data.role) ? data.role : [data.role];
                                 }
-                                
+
                                 // Find the Family Information role (case insensitive)
-                                const familyRole = rolesArray.find(r => 
+                                const familyRole = rolesArray.find(r =>
                                     r.toLowerCase().includes('family information')
                                 );
-                                
+
                                 if (familyRole) {
                                     // Check if it has specific permissions
                                     if (familyRole.includes('--')) {
                                         const permissionsStr = familyRole.split('--')[1].trim();
                                         const permissionList = permissionsStr.split(',').map(p => p.trim().toLowerCase());
-                                        
+
                                         setPermissions({
                                             canView: permissionList.includes('view'),
                                             canAdd: permissionList.includes('add'),
@@ -257,7 +260,7 @@ const FamilyInformation = () => {
             message: 'Family details added successfully!',
             severity: 'success'
         });
-        
+
         // Refresh the members list
         const fetchMembers = async () => {
             try {
@@ -266,7 +269,7 @@ const FamilyInformation = () => {
 
                 if (response.ok) {
                     setAllMembers(data.data || []);
-                    
+
                     const membersWithFamily = (data.data || [])
                         .filter(member => member.MemberFamily !== null)
                         .map(member => {
@@ -294,7 +297,7 @@ const FamilyInformation = () => {
                 console.error('Error refreshing members:', err);
             }
         };
-        
+
         fetchMembers();
     };
 
@@ -360,13 +363,13 @@ const FamilyInformation = () => {
             member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase()));
-        
+
         const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
-        
+
         return matchesSearch && matchesStatus;
     }).sort((a, b) => {
         let aValue, bValue;
-        
+
         switch (sortBy) {
             case 'name':
                 aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
@@ -392,13 +395,39 @@ const FamilyInformation = () => {
                 aValue = a.first_name?.toLowerCase() || '';
                 bValue = b.first_name?.toLowerCase() || '';
         }
-        
+
         if (sortOrder === 'asc') {
             return aValue > bValue ? 1 : -1;
         } else {
             return aValue < bValue ? 1 : -1;
         }
     });
+
+    // Pagination logic
+    const totalFiltered = filteredMembers.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / FAMILY_PAGE_SIZE));
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (currentPage - 1) * FAMILY_PAGE_SIZE;
+    const endIndex = Math.min(startIndex + FAMILY_PAGE_SIZE, totalFiltered);
+    const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
+
+    // Reset to page 1 when filters/search change
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, statusFilter, sortBy, sortOrder]);
+
+    // Keep page in valid range
+    useEffect(() => {
+        if (totalPages > 0 && page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [totalPages, page]);
+
+    const handlePageChange = (event, newPage) => {
+        if (typeof newPage === 'number' && newPage >= 1) {
+            setPage(Math.min(newPage, totalPages));
+        }
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -434,7 +463,7 @@ const FamilyInformation = () => {
         try {
             setDeleteLoading(true);
             const familyId = selectedMember.MemberFamily.id;
-            
+
             const response = await fetch(`${baseurl}/api/family/delete/${familyId}`, {
                 method: 'DELETE',
                 headers: {
@@ -449,11 +478,11 @@ const FamilyInformation = () => {
             }
 
             console.log('Family record deleted successfully');
-            
+
             // Update the members state by removing the deleted family record
-            setMembers(prevMembers => 
-                prevMembers.map(member => 
-                    member.mid === selectedMember.mid 
+            setMembers(prevMembers =>
+                prevMembers.map(member =>
+                    member.mid === selectedMember.mid
                         ? { ...member, MemberFamily: null }
                         : member
                 ).filter(member => member.MemberFamily !== null)
@@ -476,18 +505,18 @@ const FamilyInformation = () => {
         // Prepare data for export
         const exportData = filteredMembers.map(member => {
             const familyProfile = member.MemberFamily || {};
-            
+
             // Helper function to format address
             const formatAddress = () => {
                 const address = safeValue(member.address);
                 const city = safeValue(member.city);
                 const state = safeValue(member.state);
                 const zipCode = safeValue(member.zip_code);
-                
+
                 if ([address, city, state, zipCode].every(val => val === 'N/A')) {
                     return 'N/A';
                 }
-                
+
                 return `${address === 'N/A' ? '' : address}${city === 'N/A' ? '' : `, ${city}`}${state === 'N/A' ? '' : `, ${state}`} ${zipCode === 'N/A' ? '' : zipCode}`.trim();
             };
 
@@ -541,8 +570,8 @@ const FamilyInformation = () => {
                         <Typography variant="body1" color="text.secondary">
                             You do not have permission to view the Family Information module.
                         </Typography>
-                        <Button 
-                            variant="contained" 
+                        <Button
+                            variant="contained"
                             sx={{ mt: 3, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
                             onClick={() => navigate('/admin/dashboard')}
                         >
@@ -736,7 +765,7 @@ const FamilyInformation = () => {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredMembers.map((member) => {
+                                    paginatedMembers.map((member) => {
                                         const familyProfile = member.MemberFamily || {};
                                         return (
                                             <TableRow key={member.mid} sx={{ '&:hover': { backgroundColor: '#f9f9f9' } }}>
@@ -831,12 +860,19 @@ const FamilyInformation = () => {
                         gap: { xs: 2, md: 0 }
                     }}>
                         <Typography variant="body2" color="text.secondary">
-                            Showing {filteredMembers.length} of {members.length} families
+                            {totalFiltered === 0
+                                ? 'Showing 0 families'
+                                : `Showing ${startIndex + 1}-${endIndex} of ${totalFiltered} families (${FAMILY_PAGE_SIZE} per page)`}
                         </Typography>
                         <Pagination
-                            count={Math.ceil(members.length / 10)}
-                            page={1}
+                            count={totalPages}
+                            page={currentPage}
+                            onChange={handlePageChange}
                             color="primary"
+                            showFirstButton
+                            showLastButton
+                            siblingCount={1}
+                            boundaryCount={1}
                             sx={{
                                 '& .MuiPaginationItem-root.Mui-selected': {
                                     backgroundColor: '#4CAF50',
