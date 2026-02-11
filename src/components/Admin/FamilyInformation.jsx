@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Box,
     Typography,
@@ -63,6 +63,7 @@ const FAMILY_PAGE_SIZE = 10;
 
 const FamilyInformation = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
     const [members, setMembers] = useState([]);
     const [allMembers, setAllMembers] = useState([]);
@@ -112,6 +113,16 @@ const FamilyInformation = () => {
             return 'N/A';
         }
     };
+
+    // Check URL parameters on component mount
+    useEffect(() => {
+        const urlParams = new URLSearchParams(location.search);
+        const search = urlParams.get('search');
+
+        if (search) {
+            setSearchTerm(search);
+        }
+    }, [location.search]);
 
     // Fetch admin permissions
     useEffect(() => {
@@ -362,7 +373,13 @@ const FamilyInformation = () => {
         const matchesSearch = member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase()));
+            member.contact_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (member.MemberFamily?.father_name && member.MemberFamily.father_name !== 'N/A' && member.MemberFamily.father_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (member.MemberFamily?.mother_name && member.MemberFamily.mother_name !== 'N/A' && member.MemberFamily.mother_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (member.MemberFamily?.spouse_name && member.MemberFamily.spouse_name !== 'N/A' && member.MemberFamily.spouse_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (member.MemberFamily?.father_contact && member.MemberFamily.father_contact !== 'N/A' && member.MemberFamily.father_contact.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (member.MemberFamily?.mother_contact && member.MemberFamily.mother_contact !== 'N/A' && member.MemberFamily.mother_contact.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (member.MemberFamily?.spouse_contact && member.MemberFamily.spouse_contact !== 'N/A' && member.MemberFamily.spouse_contact.toLowerCase().includes(searchTerm.toLowerCase()));
 
         const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
 

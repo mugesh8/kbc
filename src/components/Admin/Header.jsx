@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -16,6 +17,30 @@ import MenuIcon from '@mui/icons-material/Menu';
 const Header = ({ onMenuClick }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' && searchTerm.trim()) {
+      // Determine which page to navigate to based on current location
+      const currentPath = location.pathname;
+
+      if (currentPath.includes('MemberManagement')) {
+        // Stay on Member Management and apply search
+        navigate(`/admin/MemberManagement?search=${encodeURIComponent(searchTerm)}`);
+      } else if (currentPath.includes('BusinessManagement') || currentPath.includes('BusinessDirectory')) {
+        // Navigate to Business Management with search
+        navigate(`/admin/BusinessManagement?search=${encodeURIComponent(searchTerm)}`);
+      } else if (currentPath.includes('FamilyInformation')) {
+        // Navigate to Family Information with search
+        navigate(`/admin/FamilyInformation?search=${encodeURIComponent(searchTerm)}`);
+      } else {
+        // Default: navigate to Member Management with search
+        navigate(`/admin/MemberManagement?search=${encodeURIComponent(searchTerm)}`);
+      }
+    }
+  };
 
   return (
     <AppBar
@@ -73,6 +98,9 @@ const Header = ({ onMenuClick }) => {
             variant="outlined"
             size="small"
             placeholder="Search Members, businesses..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleSearch}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">

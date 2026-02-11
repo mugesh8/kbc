@@ -137,6 +137,7 @@ const MemberManagement = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const tab = urlParams.get('tab');
+    const search = urlParams.get('search');
 
     if (tab === 'pending') {
       setActiveTab(2); // Pending tab index
@@ -147,6 +148,10 @@ const MemberManagement = () => {
     } else if (tab === 'rejected') {
       setActiveTab(3); // Rejected tab index
       setStatusFilter('Rejected');
+    }
+
+    if (search) {
+      setSearchTerm(search);
     }
   }, [location.search]);
 
@@ -381,7 +386,8 @@ const MemberManagement = () => {
   const filteredMembers = members.filter(member => {
     const matchesSearch = member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.contact_no?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === 'All' || member.status === statusFilter;
 

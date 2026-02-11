@@ -13,10 +13,10 @@ import baseurl from '../Baseurl/baseurl';
 import { useParams } from 'react-router-dom';
 
 // BranchLocation component for managing multiple branches
-const BranchLocation = ({ 
-  branch, 
-  index, 
-  onUpdate, 
+const BranchLocation = ({
+  branch,
+  index,
+  onUpdate,
   onRemove,
   disabled
 }) => {
@@ -41,7 +41,7 @@ const BranchLocation = ({
           <XCircle className="w-6 h-6" />
         </button>
       )}
-      
+
       <h4 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
         <MapPin className="w-5 h-5 mr-2 text-orange-600" />
         Branch {index + 1} {index === 0 && <span className="text-sm text-gray-500 ml-2">(Main Branch)</span>}
@@ -168,7 +168,7 @@ const ProfilePage = () => {
         ...updatedBranches[index],
         [field]: value
       };
-      
+
       return {
         ...prevData,
         business: {
@@ -183,7 +183,7 @@ const ProfilePage = () => {
     setProfileData((prevData) => {
       const updatedBranches = [...(prevData.business.branches || [])];
       updatedBranches.splice(index, 1);
-      
+
       return {
         ...prevData,
         business: {
@@ -279,7 +279,7 @@ const ProfilePage = () => {
       isNew: false,
       category_id: '',
       branchName: '',
-      email: '',  
+      email: '',
       city: '',
       state: '',
       zip_code: '',
@@ -436,33 +436,33 @@ const ProfilePage = () => {
       setLoading(false);
     }
   }, [id]);
-  
+
   // Fetch ratings data
   useEffect(() => {
     if (!memberId) return;
-    
+
     const fetchRatings = async () => {
       try {
         const response = await fetch(`${baseurl}/api/ratings/all`, {
           credentials: 'include'
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch ratings: ${response.status}`);
         }
-        
+
         const ratingsData = await response.json();
-        
+
         if (ratingsData && ratingsData.data && Array.isArray(ratingsData.data)) {
           // Filter ratings for this member's businesses
           const memberBusinessIds = businessProfiles.map(business => business.id);
-          const memberRatings = ratingsData.data.filter(rating => 
-            memberBusinessIds.includes(rating.business_id) && 
+          const memberRatings = ratingsData.data.filter(rating =>
+            memberBusinessIds.includes(rating.business_id) &&
             rating.status === 'approved'
           );
-          
+
           setRatings(memberRatings);
-          
+
           // Calculate average rating
           if (memberRatings.length > 0) {
             const total = memberRatings.reduce((sum, rating) => sum + rating.rating, 0);
@@ -474,7 +474,7 @@ const ProfilePage = () => {
         console.error("Error fetching ratings:", error);
       }
     };
-    
+
     if (businessProfiles.length > 0) {
       fetchRatings();
     }
@@ -724,7 +724,7 @@ const ProfilePage = () => {
     const hasReferral = !!apiData.Referral;
     const referralName = apiData.Referral?.referral_name || '';
     const referralCode = apiData.Referral?.referral_code || '';
-   
+
     return {
       fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
       email: apiData.email || '',
@@ -780,163 +780,163 @@ const ProfilePage = () => {
   };
 
 
-// const transformPersonalApiData = (apiData) => {
-//   // Helper function to safely parse stringified arrays like ["value"]
-//   const parseIfArrayString = (value) => {
-//     try {
-//       if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
-//         const parsed = JSON.parse(value);
-//         return Array.isArray(parsed) ? parsed : [parsed];
-//       }
-//       if (value === '[null]') return [];
-//       return value ? [value] : [];
-//     } catch (e) {
-//       return value ? [value] : [];
-//     }
-//   };
+  // const transformPersonalApiData = (apiData) => {
+  //   // Helper function to safely parse stringified arrays like ["value"]
+  //   const parseIfArrayString = (value) => {
+  //     try {
+  //       if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+  //         const parsed = JSON.parse(value);
+  //         return Array.isArray(parsed) ? parsed : [parsed];
+  //       }
+  //       if (value === '[null]') return [];
+  //       return value ? [value] : [];
+  //     } catch (e) {
+  //       return value ? [value] : [];
+  //     }
+  //   };
 
-//   // ✅ Parse array-like fields first
-//   const parsedBranchName = parseIfArrayString(apiData.branch_name);
-//   const parsedCity = parseIfArrayString(apiData.city);
-//   const parsedState = parseIfArrayString(apiData.state);
-//   const parsedZip = parseIfArrayString(apiData.zip_code);
-//   const parsedEmail = parseIfArrayString(apiData.email);
-//   const parsedContract = parseIfArrayString(apiData.business_work_contract);
-//   const parsedLocation = parseIfArrayString(apiData.location);
-//   const parsedCompanyAddress = parseIfArrayString(apiData.company_address);
+  //   // ✅ Parse array-like fields first
+  //   const parsedBranchName = parseIfArrayString(apiData.branch_name);
+  //   const parsedCity = parseIfArrayString(apiData.city);
+  //   const parsedState = parseIfArrayString(apiData.state);
+  //   const parsedZip = parseIfArrayString(apiData.zip_code);
+  //   const parsedEmail = parseIfArrayString(apiData.email);
+  //   const parsedContract = parseIfArrayString(apiData.business_work_contract);
+  //   const parsedLocation = parseIfArrayString(apiData.location);
+  //   const parsedCompanyAddress = parseIfArrayString(apiData.company_address);
 
-//   // Address handling
-//   let streetAddress = '';
-//   let city = '';
-//   let state = '';
-//   let pinCode = '';
+  //   // Address handling
+  //   let streetAddress = '';
+  //   let city = '';
+  //   let state = '';
+  //   let pinCode = '';
 
-//   if (apiData.address) {
-//     streetAddress = apiData.address;
-//   }
-//   if (parsedCity.length > 0) {
-//     city = parsedCity[0];
-//   } else if (apiData.city) {
-//     city = apiData.city;
-//   }
-//   if (parsedState.length > 0) {
-//     state = parsedState[0];
-//   } else if (apiData.state) {
-//     state = apiData.state;
-//   }
-//   if (parsedZip.length > 0) {
-//     pinCode = parsedZip[0];
-//   } else if (apiData.zip_code) {
-//     pinCode = apiData.zip_code;
-//   }
+  //   if (apiData.address) {
+  //     streetAddress = apiData.address;
+  //   }
+  //   if (parsedCity.length > 0) {
+  //     city = parsedCity[0];
+  //   } else if (apiData.city) {
+  //     city = apiData.city;
+  //   }
+  //   if (parsedState.length > 0) {
+  //     state = parsedState[0];
+  //   } else if (apiData.state) {
+  //     state = apiData.state;
+  //   }
+  //   if (parsedZip.length > 0) {
+  //     pinCode = parsedZip[0];
+  //   } else if (apiData.zip_code) {
+  //     pinCode = apiData.zip_code;
+  //   }
 
-//   if (!city && !state && !pinCode && apiData.address) {
-//     const addressParts = apiData.address.split(', ');
-//     if (addressParts.length >= 1) {
-//       streetAddress = addressParts[0];
-//     }
-//     if (addressParts.length >= 2) {
-//       city = addressParts[1];
-//     }
-//     if (addressParts.length >= 3) {
-//       const stateAndPin = addressParts[2].split(' ');
-//       if (stateAndPin.length >= 1) {
-//         state = stateAndPin[0];
-//       }
-//       if (stateAndPin.length >= 2) {
-//         pinCode = stateAndPin[1];
-//       }
-//     }
-//   }
+  //   if (!city && !state && !pinCode && apiData.address) {
+  //     const addressParts = apiData.address.split(', ');
+  //     if (addressParts.length >= 1) {
+  //       streetAddress = addressParts[0];
+  //     }
+  //     if (addressParts.length >= 2) {
+  //       city = addressParts[1];
+  //     }
+  //     if (addressParts.length >= 3) {
+  //       const stateAndPin = addressParts[2].split(' ');
+  //       if (stateAndPin.length >= 1) {
+  //         state = stateAndPin[0];
+  //       }
+  //       if (stateAndPin.length >= 2) {
+  //         pinCode = stateAndPin[1];
+  //       }
+  //     }
+  //   }
 
-//   // Predefined lists
-//   const predefinedGenders = ['Male', 'Female', 'Other'];
-//   const predefinedKootams = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai'];
-//   const predefinedKovils = ['Madurai Meenakshi Amman', 'Thanjavur Brihadeeswarar', 'Palani Murugan', 'Srirangam Ranganathar', 'Kanchipuram Kamakshi Amman'];
+  //   // Predefined lists
+  //   const predefinedGenders = ['Male', 'Female', 'Other'];
+  //   const predefinedKootams = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai'];
+  //   const predefinedKovils = ['Madurai Meenakshi Amman', 'Thanjavur Brihadeeswarar', 'Palani Murugan', 'Srirangam Ranganathar', 'Kanchipuram Kamakshi Amman'];
 
-//   let gender = apiData.gender || '';
-//   let genderOther = '';
-//   if (gender && !predefinedGenders.includes(gender)) {
-//     genderOther = gender;
-//     gender = 'Other';
-//   }
+  //   let gender = apiData.gender || '';
+  //   let genderOther = '';
+  //   if (gender && !predefinedGenders.includes(gender)) {
+  //     genderOther = gender;
+  //     gender = 'Other';
+  //   }
 
-//   let kootam = apiData.kootam || '';
-//   let kootamOther = '';
-//   if (kootam && !predefinedKootams.includes(kootam)) {
-//     kootamOther = kootam;
-//     kootam = 'Others';
-//   }
+  //   let kootam = apiData.kootam || '';
+  //   let kootamOther = '';
+  //   if (kootam && !predefinedKootams.includes(kootam)) {
+  //     kootamOther = kootam;
+  //     kootam = 'Others';
+  //   }
 
-//   let kovil = apiData.kovil || '';
-//   let kovilOther = '';
-//   if (kovil && !predefinedKovils.includes(kovil)) {
-//     kovilOther = kovil;
-//     kovil = 'Others';
-//   }
+  //   let kovil = apiData.kovil || '';
+  //   let kovilOther = '';
+  //   if (kovil && !predefinedKovils.includes(kovil)) {
+  //     kovilOther = kovil;
+  //     kovil = 'Others';
+  //   }
 
-//   const hasReferral = !!apiData.Referral;
-//   const referralName = apiData.Referral?.referral_name || '';
-//   const referralCode = apiData.Referral?.referral_code || '';
+  //   const hasReferral = !!apiData.Referral;
+  //   const referralName = apiData.Referral?.referral_name || '';
+  //   const referralCode = apiData.Referral?.referral_code || '';
 
-//   // ✅ Final transformed object
-//   return {
-//     fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
-//     email: parsedEmail.length ? parsedEmail : (apiData.email ? [apiData.email] : []),
-//     phone: apiData.contact_no || '',
-//     dateOfBirth: apiData.dob || '',
-//     gender: gender,
-//     genderOther: genderOther,
-//     maritalStatus: apiData.marital_status || '',
-//     aadhaar: apiData.aadhar_no || '',
-//     bloodGroup: apiData.blood_group || '',
-//     alternativeContact: apiData.alternate_contact_no || '',
-//     streetAddress: streetAddress,
-//     city: parsedCity.length ? parsedCity : city,
-//     state: parsedState.length ? parsedState : state,
-//     pinCode: parsedZip.length ? parsedZip : pinCode,
-//     branch_name: parsedBranchName,
-//     company_address: parsedCompanyAddress,
-//     business_work_contract: parsedContract,
-//     location: parsedLocation,
-//     website: apiData.personal_website || '',
-//     linkedin: apiData.linkedin_profile || '',
-//     workPhone: apiData.work_phone || '',
-//     extension: apiData.extension || '',
-//     mobileNumber: apiData.mobile_no || '',
-//     preferredContact: apiData.preferred_contact || '',
-//     secondaryEmail: apiData.secondary_email || '',
-//     emergencyContact: apiData.emergency_contact || '',
-//     emergencyPhone: apiData.emergency_phone || '',
-//     bestTimeToContact: apiData.best_time_to_contact || '',
-//     personalWebsite: apiData.personal_website || '',
-//     linkedinProfile: apiData.linkedin_profile || '',
-//     facebook: apiData.facebook || '',
-//     instagram: apiData.instagram || '',
-//     twitter: apiData.twitter || '',
-//     youtube: apiData.youtube || '',
-//     kootam: kootam,
-//     kootamOther: kootamOther,
-//     kovil: kovil,
-//     kovilOther: kovilOther,
-//     Arakattalai: apiData.Arakattalai || 'No',
-//     KNS_Member: apiData.KNS_Member || 'No',
-//     KBN_Member: apiData.KBN_Member || 'No',
-//     BNI: apiData.BNI || 'No',
-//     Rotary: apiData.Rotary || 'No',
-//     Lions: apiData.Lions || 'No',
-//     Other_forum: apiData.Other_forum || '',
-//     hasReferral: hasReferral,
-//     referralName: referralName,
-//     referralCode: referralCode,
-//     accessLevel: apiData.access_level || '',
-//     status: apiData.status || '',
-//     paidStatus: apiData.paid_status || 'Unpaid',
-//     joinDate: apiData.join_date || apiData.createdAt || '',
-//     createdAt: apiData.createdAt || '',
-//     updatedAt: apiData.updatedAt || '',
-//   };
-// };
+  //   // ✅ Final transformed object
+  //   return {
+  //     fullName: `${apiData.first_name || ''} ${apiData.last_name || ''}`.trim(),
+  //     email: parsedEmail.length ? parsedEmail : (apiData.email ? [apiData.email] : []),
+  //     phone: apiData.contact_no || '',
+  //     dateOfBirth: apiData.dob || '',
+  //     gender: gender,
+  //     genderOther: genderOther,
+  //     maritalStatus: apiData.marital_status || '',
+  //     aadhaar: apiData.aadhar_no || '',
+  //     bloodGroup: apiData.blood_group || '',
+  //     alternativeContact: apiData.alternate_contact_no || '',
+  //     streetAddress: streetAddress,
+  //     city: parsedCity.length ? parsedCity : city,
+  //     state: parsedState.length ? parsedState : state,
+  //     pinCode: parsedZip.length ? parsedZip : pinCode,
+  //     branch_name: parsedBranchName,
+  //     company_address: parsedCompanyAddress,
+  //     business_work_contract: parsedContract,
+  //     location: parsedLocation,
+  //     website: apiData.personal_website || '',
+  //     linkedin: apiData.linkedin_profile || '',
+  //     workPhone: apiData.work_phone || '',
+  //     extension: apiData.extension || '',
+  //     mobileNumber: apiData.mobile_no || '',
+  //     preferredContact: apiData.preferred_contact || '',
+  //     secondaryEmail: apiData.secondary_email || '',
+  //     emergencyContact: apiData.emergency_contact || '',
+  //     emergencyPhone: apiData.emergency_phone || '',
+  //     bestTimeToContact: apiData.best_time_to_contact || '',
+  //     personalWebsite: apiData.personal_website || '',
+  //     linkedinProfile: apiData.linkedin_profile || '',
+  //     facebook: apiData.facebook || '',
+  //     instagram: apiData.instagram || '',
+  //     twitter: apiData.twitter || '',
+  //     youtube: apiData.youtube || '',
+  //     kootam: kootam,
+  //     kootamOther: kootamOther,
+  //     kovil: kovil,
+  //     kovilOther: kovilOther,
+  //     Arakattalai: apiData.Arakattalai || 'No',
+  //     KNS_Member: apiData.KNS_Member || 'No',
+  //     KBN_Member: apiData.KBN_Member || 'No',
+  //     BNI: apiData.BNI || 'No',
+  //     Rotary: apiData.Rotary || 'No',
+  //     Lions: apiData.Lions || 'No',
+  //     Other_forum: apiData.Other_forum || '',
+  //     hasReferral: hasReferral,
+  //     referralName: referralName,
+  //     referralCode: referralCode,
+  //     accessLevel: apiData.access_level || '',
+  //     status: apiData.status || '',
+  //     paidStatus: apiData.paid_status || 'Unpaid',
+  //     joinDate: apiData.join_date || apiData.createdAt || '',
+  //     createdAt: apiData.createdAt || '',
+  //     updatedAt: apiData.updatedAt || '',
+  //   };
+  // };
 
   const fetchBusinessProfiles = async () => {
     try {
@@ -1284,10 +1284,10 @@ const ProfilePage = () => {
       if (!memberId) {
         throw new Error('Member ID is missing');
       }
-  
+
       if (section === 'business') {
         const businessData = profileData.business;
-          const apiData = {
+        const apiData = {
           business_type: businessData.businessType,
           company_name: businessData.businessName,
           // Persist registration type per backend rules:
@@ -1297,16 +1297,16 @@ const ProfilePage = () => {
             businessData.registrationNumber === 'Others'
               ? (businessData.registrationNumberOther || 'Others')
               : (businessData.registrationNumber === 'private_limited'
-                  ? 'Private Limited'
-                  : (businessData.registrationNumber || '')),
+                ? 'Private Limited'
+                : (businessData.registrationNumber || '')),
           business_starting_year: businessData.startingYear,
           experience: businessData.experience,
           branch_name: businessData.branchName,
           company_address: businessData.businessAddress,
           email: businessData.businessEmail,
           staff_size: businessData.staffSize,
-            // Only include about for non-salary types
-            ...(businessData.businessType !== 'salary' ? { about: businessData.description } : {}),
+          // Only include about for non-salary types
+          ...(businessData.businessType !== 'salary' ? { about: businessData.description } : {}),
           category_id: businessData.category_id,
           city: businessData.city,
           state: businessData.state,
@@ -1321,8 +1321,8 @@ const ProfilePage = () => {
           linkedin_link: businessData.linkedin_link,
           designation: businessData.designation,
           salary: businessData.salary,
-            // location intentionally omitted from UI for salary; keep if preexisting
-            location: businessData.location,
+          // location intentionally omitted from UI for salary; keep if preexisting
+          location: businessData.location,
           // Add branches data to API payload
           branches: businessData.branches || [{
             branch_name: businessData.branchName || "",
@@ -1336,7 +1336,7 @@ const ProfilePage = () => {
         };
         const formData = new FormData();
         formData.append('business_profile', JSON.stringify(apiData));
-  
+
         if (businessData.profileImageFile) {
           formData.append('profile_image', businessData.profileImageFile);
         }
@@ -1380,7 +1380,7 @@ const ProfilePage = () => {
         }
       } else if (section === 'personal') {
         const apiData = prepareDataForApi('personal', profileData.personal);
-  
+
         const response = await fetch(`${baseurl}/api/member/update/${memberId}`, {
           method: 'PUT',
           headers: {
@@ -1389,14 +1389,14 @@ const ProfilePage = () => {
           },
           body: JSON.stringify(apiData)
         });
-  
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData?.message || `Server returned ${response.status}`);
         }
-  
+
         const result = await response.json();
-  
+
         if (result.success) {
           setSuccess('Personal information updated successfully');
           setEditingSection(null);
@@ -1470,7 +1470,7 @@ const ProfilePage = () => {
           throw new Error(result.message || 'Update failed');
         }
       }
-  
+
     } catch (err) {
       setError(err.message);
       console.error('Update error:', err);
@@ -1573,9 +1573,9 @@ const ProfilePage = () => {
     gender: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, gender: value } })),
     genderOther: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, genderOther: value } })),
     maritalStatus: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, maritalStatus: value } })),
-    kootam: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kootam: value } })),
+    kootam: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kootam: value, kootamOther: value === 'Others' ? prev.personal.kootamOther : '' } })),
     kootamOther: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kootamOther: value } })),
-    kovil: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kovil: value } })),
+    kovil: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kovil: value, kovilOther: value === 'Others' ? prev.personal.kovilOther : '' } })),
     kovilOther: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, kovilOther: value } })),
     Arakattalai: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, Arakattalai: value } })),
     KNS_Member: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, KNS_Member: value } })),
@@ -1592,21 +1592,21 @@ const ProfilePage = () => {
     state: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, state: value } })),
     pinCode: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, pinCode: value } })),
     alternativeContact: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, alternativeContact: value } })),
-    aadhaar: (value) => setProfileData(prev => ({ 
-      ...prev, 
-      personal: { 
-        ...prev.personal, 
+    aadhaar: (value) => setProfileData(prev => ({
+      ...prev,
+      personal: {
+        ...prev.personal,
         aadhaar: value,
         aadhar_no: value // Sync both fields
-      } 
+      }
     })),
-    aadhar_no: (value) => setProfileData(prev => ({ 
-      ...prev, 
-      personal: { 
-        ...prev.personal, 
+    aadhar_no: (value) => setProfileData(prev => ({
+      ...prev,
+      personal: {
+        ...prev.personal,
         aadhar_no: value,
         aadhaar: value // Sync both fields
-      } 
+      }
     })),
     bloodGroup: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, bloodGroup: value } })),
     mobileNumber: (value) => setProfileData(prev => ({ ...prev, personal: { ...prev.personal, mobileNumber: value } })),
@@ -2892,7 +2892,7 @@ const ProfilePage = () => {
                   {/* Branch Locations Section */}
                   <div className="mt-8">
                     <h4 className="text-base sm:text-lg font-semibold text-orange-600 mb-4">Branch Locations</h4>
-                    
+
                     {/* Branch List */}
                     {profileData.business.branches && profileData.business.branches.map((branch, index) => (
                       <BranchLocation
@@ -2904,7 +2904,7 @@ const ProfilePage = () => {
                         disabled={editingSection !== 'business'}
                       />
                     ))}
-                    
+
                     {/* Add Branch Button */}
                     {editingSection === 'business' && (
                       <button
@@ -3197,8 +3197,8 @@ const ProfilePage = () => {
                 onChange={familyHandlers.numberOfChildren}
                 disabled={editingSection !== 'family'}
               />
-              
-              
+
+
               <InputField
                 label="Children Names"
                 value={profileData.family.childrenNames}

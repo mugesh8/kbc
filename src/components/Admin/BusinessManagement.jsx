@@ -985,9 +985,14 @@ const BusinessManagement = () => {
     useEffect(() => {
         const urlParams = new URLSearchParams(location.search);
         const tab = urlParams.get('tab');
+        const search = urlParams.get('search');
 
         if (tab === 'pending') {
             setActiveTab('pending');
+        }
+
+        if (search) {
+            setSearchTerm(search);
         }
     }, [location.search]);
 
@@ -1338,6 +1343,7 @@ const BusinessManagement = () => {
             group.member.first_name?.toLowerCase().includes(searchLower) ||
             group.member.last_name?.toLowerCase().includes(searchLower) ||
             group.member.email?.toLowerCase().includes(searchLower) ||
+            group.member.contact_no?.toLowerCase().includes(searchLower) ||
             group.businesses.some(business =>
                 (business.company_name || '').toLowerCase().includes(searchLower) ||
                 (business.business_type || '').toLowerCase().includes(searchLower) ||

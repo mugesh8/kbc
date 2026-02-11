@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, MapPin, Star, Users, Eye, Phone, Mail, Facebook, Twitter, Linkedin, Instagram, MessageCircle, Building2 } from 'lucide-react';
+import { Search, MapPin, Star, Users, Eye, Phone, Mail, Facebook, Twitter, Linkedin, Instagram, MessageCircle, Building2, X, Grid3x3 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Import your header and footer components
@@ -48,6 +48,7 @@ const HomePage = () => {
   const [ratingsLoading, setRatingsLoading] = useState(false);
   const [ratingsError, setRatingsError] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   // Helpers to resolve media URLs safely
   const toAbsoluteUrl = (path) => {
@@ -351,7 +352,7 @@ const HomePage = () => {
   // Calculate real categories from business data EXCLUDING current user's businesses
   const realCategories = React.useMemo(() => {
     // Filter out current user's businesses before counting categories
-    const filteredBusinesses = currentUserId 
+    const filteredBusinesses = currentUserId
       ? businesses.filter(business => business?.member_id !== currentUserId)
       : businesses;
 
@@ -530,28 +531,150 @@ const HomePage = () => {
 
       {/* Featured Businesses Section */}
       <div className="container mx-auto px-4 py-8 sm:py-12">
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Businesses</h2>
+        {/* Clean Section Header */}
+        <div className="mb-8 sm:mb-10 text-center">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight">
+            Featured Businesses
+          </h2>
+          <p className="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto">
+            Discover trusted local businesses handpicked for quality and excellence
+          </p>
         </div>
 
-        {/* Category Filter (dynamic from business_type) */}
-        <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 sm:mb-8">
-          {categoriesList.map((category) => (
-            <button
-              key={category}
-              onClick={() => {
-                setActiveCategory(category);
-                setAppliedCategory(category);
-              }}
-              className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition duration-200 ${activeCategory === category
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              {category}
-            </button>
-          ))}
+        {/* Premium Category Filter with Glassmorphism */}
+        <div className="mb-8 sm:mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-1 w-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
+            <h3 className="text-lg font-semibold text-gray-800">Filter by Category</h3>
+          </div>
+
+          <div className="flex flex-wrap gap-3 sm:gap-4">
+            {/* Show "All" first, then top 6 categories, then "More" button */}
+            {(() => {
+              const topCategories = ['All', ...categoriesList.slice(1, 7)]; // Show "All" + top 6 categories
+              const hasMore = categoriesList.length > 7;
+
+              return (
+                <>
+                  {topCategories.map((category, index) => {
+                    const isActive = activeCategory === category;
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          setActiveCategory(category);
+                          setAppliedCategory(category);
+                        }}
+                        className={`group relative px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-semibold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ${isActive
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50'
+                          : 'bg-white/80 backdrop-blur-sm text-gray-700 border-2 border-gray-200 hover:border-green-400 hover:shadow-md'
+                          }`}
+                        style={{
+                          animationDelay: `${index * 50}ms`
+                        }}
+                      >
+                        {/* Glow effect on hover */}
+                        {!isActive && (
+                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
+                        )}
+
+                        {/* Shimmer effect for active */}
+                        {isActive && (
+                          <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+                          </div>
+                        )}
+
+                        <span className="relative z-10 flex items-center gap-2">
+                          {category}
+                          {isActive && (
+                            <svg className="w-4 h-4 animate-bounce" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  {/* More Categories Button */}
+                  {hasMore && (
+                    <button
+                      onClick={() => setShowCategoryModal(true)}
+                      className="group relative px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-semibold transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50"
+                    >
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+                      </div>
+                      <span className="relative z-10 flex items-center gap-2">
+                        <Grid3x3 className="w-4 h-4" />
+                        More Categories
+                        <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                          +{categoriesList.length - 7}
+                        </span>
+                      </span>
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
+
+        {/* Category Modal */}
+        {showCategoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden animate-slideUp">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-1">All Categories</h3>
+                    <p className="text-white/80 text-sm">Choose a category to filter businesses</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCategoryModal(false)}
+                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(80vh-120px)]">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {categoriesList.map((category) => {
+                    const isActive = activeCategory === category;
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          setActiveCategory(category);
+                          setAppliedCategory(category);
+                          setShowCategoryModal(false);
+                        }}
+                        className={`p-4 rounded-xl text-sm font-medium transition-all duration-200 text-left ${isActive
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="truncate">{category}</span>
+                          {isActive && (
+                            <svg className="w-4 h-4 flex-shrink-0 ml-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Active Filters Display */}
         {(appliedTag || appliedLocation || appliedCategory !== 'All') && (
