@@ -681,7 +681,6 @@ const EditMember = () => {
       type: 'text',
       multiline: true,
       rows: 3,
-      required: formData.status === 'Rejected'
     }
   };
 

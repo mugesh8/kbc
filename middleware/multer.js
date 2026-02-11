@@ -87,7 +87,6 @@ const uploadBusinessProfileMedia = (req, res, next) => {
     const upload = multer({
       storage,
       limits: { fileSize: 100 * 1024 * 1024 },
-      files: 6, 
       fileFilter: getFileFilter("all"),
     });
 
@@ -104,7 +103,17 @@ const uploadBusinessProfileMedia = (req, res, next) => {
     }
 
     upload.fields(fields)(req, res, (err) => {
-      if (err) return res.status(400).json({ message: err.message });
+      if (err) {
+        console.error("Multer upload error:", err);
+        // Provide more detailed error message
+        const errorMessage = err.message || 'File upload error';
+        const fieldName = err.field || 'unknown';
+        return res.status(400).json({
+          message: `${errorMessage}${err.field ? ` - Field: ${fieldName}` : ''}`,
+          error: err.message,
+          field: fieldName
+        });
+      }
       next();
     });
   } catch (error) {
@@ -130,9 +139,9 @@ const uploadBusinessProfile = (req, res, next) => {
     ];
 
     upload(req, res, (err) => {
-    if (err) return res.status(400).json({ message: err.message });
-    next();
-  });
+      if (err) return res.status(400).json({ message: err.message });
+      next();
+    });
   } catch (error) {
     console.error("Multer config error:", error);
     res.status(500).json({ message: "Upload config error." });
