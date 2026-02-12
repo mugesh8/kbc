@@ -127,11 +127,19 @@ const EditMember = () => {
     other_forums: '',
     // Paid status fields
     paid_status: 'Unpaid',
-    membership_valid_until: ''
+    membership_valid_until: '',
+    // Referral fields
+    referral_name: '',
+    referral_code: ''
   });
 
   // Pro members list for Core Pro dropdown
   const [proMembers, setProMembers] = useState([]);
+
+  // Add All members state for referral dropdown
+  const [allMembers, setAllMembers] = useState([]);
+  const [referralSearchQuery, setReferralSearchQuery] = useState('');
+  const [showReferralDropdown, setShowReferralDropdown] = useState(false);
 
   useEffect(() => {
     const fetchMemberData = async () => {
@@ -227,7 +235,10 @@ const EditMember = () => {
             other_forums: memberData.Other_forum || '',
             // Paid status fields
             paid_status: memberData.paid_status || 'Unpaid',
-            membership_valid_until: memberData.membership_valid_until || ''
+            membership_valid_until: memberData.membership_valid_until || '',
+            // Referral fields
+            referral_name: memberData.Referral?.referral_name || '',
+            referral_code: memberData.Referral?.referral_code || ''
           };
 
           // Set forum memberships state
@@ -243,7 +254,25 @@ const EditMember = () => {
 
           // Initialize custom values if existing value is not in predefined options
           const genderOptions = ['Male', 'Female', 'Others'];
-          const kootamOptions = ['Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai', 'Others'];
+          const kootamOptions = [
+            'Agamudayar', 'Karkathar', 'Kallar', 'Maravar', 'Servai',
+            'Aanthuvan Kulam', 'Azhagu Kulam', 'Aathe Kulam', 'Aanthai Kulam',
+            'Aadar Kulam', 'Aavan Kulam', 'Eenjan Kulam', 'Ozukkar Kulam',
+            'Oothaalar Kulam', 'Kannakkan Kulam', 'Kannan Kulam', 'Kannaanthai Kulam',
+            'Kaadai Kulam', 'Kaari Kulam', 'Keeran Kulam', 'Kuzhlaayan Kulam',
+            'Koorai Kulam', 'Koovendhar Kulam', 'Saathanthai Kulam', 'Sellan Kulam',
+            'Semban Kulam', 'Sengkannan Kulam', 'Sembuthan Kulam', 'Senkunnier Kulam',
+            'Sevvaayar Kulam', 'Cheran Kulam', 'Chedan Kulam', 'Dananjayan Kulam',
+            'Thazhinji Kulam', 'Thooran Kulam', 'Devendran Kulam', 'Thoodar Kulam',
+            'Neerunniyar Kulam', 'Pavazhalar Kulam', 'Panayan Kulam', 'Pathuman Kulam',
+            'Payiran Kulam', 'Panagkaadar Kulam', 'Pathariar Kulam', 'Pandiyan Kulam',
+            'Pillar Kulam', 'Poosan Kulam', 'Poochanthai Kulam', 'Periyan Kulam',
+            'Perunkudiyaan Kulam', 'Porulaanthai Kulam', 'Ponnar Kulam', 'Maniyan Kulam',
+            'Mayilar Kulam', 'Maadar Kulam', 'Mutthan Kulam', 'Muzhukathan Kulam',
+            'Medhi Kulam', 'Vannakkan Kulam', 'Villiyar Kulam', 'Vilayan Kulam',
+            'Vizhiyar Kulam', 'Venduvan Kulam', 'Vennag Kulam', 'Vellampar Kulam',
+            'Others'
+          ];
           const kovilOptions = [
             'Madurai Meenakshi Amman',
             'Thanjavur Brihadeeswarar',
@@ -300,6 +329,23 @@ const EditMember = () => {
     fetchProMembers();
   }, []);
 
+  // Fetch all members for referral dropdown
+  useEffect(() => {
+    const fetchAllMembers = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member/all`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setAllMembers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch all members:', err);
+      }
+    };
+    fetchAllMembers();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -318,7 +364,19 @@ const EditMember = () => {
           new_squad_name: ''
         }));
       }
-    } else {
+    } 
+    // Clear custom values when selecting a non-"Others" option for gender, kootam, or kovil
+    else if (['gender', 'kootam', 'kovil'].includes(name) && value !== 'Others') {
+      setCustomValues(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    } 
+    else {
       setFormData(prev => ({
         ...prev,
         [name]: value
@@ -681,7 +739,8 @@ const EditMember = () => {
       type: 'text',
       multiline: true,
       rows: 3,
-    }
+    },
+    // referral_name and referral_code will be handled separately with custom autocomplete
   };
 
   const personalInfoConfig = {
@@ -702,11 +761,71 @@ const EditMember = () => {
       label: t('Kootam'),
       type: 'select',
       options: [
-        { value: 'Agamudayar', label: t('Agamudayar') },
-        { value: 'Karkathar', label: t('Karkathar') },
-        { value: 'Kallar', label: t('Kallar') },
-        { value: 'Maravar', label: t('Maravar') },
-        { value: 'Servai', label: t('Servai') },
+        { value: 'Agamudayar', label: 'Agamudayar- அகமுடையார்' },
+        { value: 'Karkathar', label: 'Karkathar- கார்காத்தார்' },
+        { value: 'Kallar', label: 'Kallar - கள்ளர்' },
+        { value: 'Maravar', label: 'Maravar - மறவர்' },
+        { value: 'Servai', label: 'Servai - சேர்வை' },
+        { value: 'Aanthuvan Kulam', label: 'Aanthuvan Kulam - அந்துவன்குலம்' },
+        { value: 'Azhagu Kulam', label: 'Azhagu Kulam - அழகுக்குலம்' },
+        { value: 'Aathe Kulam', label: 'Aathe Kulam - ஆதிக்குலம்' },
+        { value: 'Aanthai Kulam', label: 'Aanthai Kulam - ஆந்தைக்குலம்' },
+        { value: 'Aadar Kulam', label: 'Aadar Kulam - ஆடர்க்குலம்' },
+        { value: 'Aavan Kulam', label: 'Aavan Kulam - ஆவன்குலம்' },
+        { value: 'Eenjan Kulam', label: 'Eenjan Kulam - ஈஞ்சன்குலம்' },
+        { value: 'Ozukkar Kulam', label: 'Ozukkar Kulam - ஒழுக்கர்குலம்' },
+        { value: 'Oothaalar Kulam', label: 'Oothaalar Kulam - ஓதாளர்க்குலம்' },
+        { value: 'Kannakkan Kulam', label: 'Kannakkan Kulam - கணக்கன்குலம்' },
+        { value: 'Kannan Kulam', label: 'Kannan Kulam - கண்ணங்குலம்' },
+        { value: 'Kannaanthai Kulam', label: 'Kannaanthai Kulam - கண்ணாந்தைக்குலம்' },
+        { value: 'Kaadai Kulam', label: 'Kaadai Kulam - காடைக்குலம்' },
+        { value: 'Kaari Kulam', label: 'Kaari Kulam - காரிக்குலம்' },
+        { value: 'Keeran Kulam', label: 'Keeran Kulam - கீரன்க்குலம்' },
+        { value: 'Kuzhlaayan Kulam', label: 'Kuzhlaayan Kulam - குழையன்குலம்' },
+        { value: 'Koorai Kulam', label: 'Koorai Kulam - கூறைக்குலம்' },
+        { value: 'Koovendhar Kulam', label: 'Koovendhar Kulam - கோவேந்தர்குலம்' },
+        { value: 'Saathanthai Kulam', label: 'Saathanthai Kulam - சாத்தந்தைக்குலம்' },
+        { value: 'Sellan Kulam', label: 'Sellan Kulam - செல்லன்குலம்' },
+        { value: 'Semban Kulam', label: 'Semban Kulam - செம்பன்குலம்' },
+        { value: 'Sengkannan Kulam', label: 'Sengkannan Kulam - செங்கண்ணன்குலம்' },
+        { value: 'Sembuthan Kulam', label: 'Sembuthan Kulam - செம்பூதன்குலம்' },
+        { value: 'Senkunnier Kulam', label: 'Senkunnier Kulam - செங்குன்னியர்குலம்' },
+        { value: 'Sevvaayar Kulam', label: 'Sevvaayar Kulam - செவ்வாயர்குலம்' },
+        { value: 'Cheran Kulam', label: 'Cheran Kulam - சேரன்குலம்' },
+        { value: 'Chedan Kulam', label: 'Chedan Kulam - சேடன்குலம்' },
+        { value: 'Dananjayan Kulam', label: 'Dananjayan Kulam - தனஞ்செயன்குலம்' },
+        { value: 'Thazhinji Kulam', label: 'Thazhinji Kulam - தழிஞ்சிகுலம்' },
+        { value: 'Thooran Kulam', label: 'Thooran Kulam - தூரன்குலம்' },
+        { value: 'Devendran Kulam', label: 'Devendran Kulam - தேவேந்திரன்குலம்' },
+        { value: 'Thoodar Kulam', label: 'Thoodar Kulam - தோடர்குலம்' },
+        { value: 'Neerunniyar Kulam', label: 'Neerunniyar Kulam - நீருண்ணியர்குலம' },
+        { value: 'Pavazhalar Kulam', label: 'Pavazhalar Kulam - பவழர்குலம்' },
+        { value: 'Panayan Kulam', label: 'Panayan Kulam - பணையன்குலம்' },
+        { value: 'Pathuman Kulam', label: 'Pathuman Kulam - பதுமன்குலம்' },
+        { value: 'Payiran Kulam', label: 'Payiran Kulam - பயிரன்குலம்' },
+        { value: 'Panagkaadar Kulam', label: 'Panagkaadar Kulam - பனங்காடர்குலம்' },
+        { value: 'Pathariar Kulam', label: 'Pathariar Kulam - பதறியர்குலம்' },
+        { value: 'Pandiyan Kulam', label: 'Pandiyan Kulam - பாண்டியன்குலம்' },
+        { value: 'Pillar Kulam', label: 'Pillar Kulam - பில்லர்குலம்' },
+        { value: 'Poosan Kulam', label: 'Poosan Kulam - பூசன்குலம்' },
+        { value: 'Poochanthai Kulam', label: 'Poochanthai Kulam - பூச்சந்தைகுலம்' },
+        { value: 'Periyan Kulam', label: 'Periyan Kulam - பெரியன்குலம்' },
+        { value: 'Perunkudiyaan Kulam', label: 'Perunkudiyaan Kulam - பெருங்குடியான்குலம்' },
+        { value: 'Porulaanthai Kulam', label: 'Porulaanthai Kulam - பொருளாந்தைக்குலம்' },
+        { value: 'Ponnar Kulam', label: 'Ponnar Kulam - பொன்னர்குலம்' },
+        { value: 'Maniyan Kulam', label: 'Maniyan Kulam - மணியன்குலம்' },
+        { value: 'Mayilar Kulam', label: 'Mayilar Kulam - மயிலர்குலம்' },
+        { value: 'Maadar Kulam', label: 'Maadar Kulam - மாடர்குலம்' },
+        { value: 'Mutthan Kulam', label: 'Mutthan Kulam - முத்தன்குலம்' },
+        { value: 'Muzhukathan Kulam', label: 'Muzhukathan Kulam - முழுக்காதன்குலம்' },
+        { value: 'Medhi Kulam', label: 'Medhi Kulam - மேதிக்குலம்' },
+        { value: 'Vannakkan Kulam', label: 'Vannakkan Kulam - வண்ணக்கன்குலம்' },
+        { value: 'Villiyar Kulam', label: 'Villiyar Kulam - வில்லியர்குலம்' },
+        { value: 'Vilayan Kulam', label: 'Vilayan Kulam - விளையன்குலம்' },
+        { value: 'Vizhiyar Kulam', label: 'Vizhiyar Kulam - விழியர்குலம்' },
+        { value: 'Venduvan Kulam', label: 'Venduvan Kulam - வெண்டுவன்குலம்' },
+        { value: 'Vennag Kulam', label: 'Vennag Kulam - வெண்ணங்குலம்' },
+        { value: 'Vellampar Kulam', label: 'Vellampar Kulam - வெள்ளம்பர்குலர்' },
         { value: 'Others', label: t('Others') }
       ]
     },
@@ -1175,7 +1294,7 @@ const EditMember = () => {
         </Card>
 
         {/* Access Control Card */}
-        <Card sx={{ mb: 3 }}>
+        <Card sx={{ mb: 3, overflow: 'visible' }}>
           <CardHeader
             title="Access Control"
             titleTypographyProps={{
@@ -1184,7 +1303,7 @@ const EditMember = () => {
               borderBottom: '2px solid #e0e0e0',
             }}
           />
-          <CardContent>
+          <CardContent sx={{ overflow: 'visible' }}>
             <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
               Manage member access level and payment status.
             </Typography>
@@ -1194,6 +1313,124 @@ const EditMember = () => {
                   {renderField(fieldName, config)}
                 </Grid>
               ))}
+            </Grid>
+
+            {/* Referral Source with Autocomplete */}
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, color: '#1976d2' }}>
+              Referral Source
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} sx={{ position: 'relative', zIndex: 50 }}>
+                <TextField
+                  fullWidth
+                  margin="dense"
+                  label={t('Referral Name')}
+                  value={referralSearchQuery}
+                  onChange={(e) => {
+                    setReferralSearchQuery(e.target.value);
+                    setShowReferralDropdown(true);
+                  }}
+                  onFocus={() => {
+                    setReferralSearchQuery(formData.referral_name || '');
+                    setShowReferralDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowReferralDropdown(false), 200)}
+                  placeholder="Type to search member"
+                  autoComplete="off"
+                  inputProps={{
+                    style: { textAlign: "left" }
+                  }}
+                />
+                {showReferralDropdown && referralSearchQuery && (
+                  <div style={{
+                    position: 'fixed',
+                    zIndex: 9999,
+                    marginTop: '4px',
+                    width: 'calc(50% - 24px)',
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    maxHeight: '256px',
+                    overflow: 'auto'
+                  }}>
+                      {allMembers
+                        .filter(m => {
+                          const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+                          return fullName.includes(referralSearchQuery.toLowerCase());
+                        })
+                        .slice(0, 10)
+                        .map((member) => (
+                          <button
+                            type="button"
+                            key={member.mid}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '12px 16px',
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '14px'
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              const fullName = `${member.first_name}`;
+                              setFormData(prev => ({
+                                ...prev,
+                                referral_name: fullName,
+                                referral_code: member.application_id || ''
+                              }));
+                              setReferralSearchQuery(fullName);
+                              setShowReferralDropdown(false);
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.backgroundColor = '#f0fdf4';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: '#1f2937', fontWeight: 500 }}>
+                                {member.first_name}
+                              </span>
+                              <span style={{ color: '#6b7280', fontSize: '12px' }}>
+                                {member.application_id}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      {allMembers.filter(m => {
+                        const fullName = `${m.first_name}`.toLowerCase();
+                        return fullName.includes(referralSearchQuery.toLowerCase());
+                      }).length === 0 && (
+                        <div style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>
+                          No members found
+                        </div>
+                      )}
+                    </div>
+                  )}
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  margin="dense"
+                  label={t('Referral ID')}
+                  value={formData.referral_code}
+                  placeholder="Member Application ID"
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    '& .MuiInputBase-input': {
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed',
+                      textAlign: 'left'
+                    }
+                  }}
+                />
+              </Grid>
             </Grid>
           </CardContent>
         </Card>

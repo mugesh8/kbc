@@ -541,7 +541,7 @@ const PersonalInformation = React.memo(({ formData, validationErrors, createInpu
   </StepContainer>
 ));
 
-const AddressDetails = React.memo(({ formData, validationErrors, createInputChangeHandler, createNumericInputChangeHandler, handleInputChange, nextStep, prevStep }) => (
+const AddressDetails = React.memo(({ formData, validationErrors, createInputChangeHandler, createNumericInputChangeHandler, handleInputChange, nextStep, prevStep, allMembers, referralSearchQuery, setReferralSearchQuery, showReferralDropdown, setShowReferralDropdown, setFormData }) => (
   <StepContainer>
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
@@ -610,20 +610,74 @@ const AddressDetails = React.memo(({ formData, validationErrors, createInputChan
           </div>
           {formData.has_referral && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <InputField
-                label="Referral Person Name"
-                name="referral_name"
-                placeholder="Enter referral person name"
-                value={formData.referral_name || ''}
-                onChange={createInputChangeHandler('referral_name')}
-              />
+              <div className="mb-4 relative">
+                <label className="block text-gray-800 text-sm font-semibold mb-2">
+                  Referral Person Name
+                </label>
+                <input
+                  type="text"
+                  value={referralSearchQuery}
+                  onChange={(e) => {
+                    setReferralSearchQuery(e.target.value);
+                    setShowReferralDropdown(true);
+                  }}
+                  onFocus={() => {
+                    setReferralSearchQuery(formData.referral_name || '');
+                    setShowReferralDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowReferralDropdown(false), 200)}
+                  placeholder="Type to search member"
+                  autoComplete="off"
+                  className="w-full px-4 py-4 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200 bg-gray-50 placeholder-gray-400 text-gray-700 hover:border-gray-300 focus:bg-white focus:shadow-sm border-gray-200"
+                />
+                {showReferralDropdown && referralSearchQuery && (
+                  <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-auto">
+                    {allMembers
+                      .filter(m => {
+                        const fullName = `${m.first_name}`.toLowerCase();
+                        return fullName.includes(referralSearchQuery.toLowerCase());
+                      })
+                      .slice(0, 10)
+                      .map((member) => (
+                        <button
+                          type="button"
+                          key={member.mid}
+                          className="w-full text-left px-4 py-3 hover:bg-green-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            const fullName = `${member.first_name}`;
+                            setFormData(prev => ({
+                              ...prev,
+                              referral_name: fullName,
+                              referral_code: member.application_id || ''
+                            }));
+                            setReferralSearchQuery(fullName);
+                            setShowReferralDropdown(false);
+                          }}
+                        >
+                          <span className="text-gray-800 font-medium">{member.first_name}</span>
+                          <span className="text-gray-500 text-sm">{member.application_id}</span>
+                        </button>
+                      ))}
+                    {allMembers.filter(m => {
+                      const fullName = `${m.first_name}`.toLowerCase();
+                      return fullName.includes(referralSearchQuery.toLowerCase());
+                    }).length === 0 && (
+                      <div className="px-4 py-3 text-gray-500 text-sm text-center">
+                        No members found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <InputField
                 label="Referral Code"
                 name="referral_code"
-                placeholder="Enter referral code"
+                placeholder="Auto-filled from selected member"
                 value={formData.referral_code || ''}
                 onChange={createInputChangeHandler('referral_code')}
                 error={validationErrors.referral_code}
+                className="bg-gray-100 cursor-not-allowed"
               />
             </div>
           )}
@@ -1221,6 +1275,10 @@ const SignupForm = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [categories, setCategories] = useState([]);
   const [memberSuggestions, setMemberSuggestions] = useState([]);
+  // Add All members state for referral dropdown
+  const [allMembers, setAllMembers] = useState([]);
+  const [referralSearchQuery, setReferralSearchQuery] = useState('');
+  const [showReferralDropdown, setShowReferralDropdown] = useState(false);
 
   // Form state - Updated with new business fields
   const [formData, setFormData] = useState({
@@ -1314,6 +1372,23 @@ const SignupForm = () => {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Fetch all members for referral dropdown
+  useEffect(() => {
+    const fetchAllMembers = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member/all`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setAllMembers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch all members:', err);
+      }
+    };
+    fetchAllMembers();
   }, []);
 
   // Fetch family entries for autocomplete suggestions
@@ -2072,6 +2147,12 @@ const SignupForm = () => {
           handleInputChange={handleInputChange}
           nextStep={nextStep}
           prevStep={prevStep}
+          allMembers={allMembers}
+          referralSearchQuery={referralSearchQuery}
+          setReferralSearchQuery={setReferralSearchQuery}
+          showReferralDropdown={showReferralDropdown}
+          setShowReferralDropdown={setShowReferralDropdown}
+          setFormData={setFormData}
         />;
       case 3:
         return <BusinessProfile 

@@ -1885,7 +1885,7 @@ const BusinessListing = () => {
                     <Star className="w-8 h-8 text-white fill-white" />
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-xl text-gray-800">Referral Points: {member?.reward_points || 0}</p>
+                    <p className="font-bold text-xl text-gray-800">Referral Points: {resolvedMember?.reward_points || 0}</p>
                   </div>
                 </div>
               </div>

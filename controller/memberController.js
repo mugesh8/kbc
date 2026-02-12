@@ -168,7 +168,12 @@ const registerMember = async (req, res) => {
                 reward_points: 10
             }, { transaction: t });
 
-            await referrer.increment('reward_points', { by: 10, transaction: t });
+            // Update members table reward_points by adding old + new
+            await referrer.reload({ transaction: t });
+            await Member.update(
+                { reward_points: (referrer.reward_points || 0) + 10 },
+                { where: { mid: referrer.mid }, transaction: t }
+            );
         }
 
         // Handle business profiles
@@ -628,6 +633,52 @@ const updateMember = async (req, res) => {
             squad,
             squad_fields
         }, { transaction: t });
+
+        // Handle referral update
+        if (referral_code) {
+            const referrer = await Member.findOne({
+                where: { application_id: referral_code }
+            });
+
+            if (!referrer) {
+                await t.rollback();
+                return res.status(400).json({
+                    success: false,
+                    msg: 'Invalid referral code',
+                });
+            }
+
+            // Check if referral already exists
+            const existingReferral = await Referral.findOne({
+                where: { member_id: memberId },
+                transaction: t
+            });
+
+            if (existingReferral) {
+                // Update existing referral
+                await existingReferral.update({
+                    referral_name: referral_name || '',
+                    referral_code,
+                    referred_by_member_id: referrer.mid
+                }, { transaction: t });
+            } else {
+                // Create new referral
+                await Referral.create({
+                    member_id: memberId,
+                    referral_name: referral_name || '',
+                    referral_code,
+                    referred_by_member_id: referrer.mid,
+                    reward_points: 10
+                }, { transaction: t });
+
+                // Update referrer's reward points
+                await referrer.reload({ transaction: t });
+                await Member.update(
+                    { reward_points: (referrer.reward_points || 0) + 10 },
+                    { where: { mid: referrer.mid }, transaction: t }
+                );
+            }
+        }
 
         await t.commit();
 

@@ -1077,6 +1077,11 @@ const AddNewMemberForm = () => {
   // Add Pro members state
   const [proMembers, setProMembers] = useState([]);
 
+  // Add All members state for referral dropdown
+  const [allMembers, setAllMembers] = useState([]);
+  const [referralSearchQuery, setReferralSearchQuery] = useState('');
+  const [showReferralDropdown, setShowReferralDropdown] = useState(false);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -1115,6 +1120,23 @@ const AddNewMemberForm = () => {
       }
     };
     fetchProMembers();
+  }, []);
+
+  // Fetch all members for referral dropdown
+  useEffect(() => {
+    const fetchAllMembers = async () => {
+      try {
+        const res = await fetch(`${baseurl}/api/member/all`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setAllMembers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch all members:', err);
+      }
+    };
+    fetchAllMembers();
   }, []);
 
   // Fetch family entries for autocomplete suggestions
@@ -1955,11 +1977,71 @@ const AddNewMemberForm = () => {
                 label="Kootam"
               >
                 <MenuItem value="">Select</MenuItem>
-                <MenuItem value="Agamudayar">Agamudayar</MenuItem>
-                <MenuItem value="Karkathar">Karkathar</MenuItem>
-                <MenuItem value="Kallar">Kallar</MenuItem>
-                <MenuItem value="Maravar">Maravar</MenuItem>
-                <MenuItem value="Servai">Servai</MenuItem>
+                <MenuItem value="Agamudayar">Agamudayar- அகமுடையார்</MenuItem>
+                <MenuItem value="Karkathar">Karkathar- கார்காத்தார்</MenuItem>
+                <MenuItem value="Kallar">Kallar - கள்ளர் </MenuItem>
+                <MenuItem value="Maravar">Maravar - மறவர்</MenuItem>
+                <MenuItem value="Servai">Servai - சேர்வை</MenuItem>
+                <MenuItem value="Aanthuvan Kulam">Aanthuvan Kulam - அந்துவன்குலம்</MenuItem>
+                <MenuItem value="Azhagu Kulam">Azhagu Kulam - அழகுக்குலம்</MenuItem>
+                <MenuItem value="Aathe Kulam">Aathe Kulam - ஆதிக்குலம்</MenuItem>
+                <MenuItem value="Aanthai Kulam">Aanthai Kulam - ஆந்தைக்குலம்</MenuItem>
+                <MenuItem value="Aadar Kulam">Aadar Kulam - ஆடர்க்குலம்</MenuItem>
+                <MenuItem value="Aavan Kulam">Aavan Kulam - ஆவன்குலம்</MenuItem>
+                <MenuItem value="Eenjan Kulam">Eenjan Kulam - ஈஞ்சன்குலம்</MenuItem>
+                <MenuItem value="Ozukkar Kulam">Ozukkar Kulam - ஒழுக்கர்குலம்</MenuItem>
+                <MenuItem value="Oothaalar Kulam">Oothaalar Kulam - ஓதாளர்க்குலம்</MenuItem>
+                <MenuItem value="Kannakkan Kulam">Kannakkan Kulam - கணக்கன்குலம்</MenuItem>
+                <MenuItem value="Kannan Kulam">Kannan Kulam - கண்ணங்குலம்</MenuItem>
+                <MenuItem value="Kannaanthai Kulam">Kannaanthai Kulam - கண்ணாந்தைக்குலம்</MenuItem>
+                <MenuItem value="Kaadai Kulam">Kaadai Kulam - காடைக்குலம்</MenuItem>
+                <MenuItem value="Kaari Kulam">Kaari Kulam - காரிக்குலம்</MenuItem>
+                <MenuItem value="Keeran Kulam">Keeran Kulam - கீரன்க்குலம்</MenuItem>
+                <MenuItem value="Kuzhlaayan Kulam">Kuzhlaayan Kulam - குழையன்குலம்</MenuItem>
+                <MenuItem value="Koorai Kulam">Koorai Kulam - கூறைக்குலம்</MenuItem>
+                <MenuItem value="Koovendhar Kulam">Koovendhar Kulam - கோவேந்தர்குலம்</MenuItem>
+                <MenuItem value="Saathanthai Kulam">Saathanthai Kulam - சாத்தந்தைக்குலம்</MenuItem>
+                <MenuItem value="Sellan Kulam">Sellan Kulam - செல்லன்குலம்</MenuItem>
+                <MenuItem value="Semban Kulam">Semban Kulam - செம்பன்குலம்</MenuItem>
+                <MenuItem value="Sengkannan Kulam">Sengkannan Kulam - செங்கண்ணன்குலம்</MenuItem>
+                <MenuItem value="Sembuthan Kulam">Sembuthan Kulam - செம்பூதன்குலம்</MenuItem>
+                <MenuItem value="Senkunnier Kulam">Senkunnier Kulam - செங்குன்னியர்குலம்</MenuItem>
+                <MenuItem value="Sevvaayar Kulam">Sevvaayar Kulam - செவ்வாயர்குலம்</MenuItem>
+                <MenuItem value="Cheran Kulam">Cheran Kulam - சேரன்குலம்</MenuItem>
+                <MenuItem value="Chedan Kulam">Chedan Kulam - சேடன்குலம்</MenuItem>
+                <MenuItem value="Dananjayan Kulam">Dananjayan Kulam - தனஞ்செயன்குலம்</MenuItem>
+                <MenuItem value="Thazhinji Kulam">Thazhinji Kulam - தழிஞ்சிகுலம்</MenuItem>
+                <MenuItem value="Thooran Kulam">Thooran Kulam - தூரன்குலம்</MenuItem>
+                <MenuItem value="Devendran Kulam">Devendran Kulam - தேவேந்திரன்குலம்</MenuItem>
+                <MenuItem value="Thoodar Kulam">Thoodar Kulam - தோடர்குலம்</MenuItem>
+                <MenuItem value="Neerunniyar Kulam">Neerunniyar Kulam - நீருண்ணியர்குலம</MenuItem>
+                <MenuItem value="Pavazhalar Kulam">Pavazhalar Kulam - பவழர்குலம்</MenuItem>
+                <MenuItem value="Panayan Kulam">Panayan Kulam - பணையன்குலம்</MenuItem>
+                <MenuItem value="Pathuman Kulam">Pathuman Kulam - பதுமன்குலம்</MenuItem>
+                <MenuItem value="Payiran Kulam">Payiran Kulam - பயிரன்குலம்</MenuItem>
+                <MenuItem value="Panagkaadar Kulam">Panagkaadar Kulam - பனங்காடர்குலம்</MenuItem>
+                <MenuItem value="Pathariar Kulam">Pathariar Kulam - பதறியர்குலம்</MenuItem>
+                <MenuItem value="Pandiyan Kulam">Pandiyan Kulam - பாண்டியன்குலம்</MenuItem>
+                <MenuItem value="Pillar Kulam">Pillar Kulam - பில்லர்குலம்</MenuItem>
+                <MenuItem value="Poosan Kulam">Poosan Kulam - பூசன்குலம்</MenuItem>
+                <MenuItem value="Poochanthai Kulam">Poochanthai Kulam - பூச்சந்தைகுலம்</MenuItem>
+                <MenuItem value="Periyan Kulam">Periyan Kulam - பெரியன்குலம்</MenuItem>
+                <MenuItem value="Perunkudiyaan Kulam">Perunkudiyaan Kulam - பெருங்குடியான்குலம்</MenuItem>
+                <MenuItem value="Porulaanthai Kulam">Porulaanthai Kulam - பொருளாந்தைக்குலம்</MenuItem>
+                <MenuItem value="Ponnar Kulam">Ponnar Kulam - பொன்னர்குலம்</MenuItem>
+                <MenuItem value="Maniyan Kulam">Maniyan Kulam - மணியன்குலம்</MenuItem>
+                <MenuItem value="Mayilar Kulam">Mayilar Kulam - மயிலர்குலம்</MenuItem>
+                <MenuItem value="Maadar Kulam">Maadar Kulam - மாடர்குலம்</MenuItem>
+                <MenuItem value="Mutthan Kulam">Mutthan Kulam - முத்தன்குலம்</MenuItem>
+                <MenuItem value="Muzhukathan Kulam">Muzhukathan Kulam - முழுக்காதன்குலம்</MenuItem>
+                <MenuItem value="Medhi Kulam">Medhi Kulam - மேதிக்குலம்</MenuItem>
+                <MenuItem value="Vannakkan Kulam">Vannakkan Kulam - வண்ணக்கன்குலம்</MenuItem>
+                <MenuItem value="Villiyar Kulam">Villiyar Kulam - வில்லியர்குலம்</MenuItem>
+                <MenuItem value="Vilayan Kulam">Vilayan Kulam - விளையன்குலம்</MenuItem>
+                <MenuItem value="Vizhiyar Kulam">Vizhiyar Kulam - விழியர்குலம்</MenuItem>
+                <MenuItem value="Venduvan Kulam">Venduvan Kulam - வெண்டுவன்குலம்</MenuItem>
+                <MenuItem value="Vennag Kulam">Vennag Kulam - வெண்ணங்குலம்</MenuItem>
+                <MenuItem value="Vellampar Kulam">Vellampar Kulam - வெள்ளம்பர்குலர்</MenuItem>
                 <MenuItem value="Others">Others</MenuItem>
               </Select>
             </FormControl>
@@ -2600,22 +2682,112 @@ const AddNewMemberForm = () => {
         {formData.has_referral && (
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Referral Name"
-                value={formData.referral_name}
-                onChange={handleInputChange('referral_name')}
-              />
+              <div style={{ position: 'relative' }}>
+                <TextField
+                  fullWidth
+                  label="Referral Name"
+                  value={referralSearchQuery}
+                  onChange={(e) => {
+                    setReferralSearchQuery(e.target.value);
+                    setShowReferralDropdown(true);
+                  }}
+                  onFocus={() => {
+                    setReferralSearchQuery(formData.referral_name || '');
+                    setShowReferralDropdown(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowReferralDropdown(false), 200)}
+                  placeholder="Type to search member"
+                  autoComplete="off"
+                />
+                {showReferralDropdown && referralSearchQuery && (
+                  <div style={{
+                    position: 'absolute',
+                    zIndex: 20,
+                    marginTop: '4px',
+                    width: '100%',
+                    backgroundColor: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    maxHeight: '256px',
+                    overflow: 'auto'
+                  }}>
+                    {allMembers
+                      .filter(m => {
+                        const fullName = `${m.first_name} ${m.last_name}`.toLowerCase();
+                        return fullName.includes(referralSearchQuery.toLowerCase());
+                      })
+                      .slice(0, 10)
+                      .map((member) => (
+                        <button
+                          type="button"
+                          key={member.mid}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '12px 16px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                          }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            const fullName = `${member.first_name}`;
+                            setFormData(prev => ({
+                              ...prev,
+                              referral_name: fullName,
+                              referral_code: member.application_id || ''
+                            }));
+                            setReferralSearchQuery(fullName);
+                            setShowReferralDropdown(false);
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#f0fdf4';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#1f2937', fontWeight: 500 }}>
+                              {member.first_name}
+                            </span>
+                            <span style={{ color: '#6b7280', fontSize: '12px' }}>
+                              {member.application_id}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    {allMembers.filter(m => {
+                      const fullName = `${m.first_name}`.toLowerCase();
+                      return fullName.includes(referralSearchQuery.toLowerCase());
+                    }).length === 0 && (
+                      <div style={{ padding: '12px 16px', color: '#6b7280', fontSize: '14px' }}>
+                        No members found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Referral ID"
                 value={formData.referral_code}
-                onChange={handleInputChange('referral_code')}
                 placeholder="Member Application ID"
                 error={!!errors.referral_code}
-                helperText={errors.referral_code}
+                helperText={errors.referral_code || "Auto-filled from selected member"}
+                InputProps={{
+                  readOnly: true,
+                }}
+                sx={{
+                  '& .MuiInputBase-input': {
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'not-allowed'
+                  }
+                }}
               />
             </Grid>
           </Grid>
