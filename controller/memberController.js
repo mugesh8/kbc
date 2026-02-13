@@ -30,15 +30,6 @@ const daysBetween = (start, end) => {
 const registerMember = async (req, res) => {
     const t = await Member.sequelize.transaction();
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                success: false,
-                msg: 'Validation errors',
-                errors: errors.array(),
-            });
-        }
-
         // Handle profile image
         const profile_image = req.files?.['profile_image']?.[0]?.path.replace(/\\/g, "/") || null;
 
@@ -48,14 +39,6 @@ const registerMember = async (req, res) => {
             business_profiles = JSON.parse(req.body.business_profiles);
         } else {
             business_profiles = req.body.business_profiles || [];
-        }
-
-        if (!Array.isArray(business_profiles) || business_profiles.length === 0) {
-            await t.rollback();
-            return res.status(400).json({
-                success: false,
-                msg: 'At least one business profile is required',
-            });
         }
 
         // Parse family_details   
@@ -101,16 +84,18 @@ const registerMember = async (req, res) => {
 
         if (Array.isArray(email)) email = email[0];
 
-        // Check duplicate email
-        const existingMember = await Member.findOne({ where: { email } });
-        if (existingMember) {
-            return res.status(400).json({
-                success: false,
-                msg: 'Email already exists!',
-            });
+        // Check duplicate email (skip if email is empty)
+        if (email) {
+            const existingMember = await Member.findOne({ where: { email } });
+            if (existingMember) {
+                return res.status(400).json({
+                    success: false,
+                    msg: 'Email already exists!',
+                });
+            }
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
         // ✅ If unpaid, ignore membership_valid_until
         let membershipValidUntilFinal = null;
@@ -152,28 +137,23 @@ const registerMember = async (req, res) => {
                 where: { application_id: referral_code }
             });
 
-            if (!referrer) {
-                await t.rollback();
-                return res.status(400).json({
-                    success: false,
-                    msg: 'Invalid referral code',
-                });
+            if (referrer) {
+
+                await Referral.create({
+                    member_id: newMember.mid,
+                    referral_name: referral_name || '',
+                    referral_code,
+                    referred_by_member_id: referrer.mid,
+                    reward_points: 10
+                }, { transaction: t });
+
+                // Update members table reward_points by adding old + new
+                await referrer.reload({ transaction: t });
+                await Member.update(
+                    { reward_points: (referrer.reward_points || 0) + 10 },
+                    { where: { mid: referrer.mid }, transaction: t }
+                );
             }
-
-            await Referral.create({
-                member_id: newMember.mid,
-                referral_name: referral_name || '',
-                referral_code,
-                referred_by_member_id: referrer.mid,
-                reward_points: 10
-            }, { transaction: t });
-
-            // Update members table reward_points by adding old + new
-            await referrer.reload({ transaction: t });
-            await Member.update(
-                { reward_points: (referrer.reward_points || 0) + 10 },
-                { where: { mid: referrer.mid }, transaction: t }
-            );
         }
 
         // Handle business profiles

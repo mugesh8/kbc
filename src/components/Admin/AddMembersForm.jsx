@@ -1326,30 +1326,6 @@ const AddNewMemberForm = () => {
   };
 
   const handleNext = () => {
-    // Validate required fields before moving to next step
-    if (activeStep === 0) {
-      const requiredFields = ['first_name', 'email', 'password', 'dob', 'gender', 'contact_no', 'address', 'city', 'state', 'zip_code'];
-      const missingFields = requiredFields.filter(field => !formData[field]);
-
-      if (missingFields.length > 0) {
-        setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
-        return;
-      }
-
-      // Enhanced email validation to match backend
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!emailRegex.test(formData.email)) {
-        setError('Please enter a valid email address (e.g., example@domain.com)');
-        return;
-      }
-
-      // Validate password length
-      if (formData.password.length < 8) {
-        setError('Password must be at least 8 characters long');
-        return;
-      }
-    }
-
     setError(null);
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
   };
@@ -1366,42 +1342,6 @@ const AddNewMemberForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const requiredPersonalFields = [
-      'first_name', 'email', 'password',
-      'contact_no', 'address', 'city', 'state', 'zip_code'
-    ];
-
-    requiredPersonalFields.forEach(field => {
-      if (!formData[field]) {
-        newErrors[field] = 'Field is required';
-      }
-    });
-
-    // Enhanced email validation
-    if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address (e.g., example@domain.com)';
-    }
-
-    if (formData.password && formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters long';
-    }
-
-    // If referral is enabled, require referral code (same as Signup)
-    if (formData.has_referral) {
-      const code = (formData.referral_code || '').trim();
-      if (!code) newErrors.referral_code = 'Referral code is required';
-    }
-
-    if (!Array.isArray(formData.business_profiles) || formData.business_profiles.length === 0) {
-      newErrors.business_profiles = 'At least one business profile is required';
-    }
-
-    (formData.business_profiles || []).forEach((profile, index) => {
-      if (!profile.company_name) {
-        newErrors[`business_company_${index}`] = 'Company name is required';
-      }
-    });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1663,42 +1603,6 @@ const AddNewMemberForm = () => {
 
   // FIXED: handleBusinessSubmit function - now adds business profile on first click
   const handleBusinessSubmit = () => {
-    // Validate required fields based on business type
-    if (!businessData.business_type || !businessData.company_name) {
-      setError('Business type and company name are required');
-      return;
-    }
-
-    // Validate category for all business types
-    if (!businessData.category_id && !(businessData.category_input && businessData.category_input.trim())) {
-      setError('Category is required');
-      return;
-    }
-
-    if (businessData.business_type === 'self-employed' || businessData.business_type === 'business') {
-      if (!businessData.about) {
-        setError('About is required for this business type');
-        return;
-      }
-    }
-
-    if (businessData.business_type === 'salary') {
-      if (!businessData.designation || !businessData.salary || !businessData.experience) {
-        setError('Designation, salary, and experience are required for salary type');
-        return;
-      }
-    }
-
-    // Validate at least one branch has address data
-    const hasValidBranch = businessData.branches && businessData.branches.some(branch => 
-      branch.company_address && branch.city && branch.state && branch.zip_code
-    );
-    
-    if (!hasValidBranch) {
-      setError('At least one branch with complete address information is required');
-      return;
-    }
-
     // Add computed fields expected by backend
     const payloadBusiness = { ...businessData };
     if ((!payloadBusiness.category_id || String(payloadBusiness.category_id).trim() === '') && payloadBusiness.category_input && payloadBusiness.category_input.trim()) {
