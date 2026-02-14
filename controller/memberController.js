@@ -85,9 +85,10 @@ const registerMember = async (req, res) => {
         if (Array.isArray(email)) email = email[0];
 
         // Check duplicate email (skip if email is empty)
-        if (email) {
+        if (email && email.trim()) {
             const existingMember = await Member.findOne({ where: { email } });
             if (existingMember) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     msg: 'Email already exists!',
@@ -95,7 +96,7 @@ const registerMember = async (req, res) => {
             }
         }
 
-        const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+        const hashedPassword = password && password.trim() ? await bcrypt.hash(password, 10) : null;
 
         // ✅ If unpaid, ignore membership_valid_until
         let membershipValidUntilFinal = null;
