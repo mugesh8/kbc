@@ -40,15 +40,15 @@ const ResetPasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  // Get phone number from navigation state
-  const phoneNumber = location.state?.phoneNumber;
+  // Get email from navigation state
+  const email = location.state?.email;
 
   useEffect(() => {
-    // Redirect to forgot password if no phone number
-    if (!phoneNumber) {
+    // Redirect to forgot password if no email
+    if (!email) {
       navigate('/forgot-password');
     }
-  }, [phoneNumber, navigate]);
+  }, [email, navigate]);
 
   const handleResetPassword = async () => {
     setError('');
@@ -75,9 +75,9 @@ const ResetPasswordPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          contact_no: phoneNumber,
-          newPassword: newPassword 
+        body: JSON.stringify({
+          email: email,
+          newPassword: newPassword
         }),
       });
 
@@ -120,7 +120,7 @@ const ResetPasswordPage = () => {
             className="w-12 h-12 rounded-full"
           />
         </div>
-        
+
         {/* Company Name */}
         <div>
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
@@ -135,7 +135,7 @@ const ResetPasswordPage = () => {
     </div>
   );
 
-  if (!phoneNumber) {
+  if (!email) {
     return null; // Will redirect in useEffect
   }
 
@@ -143,7 +143,7 @@ const ResetPasswordPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <CompanyHeader />
-        
+
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 md:p-8 lg:p-12">
           <div className="max-w-md mx-auto animate-in slide-in-from-right duration-500">
             <div className="text-center mb-8">
@@ -152,10 +152,10 @@ const ResetPasswordPage = () => {
             </div>
 
             <div className="space-y-4">
-              <InputField 
-                label="New Password" 
-                placeholder="Enter new password" 
-                required 
+              <InputField
+                label="New Password"
+                placeholder="Enter new password"
+                required
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -170,10 +170,10 @@ const ResetPasswordPage = () => {
                 }
               />
 
-              <InputField 
-                label="Confirm Password" 
-                placeholder="Confirm new password" 
-                required 
+              <InputField
+                label="Confirm Password"
+                placeholder="Confirm new password"
+                required
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -235,15 +235,13 @@ const ResetPasswordPage = () => {
       {/* Snackbar */}
       {snackbar.open && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom duration-300">
-          <div className={`px-6 py-4 rounded-xl shadow-lg ${
-            snackbar.severity === 'success' 
-              ? 'bg-green-500 text-white' 
+          <div className={`px-6 py-4 rounded-xl shadow-lg ${snackbar.severity === 'success'
+              ? 'bg-green-500 text-white'
               : 'bg-red-500 text-white'
-          }`}>
+            }`}>
             <div className="flex items-center">
-              <div className={`w-2 h-2 rounded-full mr-3 ${
-                snackbar.severity === 'success' ? 'bg-white' : 'bg-white'
-              }`}></div>
+              <div className={`w-2 h-2 rounded-full mr-3 ${snackbar.severity === 'success' ? 'bg-white' : 'bg-white'
+                }`}></div>
               <span className="font-medium">{snackbar.message}</span>
               <button
                 onClick={() => setSnackbar({ ...snackbar, open: false })}

@@ -9,6 +9,7 @@ const MemberFamily = require('../model/memberFamily');
 const { Op } = require('sequelize');
 const Notification = require('../model/notification');
 const Categories = require('../model/categories');
+const { sendOtpEmail } = require('../utils/emailService');
 // Helper: Generate Access Token
 const generateAccessToken = (member) => {
     return jwt.sign(
@@ -1697,6 +1698,113 @@ const addFamilyForMember = async (req, res) => {
 };
 
 
+// ✅ Forgot Password — generate OTP and store in DB
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ success: false, msg: 'Email is required' });
+        }
+
+        const member = await Member.findOne({ where: { email } });
+        if (!member) {
+            return res.status(404).json({ success: false, msg: 'No account found with this email address' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        await member.update({ otp, otp_expires_at });
+
+        // Send OTP email
+        await sendOtpEmail(email, otp);
+
+        return res.status(200).json({
+            success: true,
+            msg: 'OTP sent successfully to your email address',
+        });
+    } catch (error) {
+        console.error('forgotPassword error:', error);
+        return res.status(500).json({ success: false, msg: 'Failed to send OTP. Please try again.', error: error.message });
+    }
+};
+
+// ✅ Verify OTP
+const verifyOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ success: false, msg: 'Email and OTP are required' });
+        }
+
+        const member = await Member.findOne({ where: { email } });
+        if (!member) {
+            return res.status(404).json({ success: false, msg: 'No account found with this email address' });
+        }
+
+        if (!member.otp || member.otp !== otp) {
+            return res.status(400).json({ success: false, msg: 'Invalid OTP' });
+        }
+
+        if (!member.otp_expires_at || new Date() > new Date(member.otp_expires_at)) {
+            return res.status(400).json({ success: false, msg: 'OTP has expired. Please request a new one.' });
+        }
+
+        return res.status(200).json({
+            success: true,
+            msg: 'OTP verified successfully',
+        });
+    } catch (error) {
+        console.error('verifyOtp error:', error);
+        return res.status(500).json({ success: false, msg: 'OTP verification failed', error: error.message });
+    }
+};
+
+// ✅ Reset Password
+const resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({ success: false, msg: 'Email and new password are required' });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ success: false, msg: 'Password must be at least 8 characters long' });
+        }
+
+        const member = await Member.findOne({ where: { email } });
+        if (!member) {
+            return res.status(404).json({ success: false, msg: 'No account found with this email address' });
+        }
+
+        // Verify OTP was actually validated (otp should exist)
+        if (!member.otp) {
+            return res.status(400).json({ success: false, msg: 'Please complete OTP verification first' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password and clear OTP fields
+        await member.update({
+            password: hashedPassword,
+            otp: null,
+            otp_expires_at: null,
+        });
+
+        return res.status(200).json({
+            success: true,
+            msg: 'Password reset successfully',
+        });
+    } catch (error) {
+        console.error('resetPassword error:', error);
+        return res.status(500).json({ success: false, msg: 'Failed to reset password', error: error.message });
+    }
+};
+
 module.exports = {
     registerMember,
     loginMember,
@@ -1717,5 +1825,8 @@ module.exports = {
     addFamilyForMember,
     checkExpiredMemberships,
     scheduleExpirationCheck,
-    getProMembers
+    getProMembers,
+    forgotPassword,
+    verifyOtp,
+    resetPassword,
 };

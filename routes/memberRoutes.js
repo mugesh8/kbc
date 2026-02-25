@@ -36,4 +36,9 @@ router.post('/family/:member_id', memberController.addFamilyForMember);
 // Password change route
 // router.put('/admin/change-password', memberController.changeAdminPassword);
 
+// Forgot / Reset Password routes
+router.post('/member/forgot-password', memberController.forgotPassword);
+router.post('/member/verify-otp', memberController.verifyOtp);
+router.post('/member/reset-password', memberController.resetPassword);
+
 module.exports = router;

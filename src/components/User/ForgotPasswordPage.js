@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { Phone, ArrowLeft } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import baseurl from '../Baseurl/baseurl';
 import logo from '../../assets/image.png';
 
@@ -28,10 +27,9 @@ const InputField = ({ label, placeholder, required = false, type = 'text', icon 
 );
 
 const ForgotPasswordPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpField, setShowOtpField] = useState(false);
   const [error, setError] = useState('');
@@ -41,13 +39,13 @@ const ForgotPasswordPage = () => {
   const handleSendOtp = async () => {
     setError('');
 
-    if (!phoneNumber) {
-      setError('Phone number is required');
+    if (!email) {
+      setError('Email is required');
       return;
     }
 
-    if (!/^\d{10}$/.test(phoneNumber)) {
-      setError('Please enter a valid 10-digit phone number');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -58,7 +56,7 @@ const ForgotPasswordPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ contact_no: phoneNumber }),
+        body: JSON.stringify({ email: email }),
       });
 
       const result = await response.json();
@@ -70,7 +68,7 @@ const ForgotPasswordPage = () => {
       setShowOtpField(true);
       setSnackbar({
         open: true,
-        message: 'OTP sent successfully to your phone number',
+        message: 'OTP sent successfully to your email',
         severity: 'success',
       });
     } catch (err) {
@@ -105,9 +103,9 @@ const ForgotPasswordPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          contact_no: phoneNumber,
-          otp: otp 
+        body: JSON.stringify({
+          email: email,
+          otp: otp
         }),
       });
 
@@ -117,8 +115,8 @@ const ForgotPasswordPage = () => {
         throw new Error(result?.msg || 'Invalid OTP');
       }
 
-      // Navigate to reset password page with phone number
-      navigate('/reset-password', { state: { phoneNumber } });
+      // Navigate to reset password page with email
+      navigate('/reset-password', { state: { email } });
     } catch (err) {
       setError(err.message);
       setSnackbar({
@@ -142,14 +140,14 @@ const ForgotPasswordPage = () => {
             className="w-12 h-12 rounded-full"
           />
         </div>
-        
+
         {/* Company Name */}
         <div>
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-2">
             Forgot Password
           </h1>
           <p className="text-gray-600 text-lg font-medium">
-            Enter your phone number to receive a password reset OTP
+            Enter your email address to receive a password reset OTP
           </p>
           <div className="w-24 h-1 bg-gradient-to-r from-green-400 to-blue-500 rounded-full mx-auto mt-2"></div>
         </div>
@@ -161,36 +159,36 @@ const ForgotPasswordPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         <CompanyHeader />
-        
+
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6 md:p-8 lg:p-12">
           <div className="max-w-md mx-auto animate-in slide-in-from-right duration-500">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password</h2>
               <p className="text-gray-600">
-                {showOtpField 
-                  ? 'Enter the OTP sent to your phone number' 
-                  : 'Enter your phone number to receive a password reset OTP'
+                {showOtpField
+                  ? 'Enter the OTP sent to your email address'
+                  : 'Enter your email address to receive a password reset OTP'
                 }
               </p>
             </div>
 
             <div className="space-y-4">
-              <InputField 
-                label="Phone Number" 
-                placeholder="Enter your registered phone number" 
-                required 
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                icon={<Phone className="w-5 h-5" />}
+              <InputField
+                label="Email Address"
+                placeholder="Enter your registered email address"
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                icon={<Mail className="w-5 h-5" />}
                 disabled={showOtpField}
               />
 
               {showOtpField && (
-                <InputField 
-                  label="OTP" 
-                  placeholder="Enter 6-digit OTP" 
-                  required 
+                <InputField
+                  label="OTP"
+                  placeholder="Enter 6-digit OTP"
+                  required
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -200,10 +198,10 @@ const ForgotPasswordPage = () => {
 
               {error && (
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200 mb-4 animate-in slide-in-from-top duration-300">
-                  <p className="text-red-600 text-sm font-medium flex items-center">
+                  <div className="text-red-600 text-sm font-medium flex items-center">
                     <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
                     {error}
-                  </p>
+                  </div>
                 </div>
               )}
 
@@ -241,15 +239,13 @@ const ForgotPasswordPage = () => {
       {/* Snackbar */}
       {snackbar.open && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom duration-300">
-          <div className={`px-6 py-4 rounded-xl shadow-lg ${
-            snackbar.severity === 'success' 
-              ? 'bg-green-500 text-white' 
-              : 'bg-red-500 text-white'
-          }`}>
+          <div className={`px-6 py-4 rounded-xl shadow-lg ${snackbar.severity === 'success'
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+            }`}>
             <div className="flex items-center">
-              <div className={`w-2 h-2 rounded-full mr-3 ${
-                snackbar.severity === 'success' ? 'bg-white' : 'bg-white'
-              }`}></div>
+              <div className={`w-2 h-2 rounded-full mr-3 ${snackbar.severity === 'success' ? 'bg-white' : 'bg-white'
+                }`}></div>
               <span className="font-medium">{snackbar.message}</span>
               <button
                 onClick={() => setSnackbar({ ...snackbar, open: false })}
